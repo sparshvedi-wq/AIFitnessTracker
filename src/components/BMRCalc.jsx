@@ -1,8 +1,9 @@
 // BMR/TDEE calculator using the Mifflin-St Jeor equation.
-// Shown as a collapsible panel within Settings.
+// Shown as a collapsible row inside the Goals section of Settings.
 
 import { useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
+import Icon from './Icon.jsx'
 
 const ACTIVITY = [
   { label: 'Sedentary (little or no exercise)', factor: 1.2 },
@@ -12,11 +13,10 @@ const ACTIVITY = [
   { label: 'Extra active (physical job + training)', factor: 1.9 },
 ]
 
-const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20'
+const inputCls = 'input'
 
 export default function BMRCalc() {
-  const { dispatch, toast } = useApp()
+  const { state, dispatch, toast } = useApp()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     gender: 'male',
@@ -65,144 +65,127 @@ export default function BMRCalc() {
   }
 
   function applyGoal(cal) {
-    dispatch({ type: 'UPDATE_SETTINGS', patch: { goals: { calories: cal } } })
     // keep existing macro goals, just update calories
+    dispatch({ type: 'UPDATE_SETTINGS', patch: { goals: { ...state.settings.goals, calories: cal } } })
     toast(`Calorie goal set to ${cal}`)
   }
 
+  const Label = ({ children }) => <span className="field-label">{children}</span>
+
   return (
-    <section className="rounded-2xl bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
+    <div className="border-t border-line">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
+        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface2"
+        aria-expanded={open}
       >
-        <div>
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-            🧮 Calculate my calorie goal
-          </p>
-          <p className="text-xs text-slate-400 dark:text-slate-500">
-            Uses BMR (Mifflin-St Jeor) + activity level
-          </p>
-        </div>
-        <svg
-          width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-          className={`shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`}
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-soft text-brand">
+          <Icon name="calculator" size={17} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-ink">Calculate my calorie goal</span>
+          <span className="block text-[13px] text-muted">From your body stats and activity level</span>
+        </span>
+        <Icon name="chevronDown" size={18} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 dark:border-slate-700 p-5 space-y-4 animate-slide-up">
-          {/* Unit toggle */}
-          <div className="flex rounded-lg bg-slate-100 dark:bg-slate-700 p-0.5">
+        <div className="space-y-4 px-4 pb-4 animate-fade-in">
+          <div className="segmented">
             {['imperial', 'metric'].map((u) => (
-              <button
-                key={u}
-                onClick={() => set('unit')(u)}
-                className={`flex-1 rounded-md py-1.5 text-sm font-medium transition ${
-                  form.unit === u
-                    ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-slate-100'
-                    : 'text-slate-500 dark:text-slate-400'
-                }`}
-              >
-                {u === 'imperial' ? 'Imperial (lb, ft)' : 'Metric (kg, cm)'}
+              <button key={u} onClick={() => set('unit')(u)} className={`segment ${form.unit === u ? 'segment-active' : ''}`}>
+                {u === 'imperial' ? 'lb · ft' : 'kg · cm'}
               </button>
             ))}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Sex</Label>
+              <div className="segmented">
+                {['male', 'female'].map((g) => (
+                  <button key={g} onClick={() => set('gender')(g)} className={`segment ${form.gender === g ? 'segment-active' : ''}`}>
+                    {g === 'male' ? 'Male' : 'Female'}
+                  </button>
+                ))}
+              </div>
+            </div>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Gender</span>
-              <select value={form.gender} onChange={(e) => set('gender')(e.target.value)} className={inputCls}>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Age</span>
-              <input type="number" min="5" max="120" value={form.age} onChange={(e) => set('age')(e.target.value)} placeholder="30" className={inputCls} />
+              <Label>Age</Label>
+              <input type="number" inputMode="numeric" min="5" max="120" value={form.age} onChange={(e) => set('age')(e.target.value)} placeholder="30" className={inputCls} />
             </label>
           </div>
 
           {form.unit === 'imperial' ? (
-            <div className="grid grid-cols-3 gap-2">
-              <label className="col-span-1 block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Weight (lb)</span>
-                <input type="number" value={form.weightLb} onChange={(e) => set('weightLb')(e.target.value)} placeholder="165" className={inputCls} />
+            <div className="grid grid-cols-3 gap-3">
+              <label className="block">
+                <Label>Weight (lb)</Label>
+                <input type="number" inputMode="decimal" value={form.weightLb} onChange={(e) => set('weightLb')(e.target.value)} placeholder="165" className={inputCls} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Feet</span>
-                <input type="number" value={form.heightFt} onChange={(e) => set('heightFt')(e.target.value)} placeholder="5" className={inputCls} />
+                <Label>Height (ft)</Label>
+                <input type="number" inputMode="numeric" value={form.heightFt} onChange={(e) => set('heightFt')(e.target.value)} placeholder="5" className={inputCls} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Inches</span>
-                <input type="number" value={form.heightIn} onChange={(e) => set('heightIn')(e.target.value)} placeholder="10" className={inputCls} />
+                <Label>(in)</Label>
+                <input type="number" inputMode="numeric" value={form.heightIn} onChange={(e) => set('heightIn')(e.target.value)} placeholder="10" className={inputCls} />
               </label>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Weight (kg)</span>
-                <input type="number" value={form.weightKg} onChange={(e) => set('weightKg')(e.target.value)} placeholder="75" className={inputCls} />
+                <Label>Weight (kg)</Label>
+                <input type="number" inputMode="decimal" value={form.weightKg} onChange={(e) => set('weightKg')(e.target.value)} placeholder="75" className={inputCls} />
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Height (cm)</span>
-                <input type="number" value={form.heightCm} onChange={(e) => set('heightCm')(e.target.value)} placeholder="178" className={inputCls} />
+                <Label>Height (cm)</Label>
+                <input type="number" inputMode="numeric" value={form.heightCm} onChange={(e) => set('heightCm')(e.target.value)} placeholder="178" className={inputCls} />
               </label>
             </div>
           )}
 
           <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Activity level</span>
-            <select
-              value={form.activity}
-              onChange={(e) => set('activity')(Number(e.target.value))}
-              className={inputCls}
-            >
+            <Label>Activity level</Label>
+            <select value={form.activity} onChange={(e) => set('activity')(Number(e.target.value))} className={inputCls}>
               {ACTIVITY.map((a) => (
                 <option key={a.factor} value={a.factor}>{a.label}</option>
               ))}
             </select>
           </label>
 
-          <button
-            onClick={calculate}
-            className="w-full rounded-lg bg-slate-800 dark:bg-slate-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 dark:hover:bg-slate-500"
-          >
-            Calculate
-          </button>
+          <button onClick={calculate} className="btn-primary w-full">Calculate</button>
 
           {result && (
-            <div className="rounded-xl bg-slate-50 dark:bg-slate-700 p-4 space-y-3 animate-fade-in">
+            <div className="space-y-3 rounded-2xl bg-surface2 p-4 animate-fade-in">
               <div className="grid grid-cols-2 gap-3 text-center">
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">BMR</p>
-                  <p className="text-xl font-bold text-slate-800 dark:text-slate-100 tabular-nums">{result.bmr}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">cal at rest</p>
+                  <p className="text-[13px] font-medium text-muted">At rest (BMR)</p>
+                  <p className="text-2xl font-bold tabular-nums text-ink">{result.bmr.toLocaleString()}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase tracking-wide">TDEE</p>
-                  <p className="text-xl font-bold text-cal tabular-nums">{result.tdee}</p>
-                  <p className="text-xs text-slate-400 dark:text-slate-500">maintenance cal</p>
+                  <p className="text-[13px] font-medium text-muted">Maintenance</p>
+                  <p className="text-2xl font-bold tabular-nums text-brand">{result.tdee.toLocaleString()}</p>
                 </div>
               </div>
 
+              <p className="section-title px-0 pt-1">Set as my goal</p>
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Apply as calorie goal:</p>
                 {[
-                  { label: 'Lose weight (–500)', cal: result.tdee - 500 },
-                  { label: 'Mild cut (–250)', cal: result.tdee - 250 },
-                  { label: 'Maintain', cal: result.tdee },
-                  { label: 'Lean bulk (+250)', cal: result.tdee + 250 },
-                ].map(({ label, cal }) => (
+                  { label: 'Lose weight', sub: '−500 cal/day', cal: result.tdee - 500 },
+                  { label: 'Mild cut', sub: '−250 cal/day', cal: result.tdee - 250 },
+                  { label: 'Maintain', sub: 'Stay the same', cal: result.tdee },
+                  { label: 'Lean bulk', sub: '+250 cal/day', cal: result.tdee + 250 },
+                ].map(({ label, sub, cal }) => (
                   <button
                     key={label}
                     onClick={() => applyGoal(Math.max(1000, cal))}
-                    className="flex w-full items-center justify-between rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm hover:border-cal hover:bg-cal/5 transition-colors"
+                    className="flex w-full items-center justify-between rounded-xl border border-line bg-surface px-3.5 py-2.5 text-left transition-colors hover:border-brand/60"
                   >
-                    <span className="text-slate-700 dark:text-slate-200">{label}</span>
-                    <span className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">{Math.max(1000, cal)} cal</span>
+                    <span>
+                      <span className="block text-[15px] font-semibold text-ink">{label}</span>
+                      <span className="block text-[13px] text-muted">{sub}</span>
+                    </span>
+                    <span className="text-[15px] font-bold tabular-nums text-ink">{Math.max(1000, cal).toLocaleString()} cal</span>
                   </button>
                 ))}
               </div>
@@ -210,6 +193,6 @@ export default function BMRCalc() {
           )}
         </div>
       )}
-    </section>
+    </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
+import Icon from './Icon.jsx'
 
 export default function DiaryNote({ date }) {
   const { state, dispatch } = useApp()
@@ -28,19 +29,22 @@ export default function DiaryNote({ date }) {
   }
 
   return (
-    <div className="rounded-2xl bg-white dark:bg-slate-800 p-4 shadow-sm animate-fade-in">
-      <h3 className="mb-2 text-sm font-semibold text-slate-800 dark:text-slate-100">
-        📝 Daily note
-      </h3>
+    <section className="card p-4">
+      <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-ink2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface2 text-ink2">
+          <Icon name="note" size={16} />
+        </span>
+        Note
+      </div>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
         onBlur={save}
-        placeholder="How did today go? Any notes on meals, energy, mood…"
+        placeholder="How did today go? Energy, mood, cravings…"
         rows={2}
-        className="w-full resize-none rounded-lg border border-slate-200 dark:border-slate-600 bg-transparent px-3 py-2 text-sm text-slate-700 dark:text-slate-200 placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20"
+        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none"
       />
-    </div>
+    </section>
   )
 }

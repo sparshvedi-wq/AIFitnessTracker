@@ -1,14 +1,14 @@
-// Searchable food library with favorites, sort options, inline editing,
-// usage counts, and quick-add with adjustable servings.
+// Searchable list of saved foods with favorites, sorting, inline editing,
+// usage counts, and one-tap add. Used as a picker sheet while logging and as
+// the full Foods tab.
 
 import { useMemo, useState } from 'react'
 import Modal from './Modal.jsx'
+import Icon from './Icon.jsx'
 import { useApp } from '../store/AppContext.jsx'
 import { MEALS, MEAL_LABELS } from '../lib/calc.js'
+import { labelForKey } from '../lib/date.js'
 import { uid } from '../lib/id.js'
-
-const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20'
 
 // Inline edit form for a single library food
 function EditFoodRow({ food, onSave, onCancel }) {
@@ -18,22 +18,22 @@ function EditFoodRow({ food, onSave, onCancel }) {
   })
   const set = (k) => (v) => setF((x) => ({ ...x, [k]: v }))
   return (
-    <div className="rounded-xl bg-slate-50 dark:bg-slate-700 p-3 space-y-2">
-      <input value={f.name} onChange={(e) => set('name')(e.target.value)} placeholder="Name" className={inputCls} autoFocus />
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+    <div className="space-y-3 rounded-2xl bg-surface2 p-3">
+      <input value={f.name} onChange={(e) => set('name')(e.target.value)} placeholder="Name" className="input" autoFocus />
+      <div className="grid grid-cols-4 gap-2">
         {['calories', 'protein', 'carbs', 'fat'].map((k) => (
           <label key={k} className="block">
-            <span className="mb-0.5 block text-[11px] text-slate-400 dark:text-slate-500 capitalize">{k === 'calories' ? 'cal' : `${k} g`}</span>
-            <input type="number" min="0" step="any" value={f[k]} onChange={(e) => set(k)(e.target.value)} className={inputCls} />
+            <span className="mb-1 block text-xs font-medium text-muted">{k === 'calories' ? 'Cal' : `${k[0].toUpperCase() + k.slice(1)} g`}</span>
+            <input type="number" min="0" step="any" value={f[k]} onChange={(e) => set(k)(e.target.value)} className="input px-2 text-center tabular-nums" />
           </label>
         ))}
       </div>
-      <input value={f.servingSize} onChange={(e) => set('servingSize')(e.target.value)} placeholder="Serving size (e.g. 1 cup)" className={inputCls} />
+      <input value={f.servingSize} onChange={(e) => set('servingSize')(e.target.value)} placeholder="Serving size (e.g. 1 cup)" className="input" />
       <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">Cancel</button>
+        <button onClick={onCancel} className="btn-ghost py-2">Cancel</button>
         <button
           onClick={() => onSave({ ...food, ...f, calories: Number(f.calories) || 0, protein: Number(f.protein) || 0, carbs: Number(f.carbs) || 0, fat: Number(f.fat) || 0 })}
-          className="rounded-lg bg-cal px-3 py-1.5 text-sm font-semibold text-white hover:bg-sky-600"
+          className="btn-primary py-2"
         >
           Save
         </button>
@@ -43,12 +43,12 @@ function EditFoodRow({ food, onSave, onCancel }) {
 }
 
 const SORT_OPTIONS = [
-  { value: 'favorites', label: 'Favorites first' },
-  { value: 'name', label: 'A–Z' },
+  { value: 'favorites', label: 'Favorites' },
   { value: 'usage', label: 'Most used' },
+  { value: 'name', label: 'A–Z' },
 ]
 
-export default function FoodLibrary({ open, onClose, date, defaultMeal = 'breakfast' }) {
+export function FoodLibraryList({ date, defaultMeal = 'breakfast', onNewFood, compact = false }) {
   const { state, dispatch, toast } = useApp()
   const [query, setQuery] = useState('')
   const [meal, setMeal] = useState(defaultMeal)
@@ -83,7 +83,7 @@ export default function FoodLibrary({ open, onClose, date, defaultMeal = 'breakf
       },
     })
     dispatch({ type: 'INCREMENT_FOOD_USAGE', name: food.name })
-    toast(`Added ${food.name}`)
+    toast(`Added ${food.name} to ${MEAL_LABELS[meal].toLowerCase()}`)
   }
 
   function saveEdit(updated) {
@@ -94,116 +94,122 @@ export default function FoodLibrary({ open, onClose, date, defaultMeal = 'breakf
 
   function removeFood(food) {
     dispatch({ type: 'DELETE_FOOD', id: food.id })
-    toast(`Removed "${food.name}"`, 'info')
+    toast(`Removed "${food.name}"`, 'info', {
+      label: 'Undo',
+      onClick: () => dispatch({ type: 'SAVE_FOOD', food }),
+    })
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Food library">
-      <div className="space-y-3">
-        {/* Search + controls */}
-        <div className="flex gap-2">
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search…"
-            className="flex-1 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20"
-          />
-          <select
-            value={meal}
-            onChange={(e) => setMeal(e.target.value)}
-            className="rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-2 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20"
-          >
-            {MEALS.map((m) => <option key={m} value={m}>{MEAL_LABELS[m]}</option>)}
-          </select>
-        </div>
+    <div className="space-y-4">
+      {/* Search */}
+      <div className="relative">
+        <Icon name="search" size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          autoFocus={compact}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search your foods"
+          className="input pl-10"
+        />
+      </div>
 
-        {/* Sort */}
-        <div className="flex gap-1">
-          {SORT_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              onClick={() => setSort(o.value)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
-                sort === o.value
-                  ? 'bg-cal/10 text-cal'
-                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-              }`}
-            >
-              {o.label}
+      {/* Where "+" adds to */}
+      <div>
+        <p className="section-title mb-2">
+          Add to {MEAL_LABELS[meal].toLowerCase()} · {labelForKey(date)}
+        </p>
+        <div className="segmented">
+          {MEALS.map((m) => (
+            <button key={m} onClick={() => setMeal(m)} className={`segment ${meal === m ? 'segment-active' : ''}`}>
+              {MEAL_LABELS[m]}
             </button>
           ))}
-          <span className="ml-auto text-xs text-slate-400 dark:text-slate-500 self-center">
-            {state.foods.length} saved
-          </span>
         </div>
-
-        {state.foods.length === 0 ? (
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-700 px-4 py-10 text-center">
-            <p className="text-sm text-slate-400 dark:text-slate-500">No saved foods yet.</p>
-            <p className="mt-1 text-xs text-slate-300 dark:text-slate-600">Foods you add are saved here automatically.</p>
-          </div>
-        ) : results.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">No matches for "{query}".</p>
-        ) : (
-          <ul className="max-h-[55vh] divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto -mx-1 px-1">
-            {results.map((food) => (
-              <li key={food.id} className="py-2.5">
-                {editingId === food.id ? (
-                  <EditFoodRow food={food} onSave={saveEdit} onCancel={() => setEditingId(null)} />
-                ) : (
-                  <div className="flex items-center gap-2">
-                    {/* Favorite star */}
-                    <button
-                      onClick={() => dispatch({ type: 'TOGGLE_FAVORITE', id: food.id })}
-                      className={`shrink-0 text-lg leading-none transition ${food.favorite ? 'text-amber-400' : 'text-slate-200 dark:text-slate-700 hover:text-amber-300'}`}
-                      aria-label={food.favorite ? 'Unfavorite' : 'Favorite'}
-                    >
-                      ★
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-100">{food.name}</p>
-                      <p className="text-xs text-slate-400 dark:text-slate-500">
-                        {Math.round(food.calories)} cal · P{Math.round(food.protein)} · C{Math.round(food.carbs)} · F{Math.round(food.fat)}
-                        {food.servingSize ? ` · ${food.servingSize}` : ''}
-                        {food.usageCount ? ` · used ${food.usageCount}×` : ''}
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => addFood(food)}
-                      className="shrink-0 rounded-lg bg-cal/10 dark:bg-cal/20 px-3 py-1.5 text-sm font-semibold text-cal hover:bg-cal/20 dark:hover:bg-cal/30"
-                    >
-                      + Add
-                    </button>
-
-                    <button
-                      onClick={() => setEditingId(food.id)}
-                      className="shrink-0 rounded p-1.5 text-slate-300 dark:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
-                      aria-label="Edit"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M12 20h9M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
-                      </svg>
-                    </button>
-
-                    <button
-                      onClick={() => removeFood(food)}
-                      className="shrink-0 rounded p-1.5 text-slate-300 dark:text-slate-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-500"
-                      aria-label="Delete"
-                    >
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m2 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
+
+      {/* Sort */}
+      <div className="flex items-center gap-1.5">
+        {SORT_OPTIONS.map((o) => (
+          <button
+            key={o.value}
+            onClick={() => setSort(o.value)}
+            className={`chip py-1 ${sort === o.value ? 'chip-active' : ''}`}
+          >
+            {o.label}
+          </button>
+        ))}
+        <span className="ml-auto text-[13px] tabular-nums text-muted">{state.foods.length} saved</span>
+      </div>
+
+      {state.foods.length === 0 ? (
+        <div className="card flex flex-col items-center px-6 py-10 text-center">
+          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+            <Icon name="book" size={22} />
+          </span>
+          <p className="text-[15px] font-semibold text-ink">No saved foods yet</p>
+          <p className="mt-1 max-w-[260px] text-sm text-muted">Foods you log are saved here automatically so you can add them again in one tap.</p>
+          {onNewFood && (
+            <button onClick={onNewFood} className="btn-primary mt-5">
+              <Icon name="plus" size={18} strokeWidth={2.5} /> Add your first food
+            </button>
+          )}
+        </div>
+      ) : results.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted">No matches for “{query}”.</p>
+      ) : (
+        <ul className={`${compact ? '' : 'card'} divide-y divide-line/70 overflow-hidden`}>
+          {results.map((food) => (
+            <li key={food.id} className={compact ? 'py-2' : 'px-3 py-2'}>
+              {editingId === food.id ? (
+                <EditFoodRow food={food} onSave={saveEdit} onCancel={() => setEditingId(null)} />
+              ) : (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => dispatch({ type: 'TOGGLE_FAVORITE', id: food.id })}
+                    className={`icon-btn h-9 w-9 shrink-0 ${food.favorite ? 'text-carbs' : 'text-line hover:text-carbs'}`}
+                    aria-label={food.favorite ? 'Unfavorite' : 'Favorite'}
+                  >
+                    <Icon name="star" size={18} filled={food.favorite} />
+                  </button>
+
+                  <button onClick={() => setEditingId(food.id)} className="min-w-0 flex-1 py-1 text-left" aria-label={`Edit ${food.name}`}>
+                    <p className="truncate text-[15px] font-semibold text-ink">{food.name}</p>
+                    <p className="truncate text-[13px] tabular-nums text-muted">
+                      <span className="font-semibold text-ink2">{Math.round(food.calories)} cal</span>
+                      {' · '}P {Math.round(food.protein)} · C {Math.round(food.carbs)} · F {Math.round(food.fat)}
+                      {food.servingSize ? ` · ${food.servingSize}` : ''}
+                    </p>
+                  </button>
+
+                  <button
+                    onClick={() => removeFood(food)}
+                    className="icon-btn h-9 w-9 shrink-0 text-muted hover:text-danger"
+                    aria-label={`Delete ${food.name}`}
+                  >
+                    <Icon name="trash" size={17} />
+                  </button>
+                  <button
+                    onClick={() => addFood(food)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand transition-colors hover:bg-brand hover:text-white"
+                    aria-label={`Add ${food.name}`}
+                  >
+                    <Icon name="plus" size={18} strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+export default function FoodLibrary({ open, onClose, date, defaultMeal = 'breakfast' }) {
+  return (
+    <Modal open={open} onClose={onClose} title="My foods">
+      {open && <FoodLibraryList date={date} defaultMeal={defaultMeal} compact />}
     </Modal>
   )
 }

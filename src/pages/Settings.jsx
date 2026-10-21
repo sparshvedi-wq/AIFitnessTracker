@@ -1,5 +1,5 @@
-// Settings: calorie & macro goals, water/weight config, dark-mode toggle,
-// BMR calculator, and data backup (export / import / reset).
+// Settings, grouped by what people come here to do:
+// Goals (with the calculator) → Tracking → Appearance → Data.
 
 import { useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
@@ -7,25 +7,73 @@ import { gramGoalsFromPercent } from '../lib/storage.js'
 import { exportData, importData } from '../lib/backup.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import BMRCalc from '../components/BMRCalc.jsx'
+import PageHeader from '../components/PageHeader.jsx'
+import Icon from '../components/Icon.jsx'
 
-function Field({ label, hint, children }) {
+const MACROS = [
+  { key: 'protein', label: 'Protein', color: '#E5484D' },
+  { key: 'carbs', label: 'Carbs', color: '#F0A020' },
+  { key: 'fat', label: 'Fat', color: '#7C66DC' },
+]
+
+const THEME_OPTIONS = [
+  { value: 'system', label: 'System', icon: 'monitor' },
+  { value: 'light', label: 'Light', icon: 'sun' },
+  { value: 'dark', label: 'Dark', icon: 'moon' },
+]
+
+function Group({ title, children, footer }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-600 dark:text-slate-300">{label}</span>
-      {children}
-      {hint && <span className="mt-1 block text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
-    </label>
+    <section className="mb-7">
+      <h2 className="section-title mb-2">{title}</h2>
+      <div className="card overflow-hidden">{children}</div>
+      {footer && <p className="mt-2 px-1 text-[13px] text-muted">{footer}</p>}
+    </section>
   )
 }
 
-const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20'
+// A label on the left, a compact control on the right.
+function Row({ label, sub, children, first = false }) {
+  return (
+    <div className={`flex items-center gap-3 px-4 py-3 ${first ? '' : 'border-t border-line'}`}>
+      <div className="min-w-0 flex-1">
+        <p className="text-[15px] font-medium text-ink">{label}</p>
+        {sub && <p className="text-[13px] text-muted">{sub}</p>}
+      </div>
+      {children}
+    </div>
+  )
+}
 
-const THEME_OPTIONS = [
-  { value: 'system', label: '⚙️ System' },
-  { value: 'light', label: '☀️ Light' },
-  { value: 'dark', label: '🌙 Dark' },
-]
+function NumberInput({ value, onChange, suffix, width = 'w-24', ...rest }) {
+  return (
+    <div className={`relative ${width} shrink-0`}>
+      <input
+        type="number"
+        inputMode="numeric"
+        min="0"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        className={`input py-2 text-right tabular-nums ${suffix ? 'pr-9' : ''}`}
+        {...rest}
+      />
+      {suffix && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">{suffix}</span>}
+    </div>
+  )
+}
+
+function ActionRow({ icon, label, onClick, danger = false, first = false }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-surface2 ${first ? '' : 'border-t border-line'} ${danger ? 'text-danger' : 'text-ink'}`}
+    >
+      <Icon name={icon} size={19} className={danger ? '' : 'text-ink2'} />
+      <span className="flex-1 text-[15px] font-medium">{label}</span>
+      {!danger && <Icon name="chevronRight" size={18} className="text-muted" />}
+    </button>
+  )
+}
 
 export default function Settings() {
   const { state, dispatch, toast } = useApp()
@@ -38,11 +86,9 @@ export default function Settings() {
   const derived = gramGoalsFromPercent(goals.calories, macroPercent)
   const percentTotal = macroPercent.protein + macroPercent.carbs + macroPercent.fat
 
-  const updateGoals = (patch) =>
-    dispatch({ type: 'UPDATE_SETTINGS', patch: { goals: { ...goals, ...patch } } })
-
-  const updatePercent = (patch) =>
-    dispatch({ type: 'UPDATE_SETTINGS', patch: { macroPercent: { ...macroPercent, ...patch } } })
+  const update = (patch) => dispatch({ type: 'UPDATE_SETTINGS', patch })
+  const updateGoals = (patch) => update({ goals: { ...goals, ...patch } })
+  const updatePercent = (patch) => update({ macroPercent: { ...macroPercent, ...patch } })
 
   function handleFile(e) {
     const file = e.target.files?.[0]
@@ -60,174 +106,115 @@ export default function Settings() {
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Settings</h2>
+    <div className="pb-4">
+      <PageHeader title="Settings" subtitle="Preferences" />
 
-      {/* Appearance */}
-      <section className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Appearance</h3>
-        <div className="flex rounded-lg bg-slate-100 dark:bg-slate-700 p-0.5">
-          {THEME_OPTIONS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => dispatch({ type: 'UPDATE_SETTINGS', patch: { theme: t.value } })}
-              className={`flex-1 rounded-md py-2 text-sm font-medium transition-all ${
-                settings.theme === t.value
-                  ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-800 dark:text-slate-100'
-                  : 'text-slate-500 dark:text-slate-400'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </section>
+      <Group title="Daily goals">
+        <Row label="Calories" sub="Your daily target" first>
+          <NumberInput value={goals.calories} onChange={(v) => updateGoals({ calories: v })} suffix="cal" width="w-32" />
+        </Row>
 
-      {/* BMR / TDEE Calculator */}
-      <BMRCalc />
-
-      {/* Calorie & macro goals */}
-      <section className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm space-y-4">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Daily goals</h3>
-
-        <Field label="Calorie goal" hint="Used for remaining-calories display and progress bars.">
-          <input
-            type="number"
-            min="0"
-            value={goals.calories}
-            onChange={(e) => updateGoals({ calories: Number(e.target.value) || 0 })}
-            className={inputCls}
-          />
-        </Field>
-
-        <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          <input
-            type="checkbox"
-            checked={useMacroPercent}
-            onChange={(e) =>
-              dispatch({ type: 'UPDATE_SETTINGS', patch: { useMacroPercent: e.target.checked } })
-            }
-            className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-cal focus:ring-cal"
-          />
-          Set macros by % of calories (auto-calculates grams)
-        </label>
-
-        {useMacroPercent ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-3">
-              {['protein', 'carbs', 'fat'].map((m) => (
-                <Field key={m} label={`${m[0].toUpperCase() + m.slice(1)} %`}>
-                  <input
-                    type="number" min="0" max="100"
-                    value={macroPercent[m]}
-                    onChange={(e) => updatePercent({ [m]: Number(e.target.value) || 0 })}
-                    className={inputCls}
-                  />
-                </Field>
-              ))}
-            </div>
-            <p className={`text-xs font-medium ${percentTotal === 100 ? 'text-slate-400 dark:text-slate-500' : 'text-red-500'}`}>
-              Total: {percentTotal}%{percentTotal !== 100 && ' — should equal 100%'}
-            </p>
-            <div className="rounded-lg bg-slate-50 dark:bg-slate-700 px-4 py-3 text-sm">
-              Targets:{' '}
-              <span className="font-semibold text-protein">{derived.protein}g</span> protein ·{' '}
-              <span className="font-semibold text-carbs">{derived.carbs}g</span> carbs ·{' '}
-              <span className="font-semibold text-fat">{derived.fat}g</span> fat
+        <div className="border-t border-line px-4 py-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-[15px] font-medium text-ink">Macros</p>
+            <div className="segmented w-44">
+              <button onClick={() => update({ useMacroPercent: false })} className={`segment py-1 ${!useMacroPercent ? 'segment-active' : ''}`}>Grams</button>
+              <button onClick={() => update({ useMacroPercent: true })} className={`segment py-1 ${useMacroPercent ? 'segment-active' : ''}`}>Percent</button>
             </div>
           </div>
-        ) : (
           <div className="grid grid-cols-3 gap-3">
-            {['protein', 'carbs', 'fat'].map((m) => (
-              <Field key={m} label={`${m[0].toUpperCase() + m.slice(1)} (g)`}>
-                <input
-                  type="number" min="0"
-                  value={goals[m]}
-                  onChange={(e) => updateGoals({ [m]: Number(e.target.value) || 0 })}
-                  className={inputCls}
-                />
-              </Field>
+            {MACROS.map((m) => (
+              <label key={m.key} className="block">
+                <span className="field-label flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: m.color }} />
+                  {m.label}
+                </span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    max={useMacroPercent ? 100 : undefined}
+                    value={useMacroPercent ? macroPercent[m.key] : goals[m.key]}
+                    onChange={(e) => {
+                      const v = Number(e.target.value) || 0
+                      useMacroPercent ? updatePercent({ [m.key]: v }) : updateGoals({ [m.key]: v })
+                    }}
+                    className="input pr-8 tabular-nums"
+                  />
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] font-medium text-muted">
+                    {useMacroPercent ? '%' : 'g'}
+                  </span>
+                </div>
+                {useMacroPercent && (
+                  <span className="mt-1 block text-[13px] tabular-nums text-muted">{derived[m.key]} g</span>
+                )}
+              </label>
             ))}
           </div>
-        )}
-      </section>
-
-      {/* Other */}
-      <section className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm space-y-4">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Other</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Water goal (glasses)">
-            <input
-              type="number" min="0"
-              value={settings.waterGoal}
-              onChange={(e) =>
-                dispatch({ type: 'UPDATE_SETTINGS', patch: { waterGoal: Number(e.target.value) || 0 } })
-              }
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Weight unit">
-            <select
-              value={settings.weightUnit}
-              onChange={(e) =>
-                dispatch({ type: 'UPDATE_SETTINGS', patch: { weightUnit: e.target.value } })
-              }
-              className={inputCls}
-            >
-              <option value="lb">lb</option>
-              <option value="kg">kg</option>
-            </select>
-          </Field>
-        </div>
-      </section>
-
-      {/* Backup */}
-      <section className="rounded-2xl bg-white dark:bg-slate-800 p-5 shadow-sm space-y-3">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Backup & data</h3>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          All data lives in this browser. Export a JSON backup regularly so you don't lose it.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => exportData(state)}
-            className="rounded-lg bg-slate-800 dark:bg-slate-600 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 dark:hover:bg-slate-500"
-          >
-            Export JSON
-          </button>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="rounded-lg border border-slate-200 dark:border-slate-600 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-          >
-            Import JSON
-          </button>
-          <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleFile} className="hidden" />
-          <button
-            onClick={() => setConfirmReset(true)}
-            className="ml-auto rounded-lg px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-          >
-            Reset all data
-          </button>
+          {useMacroPercent && percentTotal !== 100 && (
+            <p className="mt-2 text-[13px] font-medium text-danger">Adds up to {percentTotal}%. Make it 100%.</p>
+          )}
         </div>
 
-        {/* Storage usage estimate */}
-        <p className="text-xs text-slate-300 dark:text-slate-600">
-          {state.entries.length} entries · {state.foods.length} saved foods · {Object.keys(state.metrics).length} days with metrics
-        </p>
-      </section>
+        <BMRCalc />
+      </Group>
+
+      <Group title="Tracking">
+        <Row label="Water goal" sub="Glasses per day" first>
+          <NumberInput value={settings.waterGoal} onChange={(v) => update({ waterGoal: v })} />
+        </Row>
+        <Row label="Weight unit">
+          <div className="segmented w-32">
+            {['lb', 'kg'].map((u) => (
+              <button key={u} onClick={() => update({ weightUnit: u })} className={`segment py-1 ${settings.weightUnit === u ? 'segment-active' : ''}`}>
+                {u}
+              </button>
+            ))}
+          </div>
+        </Row>
+      </Group>
+
+      <Group title="Appearance">
+        <div className="p-3">
+          <div className="segmented">
+            {THEME_OPTIONS.map((t) => (
+              <button
+                key={t.value}
+                onClick={() => update({ theme: t.value })}
+                className={`segment flex items-center justify-center gap-1.5 py-2 ${settings.theme === t.value ? 'segment-active' : ''}`}
+              >
+                <Icon name={t.icon} size={16} />
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </Group>
+
+      <Group
+        title="Data & backup"
+        footer={`Everything is stored on this device only. ${state.entries.length} entries · ${state.foods.length} saved foods · ${Object.keys(state.metrics).length} days with habits.`}
+      >
+        <ActionRow icon="download" label="Export backup" onClick={() => exportData(state)} first />
+        <ActionRow icon="upload" label="Restore from backup" onClick={() => fileRef.current?.click()} />
+        <ActionRow icon="trash" label="Reset all data" onClick={() => setConfirmReset(true)} danger />
+        <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleFile} className="hidden" />
+      </Group>
 
       <ConfirmDialog
         open={Boolean(pendingImport)}
-        title="Import backup?"
-        message="This will replace ALL current data. Export first if you want to keep it."
-        confirmLabel="Import & replace"
+        title="Restore backup?"
+        message="This replaces all of your current data. Export a backup first if you want to keep it."
+        confirmLabel="Replace"
         onConfirm={applyImport}
         onClose={() => setPendingImport(null)}
       />
       <ConfirmDialog
         open={confirmReset}
         title="Reset everything?"
-        message="This permanently deletes all entries, foods, metrics, and settings. There is no undo."
-        confirmLabel="Yes, reset all"
+        message="This permanently deletes all entries, foods, habits and settings. This can't be undone."
+        confirmLabel="Reset"
         onConfirm={() => {
           dispatch({ type: 'RESET' })
           toast('All data reset', 'info')

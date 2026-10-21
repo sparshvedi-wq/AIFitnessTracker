@@ -1,30 +1,24 @@
+// Today header: big day label, prev/next, tap the label for a calendar.
+
 import { addDays, labelForKey, fromKey, toKey, todayKey } from '../lib/date.js'
+import Icon from './Icon.jsx'
 
-export default function DateNav({ date, onChange, onCopy }) {
+export default function DateNav({ date, onChange }) {
   const isToday = date === todayKey()
-  return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => onChange(addDays(date, -1))}
-        className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-        aria-label="Previous day"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
-      </button>
+  const label = labelForKey(date)
+  const relative = ['Today', 'Yesterday', 'Tomorrow'].includes(label)
+  const full = fromKey(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
-      <label className="relative flex flex-1 cursor-pointer flex-col items-center">
-        <span className="text-base font-semibold text-slate-800 dark:text-slate-100">{labelForKey(date)}</span>
-        {!isToday && (
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); onChange(todayKey()) }}
-            className="text-xs font-medium text-cal hover:underline"
-          >
-            Jump to today
-          </button>
-        )}
+  return (
+    <header className="mb-5 flex items-end justify-between gap-2 pt-2">
+      <label className="relative min-w-0 cursor-pointer">
+        <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">
+          {relative ? full : fromKey(date).getFullYear()}
+        </p>
+        <h1 className="flex items-center gap-1 text-[28px] font-extrabold leading-tight tracking-tight text-ink">
+          {label}
+          <Icon name="chevronDown" size={20} strokeWidth={2.5} className="text-muted" />
+        </h1>
         <input
           type="date"
           value={date}
@@ -34,30 +28,19 @@ export default function DateNav({ date, onChange, onCopy }) {
         />
       </label>
 
-      <button
-        onClick={() => onChange(addDays(date, 1))}
-        className="rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-        aria-label="Next day"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </button>
-
-      {/* Copy from another day */}
-      {onCopy && (
-        <button
-          onClick={onCopy}
-          className="rounded-lg p-2 text-slate-400 dark:text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
-          title="Copy entries from another day"
-          aria-label="Copy from another day"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <rect x="9" y="9" width="13" height="13" rx="2" />
-            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
-          </svg>
+      <div className="flex shrink-0 items-center gap-1">
+        {!isToday && (
+          <button onClick={() => onChange(todayKey())} className="chip mr-1 py-1 text-[13px]">
+            Today
+          </button>
+        )}
+        <button onClick={() => onChange(addDays(date, -1))} className="icon-btn border border-line bg-surface" aria-label="Previous day">
+          <Icon name="chevronLeft" size={20} />
         </button>
-      )}
-    </div>
+        <button onClick={() => onChange(addDays(date, 1))} className="icon-btn border border-line bg-surface" aria-label="Next day">
+          <Icon name="chevronRight" size={20} />
+        </button>
+      </div>
+    </header>
   )
 }

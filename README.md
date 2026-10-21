@@ -51,9 +51,27 @@ src/
     id.js         # unique id helper
   store/
     AppContext.jsx  # single reducer-backed store; mirrors localStorage
-  components/     # reusable UI (form, library, charts widgets, etc.)
-  pages/          # DailyView, Trends, Settings
-  App.jsx         # shell + bottom tab navigation
+  components/     # reusable UI (sheets, food form, library, cards, Icon set)
+  pages/          # DailyView (Today), Foods, Trends (Progress), Settings
+  App.jsx         # shell: bottom tabs + center "+" log button and logging sheets
+  index.css       # design tokens (light/dark CSS variables) + shared classes
+```
+
+## App layout
+
+| Tab | What lives there |
+| --- | --- |
+| **Today** | Date, calories left + macros, the four meals (tap an item to edit or delete), water, weight, daily note |
+| **Foods** | Saved-food library: search, favorites, sort, edit, one-tap add to a meal |
+| **＋ (center)** | Log food from anywhere: pick a meal, re-add a recent food, enter a new food, pick from My Foods, or copy a previous day |
+| **Progress** | Streak, weekly summary, calorie / macro / weight charts, achievements |
+| **Settings** | Daily goals (with the goal calculator), tracking preferences, appearance, data & backup |
+
+Colors are semantic tokens (`bg`, `surface`, `ink`, `muted`, `line`, `brand`…)
+defined as CSS variables in `src/index.css`, so dark mode is one set of values
+rather than `dark:` variants on every element.
+
+```
 ```
 
 `localStorage` is the single source of truth: the store loads from it on start

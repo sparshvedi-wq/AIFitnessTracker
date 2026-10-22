@@ -1,4 +1,5 @@
-// App shell: three tabs (Today, Progress, Settings). The selected date and
+// App shell: four tabs (Today, Workout, Progress, Settings), plus the active
+// workout, which keeps running above whichever tab is open. The selected date and
 // the logging sheets live here so the date is kept when switching tabs.
 
 import { useState } from 'react'
@@ -6,6 +7,9 @@ import { todayKey } from './lib/date.js'
 import DailyView from './pages/DailyView.jsx'
 import Trends from './pages/Trends.jsx'
 import Settings from './pages/Settings.jsx'
+import Workouts from './pages/Workouts.jsx'
+import WorkoutHost from './components/workout/WorkoutHost.jsx'
+import { useApp } from './store/AppContext.jsx'
 import ToastHost from './components/Toast.jsx'
 import Icon from './components/Icon.jsx'
 import AddSheet from './components/AddSheet.jsx'
@@ -14,6 +18,7 @@ import CopyDayModal from './components/CopyDayModal.jsx'
 
 const TABS = [
   { id: 'today', label: 'Today', icon: 'today' },
+  { id: 'workout', label: 'Workout', icon: 'dumbbell' },
   { id: 'progress', label: 'Progress', icon: 'progress' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
@@ -34,7 +39,10 @@ function TabButton({ tab, active, onClick }) {
 }
 
 export default function App() {
-  const [tab, setTab] = useState('today')
+  const { state } = useApp()
+  const [tab, setTab] = useState(() => (state.activeWorkout ? 'workout' : 'today'))
+  // Reopen the player after a reload if a workout was in progress.
+  const [playerOpen, setPlayerOpen] = useState(() => Boolean(state.activeWorkout))
   const [date, setDate] = useState(todayKey())
 
   // Which logging sheet is open: null | 'add' | 'form' | 'copy'
@@ -61,10 +69,11 @@ export default function App() {
   return (
     <div className="min-h-full bg-bg text-ink">
       <div className="mx-auto flex min-h-full max-w-xl flex-col">
-        <main className="flex-1 px-4 pb-28 pt-[max(env(safe-area-inset-top),16px)]">
+        <main className={`flex-1 px-4 pt-[max(env(safe-area-inset-top),16px)] ${state.activeWorkout ? 'pb-48' : 'pb-28'}`}>
           {tab === 'today' && (
-            <DailyView date={date} setDate={setDate} onAdd={openAdd} onEdit={openEdit} />
+            <DailyView date={date} setDate={setDate} onAdd={openAdd} onEdit={openEdit} onWorkout={() => setTab('workout')} />
           )}
+          {tab === 'workout' && <Workouts onOpenPlayer={() => setPlayerOpen(true)} />}
           {tab === 'progress' && <Trends />}
           {tab === 'settings' && <Settings />}
         </main>
@@ -95,6 +104,7 @@ export default function App() {
         />
         <CopyDayModal open={sheet === 'copy'} onClose={close} targetDate={date} />
 
+        <WorkoutHost open={playerOpen} setOpen={setPlayerOpen} />
         <ToastHost />
       </div>
     </div>

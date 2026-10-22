@@ -1,8 +1,9 @@
-// Add / edit a food entry. Full dark-mode support, live scaled preview,
-// quick-serving buttons, and optional library save.
+// Add / edit a food entry. Live scaled preview, quick-serving buttons,
+// and (when editing) delete with undo.
 
 import { useEffect, useState } from 'react'
 import Modal from './Modal.jsx'
+import Icon from './Icon.jsx'
 import { useApp } from '../store/AppContext.jsx'
 import { MEALS, MEAL_LABELS, scaled } from '../lib/calc.js'
 import { uid } from '../lib/id.js'
@@ -12,13 +13,13 @@ const EMPTY = {
   fat: '', servingSize: '', servings: '1',
 }
 
-const inputCls =
-  'w-full rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-sm text-slate-800 dark:text-slate-100 placeholder:text-slate-300 dark:placeholder:text-slate-500 focus:border-cal focus:outline-none focus:ring-2 focus:ring-cal/20'
-
-function NumField({ label, value, onChange }) {
+function NumField({ label, value, onChange, dot }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="field-label flex items-center gap-1.5">
+        {dot && <span className="h-2 w-2 rounded-full" style={{ backgroundColor: dot }} />}
+        {label}
+      </span>
       <input
         type="number"
         inputMode="decimal"
@@ -26,7 +27,8 @@ function NumField({ label, value, onChange }) {
         min="0"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={inputCls}
+        placeholder="0"
+        className="input tabular-nums"
       />
     </label>
   )
@@ -37,7 +39,6 @@ const SERVING_PRESETS = [0.5, 1, 1.5, 2, 3]
 export default function FoodForm({ open, onClose, date, initial, defaultMeal }) {
   const { dispatch, toast } = useApp()
   const [form, setForm] = useState(EMPTY)
-  const [saveToLibrary, setSaveToLibrary] = useState(true)
   const editing = Boolean(initial?.id)
 
   useEffect(() => {
@@ -53,10 +54,8 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
         servingSize: initial.servingSize ?? '',
         servings: String(initial.servings ?? '1'),
       })
-      setSaveToLibrary(false)
     } else {
       setForm({ ...EMPTY, meal: defaultMeal ?? 'breakfast' })
-      setSaveToLibrary(true)
     }
   }, [open, initial, defaultMeal, editing])
 
@@ -87,56 +86,71 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
       toast('Entry updated')
     } else {
       dispatch({ type: 'ADD_ENTRY', entry: { ...base, id: uid(), date } })
-      toast('Entry added')
-    }
-
-    if (saveToLibrary || editing) {
-      dispatch({ type: 'SAVE_FOOD', food: { name: base.name, calories: base.calories, protein: base.protein, carbs: base.carbs, fat: base.fat, servingSize: base.servingSize } })
-      if (!editing) dispatch({ type: 'INCREMENT_FOOD_USAGE', name: base.name })
+      toast(`Added to ${MEAL_LABELS[base.meal].toLowerCase()}`)
     }
     onClose()
   }
 
+  // Optimistic delete with undo toast
+  function handleDelete() {
+    const entry = { ...initial }
+    dispatch({ type: 'DELETE_ENTRY', id: entry.id })
+    toast(`Deleted "${entry.name}"`, 'info', {
+      label: 'Undo',
+      onClick: () => dispatch({ type: 'ADD_ENTRY', entry }),
+    })
+    onClose()
+  }
+
   return (
-    <Modal open={open} onClose={onClose} title={editing ? 'Edit entry' : 'Add food'}>
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal open={open} onClose={onClose} title={editing ? 'Edit entry' : 'Enter food'}>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Food name</span>
+          <span className="field-label">Food name</span>
           <input
-            autoFocus
+            autoFocus={!editing}
             value={form.name}
             onChange={(e) => set('name')(e.target.value)}
             placeholder="e.g. Greek yogurt"
-            className={inputCls}
+            className="input"
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Meal</span>
-            <select value={form.meal} onChange={(e) => set('meal')(e.target.value)} className={inputCls}>
-              {MEALS.map((m) => <option key={m} value={m}>{MEAL_LABELS[m]}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Serving size</span>
-            <input value={form.servingSize} onChange={(e) => set('servingSize')(e.target.value)} placeholder="e.g. 1 cup, 100g" className={inputCls} />
-          </label>
-        </div>
-
         <div>
-          <p className="mb-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">Per serving</p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <NumField label="Calories" value={form.calories} onChange={set('calories')} />
-            <NumField label="Protein (g)" value={form.protein} onChange={set('protein')} />
-            <NumField label="Carbs (g)" value={form.carbs} onChange={set('carbs')} />
-            <NumField label="Fat (g)" value={form.fat} onChange={set('fat')} />
+          <span className="field-label">Meal</span>
+          <div className="segmented">
+            {MEALS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => set('meal')(m)}
+                className={`segment ${form.meal === m ? 'segment-active' : ''}`}
+              >
+                {MEAL_LABELS[m]}
+              </button>
+            ))}
           </div>
         </div>
 
         <div>
-          <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Servings</span>
-          <div className="flex items-center gap-2">
+          <div className="mb-2 flex items-baseline justify-between">
+            <p className="section-title px-0">Nutrition per serving</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <NumField label="Calories" value={form.calories} onChange={set('calories')} dot="rgb(var(--brand))" />
+            <NumField label="Protein (g)" value={form.protein} onChange={set('protein')} dot="#E5484D" />
+            <NumField label="Carbs (g)" value={form.carbs} onChange={set('carbs')} dot="#F0A020" />
+            <NumField label="Fat (g)" value={form.fat} onChange={set('fat')} dot="#7C66DC" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[1fr_auto] gap-3">
+          <label className="block">
+            <span className="field-label">Serving size</span>
+            <input value={form.servingSize} onChange={(e) => set('servingSize')(e.target.value)} placeholder="1 cup, 100 g…" className="input" />
+          </label>
+          <label className="block w-24">
+            <span className="field-label">Servings</span>
             <input
               type="number"
               inputMode="decimal"
@@ -144,58 +158,48 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
               min="0"
               value={form.servings}
               onChange={(e) => set('servings')(e.target.value)}
-              className={`${inputCls} w-20`}
+              className="input text-center tabular-nums"
             />
-            <div className="flex gap-1">
-              {SERVING_PRESETS.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => set('servings')(String(n))}
-                  className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition ${
-                    Number(form.servings) === n
-                      ? 'bg-cal text-white'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
-                  }`}
-                >
-                  ×{n}
-                </button>
-              ))}
-            </div>
-          </div>
+          </label>
+        </div>
+        <div className="no-scrollbar -mt-2 flex gap-1.5 overflow-x-auto">
+          {SERVING_PRESETS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              onClick={() => set('servings')(String(n))}
+              className={`chip px-3 py-1 tabular-nums ${Number(form.servings) === n ? 'chip-active' : ''}`}
+            >
+              ×{n}
+            </button>
+          ))}
         </div>
 
-        {/* Live total preview */}
-        <div className="rounded-xl bg-slate-50 dark:bg-slate-700 px-4 py-3">
-          <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-            Total ({form.servings || 1}×)
-          </p>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
-            <span className="text-cal">{Math.round(preview.calories)} cal</span>
+        {/* Live total */}
+        <div className="flex items-center justify-between rounded-2xl bg-surface2 px-4 py-3">
+          <div>
+            <p className="text-[13px] font-medium text-muted">Total</p>
+            <p className="text-2xl font-bold tabular-nums text-ink">
+              {Math.round(preview.calories)} <span className="text-sm font-semibold text-muted">cal</span>
+            </p>
+          </div>
+          <div className="flex gap-3 text-[13px] font-semibold tabular-nums">
             <span className="text-protein">P {Math.round(preview.protein)}g</span>
             <span className="text-carbs">C {Math.round(preview.carbs)}g</span>
             <span className="text-fat">F {Math.round(preview.fat)}g</span>
           </div>
         </div>
 
-        {!editing && (
-          <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-            <input
-              type="checkbox"
-              checked={saveToLibrary}
-              onChange={(e) => setSaveToLibrary(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-cal focus:ring-cal"
-            />
-            Save to food library for quick re-adding
-          </label>
-        )}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700">
-            Cancel
-          </button>
-          <button type="submit" className="rounded-lg bg-cal px-5 py-2 text-sm font-semibold text-white hover:bg-sky-600">
-            {editing ? 'Save changes' : 'Add'}
+        <div className="flex gap-2 pt-1">
+          {editing && (
+            <button type="button" onClick={handleDelete} className="btn-danger-ghost px-3" aria-label="Delete entry">
+              <Icon name="trash" size={18} />
+              Delete
+            </button>
+          )}
+          <button type="submit" className="btn-primary flex-1">
+            {editing ? 'Save changes' : 'Add to log'}
           </button>
         </div>
       </form>

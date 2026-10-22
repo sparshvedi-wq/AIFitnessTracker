@@ -2,29 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-.dark { color-scheme: dark; }
-
-html, body, #root {
-  height: 100%;
+/* ── Design tokens ─────────────────────────────────────────────
+   RGB triplets so Tailwind can apply opacity (bg-brand/10 etc). */
+:root {
+  color-scheme: light;
+  --bg: 245 246 248;
+  --surface: 255 255 255;
+  --surface-2: 241 243 245;
+  --line: 228 231 235;
+  --ink: 17 24 39;
+  --ink-2: 75 85 99;
+  --muted: 134 142 154;
+  --brand: 12 140 98;
+  --brand-soft: 230 245 239;
+  --on-brand: 255 255 255;
+  --danger: 220 53 53;
+  --success: 22 163 74;
+}
+.dark {
+  color-scheme: dark;
+  --bg: 10 12 15;
+  --surface: 21 24 29;
+  --surface-2: 31 35 42;
+  --line: 40 45 54;
+  --ink: 236 239 243;
+  --ink-2: 178 185 196;
+  --muted: 118 126 139;
+  --brand: 45 196 140;
+  --brand-soft: 18 46 37;
+  --on-brand: 4 32 22;
+  --danger: 248 98 98;
+  --success: 74 222 128;
 }
 
-/* Base body colors — expressed as plain utilities so Tailwind JIT picks them up */
+html, body, #root { height: 100%; }
+
 body {
   margin: 0;
-  @apply antialiased;
+  @apply bg-bg font-sans text-ink antialiased;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+/* ── Reusable building blocks ─────────────────────────────── */
+@layer components {
+  .card { @apply rounded-2xl border border-line/70 bg-surface shadow-card; }
+
+  .section-title { @apply px-1 text-[13px] font-semibold uppercase tracking-wide text-muted; }
+
+  .field-label { @apply mb-1.5 block text-[13px] font-medium text-ink2; }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-[15px] text-ink
+      placeholder:text-muted/70 transition-colors
+      focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/15;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-semibold
+      transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary { @apply btn bg-brand text-on-brand hover:brightness-110; }
+  .btn-secondary { @apply btn border border-line bg-surface text-ink hover:bg-surface2; }
+  .btn-ghost { @apply btn text-ink2 hover:bg-surface2; }
+  .btn-danger { @apply btn bg-danger text-white hover:brightness-110; }
+  .btn-danger-ghost { @apply btn text-danger hover:bg-danger/10; }
+
+  .icon-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-full text-ink2 transition-colors
+      hover:bg-surface2 active:bg-line;
+  }
+
+  /* Segmented control */
+  .segmented { @apply flex rounded-xl bg-surface2 p-1; }
+  .segment { @apply flex-1 rounded-lg px-3 py-1.5 text-sm font-medium text-ink2 transition-all; }
+  .segment-active { @apply bg-surface text-ink shadow-card; }
+
+  .chip {
+    @apply inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5
+      text-sm font-medium text-ink2 transition-colors hover:border-brand/50 hover:text-ink;
+  }
+  .chip-active { @apply border-brand bg-brand-soft text-brand; }
 }
 
 /* Spinner removal */
 input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type='number'] { -moz-appearance: textfield; }
 
-/* Scrollbar styling */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-500; }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-line; }
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }

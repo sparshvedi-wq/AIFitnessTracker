@@ -1,5 +1,5 @@
 // The one place to log food: pick a meal, tap a recent food to re-add it,
-// or choose how to add something new (manual entry, library, copy a day).
+// enter a new food, or copy a previous day.
 
 import { useMemo } from 'react'
 import Modal from './Modal.jsx'
@@ -27,7 +27,7 @@ function ActionRow({ icon, title, sub, onClick }) {
   )
 }
 
-export default function AddSheet({ open, onClose, date, meal, setMeal, onNewFood, onLibrary, onCopy }) {
+export default function AddSheet({ open, onClose, date, meal, setMeal, onNewFood, onCopy }) {
   const { state, dispatch, toast } = useApp()
 
   const recents = useMemo(
@@ -89,7 +89,6 @@ export default function AddSheet({ open, onClose, date, meal, setMeal, onNewFood
 
         <div className="-mx-2 space-y-0.5">
           <ActionRow icon="pencil" title="Enter food" sub="Type in calories and macros" onClick={onNewFood} />
-          <ActionRow icon="book" title="From my foods" sub={`${state.foods.length} saved food${state.foods.length === 1 ? '' : 's'}`} onClick={onLibrary} />
           <ActionRow icon="copy" title="Copy a previous day" sub="Repeat meals you already logged" onClick={onCopy} />
         </div>
       </div>

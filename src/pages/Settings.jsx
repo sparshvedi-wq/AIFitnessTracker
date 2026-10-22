@@ -194,7 +194,7 @@ export default function Settings() {
 
       <Group
         title="Data & backup"
-        footer={`Everything is stored on this device only. ${state.entries.length} entries · ${state.foods.length} saved foods · ${Object.keys(state.metrics).length} days with habits.`}
+        footer={`Everything is stored on this device only. ${state.entries.length} entries · ${Object.keys(state.metrics).length} days with habits.`}
       >
         <ActionRow icon="download" label="Export backup" onClick={() => exportData(state)} first />
         <ActionRow icon="upload" label="Restore from backup" onClick={() => fileRef.current?.click()} />
@@ -213,7 +213,7 @@ export default function Settings() {
       <ConfirmDialog
         open={confirmReset}
         title="Reset everything?"
-        message="This permanently deletes all entries, foods, habits and settings. This can't be undone."
+        message="This permanently deletes all entries, habits and settings. This can't be undone."
         confirmLabel="Reset"
         onConfirm={() => {
           dispatch({ type: 'RESET' })

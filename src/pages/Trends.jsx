@@ -36,7 +36,7 @@ const tooltipStyle = (dark) => ({
 })
 
 const BADGE_ICONS = {
-  first: 'sprout', week: 'flame', month: 'trophy', library: 'book',
+  first: 'sprout', week: 'flame', month: 'trophy',
   dedicated: 'barChart', hydrated: 'droplet', precision: 'target',
 }
 
@@ -85,7 +85,11 @@ export default function Trends() {
   const weightData = useMemo(() => weights.map((w) => ({ ...w, label: shortLabel(w.date) })), [weights])
   const streak = useMemo(() => computeStreak(state, today), [state, today])
   const weekly = useMemo(() => weeklyStats(state, today), [state, today])
-  const achievements = useMemo(() => computeAchievements(state, today), [state, today])
+  const achievements = useMemo(
+    // The food library is gone from the app, so its badge would be unreachable
+    () => computeAchievements(state, today).filter((b) => b.id !== 'library'),
+    [state, today],
+  )
 
   const goal = state.settings.goals.calories
   const unit = state.settings.weightUnit || 'lb'
@@ -98,8 +102,27 @@ export default function Trends() {
   const axisProps = { axisLine: false, tickLine: false }
   const tStyle = tooltipStyle(isDark)
   const xInterval = range === 7 ? 0 : 'preserveStartEnd'
-  // Keep the goal line on screen even when every day is under it
-  const goalDomain = [0, (max) => Math.max(max, goal || 0)]
+  // Calorie axes: always include the goal line and use evenly spaced round ticks
+  const calTicks = useMemo(() => {
+    const peak = Math.max(
+      goal || 0,
+      ...series.map((d) => d.calories),
+      ...stackSeries.map((d) => d.proteinCal + d.carbsCal + d.fatCal),
+    )
+    const step = peak > 3000 ? 1000 : 500
+    const top = Math.max(step, Math.ceil((peak * 1.05) / step) * step)
+    return Array.from({ length: top / step + 1 }, (_, i) => i * step)
+  }, [series, stackSeries, goal])
+  const calAxis = { domain: [0, calTicks[calTicks.length - 1]], ticks: calTicks }
+
+  // Weight axis: whole numbers, four even steps around the data
+  const weightTicks = useMemo(() => {
+    if (weights.length === 0) return [0]
+    const vals = weights.map((w) => w.weight)
+    const lo = Math.floor(Math.min(...vals) - 1)
+    const step = Math.max(1, Math.ceil((Math.max(...vals) + 1 - lo) / 4))
+    return Array.from({ length: 5 }, (_, i) => lo + i * step)
+  }, [weights])
 
   return (
     <div>
@@ -144,16 +167,22 @@ export default function Trends() {
           </div>
           <div>
             <p className="text-[13px] font-medium text-muted">{weekly.totalDeficit >= 0 ? 'Under goal' : 'Over goal'}</p>
-            <p className={`text-xl font-bold tabular-nums ${weekly.totalDeficit >= 0 ? 'text-success' : 'text-danger'}`}>
-              {Math.abs(weekly.totalDeficit).toLocaleString()} <span className="text-sm font-semibold">cal</span>
-            </p>
-            <p className="text-[13px] text-muted">total this week</p>
+            {weekly.daysLogged ? (
+              <p className={`text-xl font-bold tabular-nums ${weekly.totalDeficit >= 0 ? 'text-success' : 'text-danger'}`}>
+                {Math.abs(weekly.totalDeficit).toLocaleString()} <span className="text-sm font-semibold">cal</span>
+              </p>
+            ) : (
+              <p className="text-xl font-bold text-ink">—</p>
+            )}
+            {weekly.daysLogged > 0 && <p className="text-[13px] text-muted">total this week</p>}
           </div>
         </div>
         <div className="mt-4 border-t border-line pt-3">
           <div className="mb-1.5 flex justify-between text-[13px]">
             <span className="font-medium text-ink2">Days on target</span>
-            <span className="font-semibold tabular-nums text-ink">{weekly.onTarget}/{weekly.daysLogged}</span>
+            <span className="font-semibold tabular-nums text-ink">
+              {weekly.daysLogged ? `${weekly.onTarget} of ${weekly.daysLogged}` : '—'}
+            </span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
             <div
@@ -183,8 +212,8 @@ export default function Trends() {
                 <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid {...gridProps} />
                   <XAxis dataKey="label" tick={tickProps} {...axisProps} interval={xInterval} />
-                  <YAxis tick={tickProps} {...axisProps} domain={goalDomain} />
-                  <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} formatter={(v) => [`${v} cal`, 'Calories']} />
+                  <YAxis tick={tickProps} {...axisProps} {...calAxis} />
+                  <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} formatter={(v) => [`${v.toLocaleString()} cal`, 'Calories']} />
                   {goal > 0 && <ReferenceLine y={goal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
                   <Bar dataKey="calories" fill={c.brand} radius={[6, 6, 0, 0]} maxBarSize={28} />
                 </BarChart>
@@ -226,8 +255,8 @@ export default function Trends() {
               <BarChart data={stackData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid {...gridProps} />
                 <XAxis dataKey="label" tick={tickProps} {...axisProps} interval={xInterval} />
-                <YAxis tick={tickProps} {...axisProps} domain={goalDomain} />
-                <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} />
+                <YAxis tick={tickProps} {...axisProps} {...calAxis} />
+                <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} formatter={(v) => `${v.toLocaleString()} cal`} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: c.tick }} />
                 {goal > 0 && <ReferenceLine y={goal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
                 <Bar dataKey="proteinCal" name="Protein" stackId="a" fill="#E5484D" maxBarSize={28} />
@@ -269,7 +298,7 @@ export default function Trends() {
                 <LineChart data={weightData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid {...gridProps} />
                   <XAxis dataKey="label" tick={tickProps} {...axisProps} />
-                  <YAxis domain={['dataMin - 2', 'dataMax + 2']} tick={tickProps} {...axisProps} />
+                  <YAxis domain={[weightTicks[0], weightTicks[weightTicks.length - 1]]} ticks={weightTicks} tick={tickProps} {...axisProps} />
                   <Tooltip contentStyle={tStyle} formatter={(v) => [`${v} ${unit}`, 'Weight']} />
                   <Line
                     type="monotone" dataKey="weight"
@@ -307,7 +336,7 @@ export default function Trends() {
               <p className="text-[13px] text-muted">{badge.desc}</p>
             </div>
             {badge.earned ? (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-white">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-on-brand">
                 <Icon name="check" size={14} strokeWidth={3} />
               </span>
             ) : (

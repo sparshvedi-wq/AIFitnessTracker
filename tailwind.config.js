@@ -22,6 +22,7 @@ export default {
         muted: token('muted'),
         brand: token('brand'),
         'brand-soft': token('brand-soft'),
+        'on-brand': token('on-brand'),
         danger: token('danger'),
         success: token('success'),
         // Data colors: calories use the brand color; macros + water are fixed hues

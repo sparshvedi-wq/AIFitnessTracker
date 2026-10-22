@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import Icon from './Icon.jsx'
 
@@ -7,6 +7,7 @@ export default function WeightLog({ date }) {
   const stored = state.metrics[date]?.weight
   const unit = state.settings.weightUnit || 'lb'
   const [value, setValue] = useState('')
+  const inputRef = useRef(null)
 
   useEffect(() => {
     setValue(stored != null ? String(stored) : '')
@@ -23,6 +24,7 @@ export default function WeightLog({ date }) {
     }
     dispatch({ type: 'SET_METRIC', date, patch: { weight } })
     toast(weight == null ? 'Weight cleared' : `Weight logged: ${weight} ${unit}`)
+    inputRef.current?.blur()
   }
 
   return (
@@ -33,8 +35,11 @@ export default function WeightLog({ date }) {
         </span>
         Weight
       </div>
-      <div className="relative mt-3">
+
+      {/* Number and unit read as one value; the input sizes to its content */}
+      <label className="mt-3 flex cursor-text items-baseline gap-1">
         <input
+          ref={inputRef}
           type="number"
           inputMode="decimal"
           step="any"
@@ -42,14 +47,23 @@ export default function WeightLog({ date }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && save()}
           placeholder="—"
-          className="w-full bg-transparent pr-8 text-2xl font-bold tabular-nums text-ink placeholder:text-muted/60 focus:outline-none"
+          style={{ width: `${Math.max(value.length, 1) + 0.6}ch` }}
+          className="min-w-0 bg-transparent text-2xl font-bold tabular-nums text-ink placeholder:text-muted/60 focus:outline-none"
           aria-label={`Weight in ${unit}`}
         />
-        <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-sm font-semibold text-muted">{unit}</span>
-      </div>
-      <div className="mt-2 h-1.5" />
-      <button onClick={save} disabled={!dirty} className="btn-secondary mt-3 h-10 p-0">
-        <Icon name="check" size={18} strokeWidth={2.5} /> {stored != null && !dirty ? 'Saved' : 'Save'}
+        <span className="text-sm font-semibold text-muted">{unit}</span>
+      </label>
+      <p className="mb-3 mt-1 text-[13px] text-muted">{stored != null ? 'Logged for this day' : 'Not logged yet'}</p>
+
+      <button
+        onClick={dirty ? save : () => inputRef.current?.focus()}
+        className={`mt-auto h-10 w-full p-0 ${dirty ? 'btn-primary' : 'btn-secondary'}`}
+      >
+        {dirty ? (
+          <><Icon name="check" size={18} strokeWidth={2.5} /> Save</>
+        ) : (
+          <><Icon name="pencil" size={16} /> {stored != null ? 'Edit' : 'Add'}</>
+        )}
       </button>
     </section>
   )

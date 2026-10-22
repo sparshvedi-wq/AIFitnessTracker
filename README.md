@@ -23,10 +23,8 @@ npm run preview
 
 ## Features
 
-- **Fast food entry** — quick-add bar, per-serving nutrition that auto-scales
-  by number of servings, and a live total preview.
-- **Reusable food library** — every food you add is saved; re-add it later from
-  a searchable list instead of re-typing.
+- **Fast food entry** — one-tap re-add of recent foods, per-serving nutrition
+  that auto-scales by number of servings, and a live total preview.
 - **Daily view** — date picker (prev/next + calendar), prominent *remaining
   calories*, running totals, per-meal grouping with subtotals, and progress
   bars for calories + macros vs. your goals.
@@ -51,9 +49,9 @@ src/
     id.js         # unique id helper
   store/
     AppContext.jsx  # single reducer-backed store; mirrors localStorage
-  components/     # reusable UI (sheets, food form, library, cards, Icon set)
-  pages/          # DailyView (Today), Foods, Trends (Progress), Settings
-  App.jsx         # shell: bottom tabs + center "+" log button and logging sheets
+  components/     # reusable UI (sheets, food form, cards, Icon set)
+  pages/          # DailyView (Today), Trends (Progress), Settings
+  App.jsx         # shell: bottom tabs + the logging sheets
   index.css       # design tokens (light/dark CSS variables) + shared classes
 ```
 
@@ -61,11 +59,12 @@ src/
 
 | Tab | What lives there |
 | --- | --- |
-| **Today** | Date, calories left + macros, the four meals (tap an item to edit or delete), water, weight, daily note |
-| **Foods** | Saved-food library: search, favorites, sort, edit, one-tap add to a meal |
-| **＋ (center)** | Log food from anywhere: pick a meal, re-add a recent food, enter a new food, pick from My Foods, or copy a previous day |
+| **Today** | Date, calories left + macros, **Log food** button, the four meals (tap an item to edit or delete), water, weight, daily note |
 | **Progress** | Streak, weekly summary, calorie / macro / weight charts, achievements |
 | **Settings** | Daily goals (with the goal calculator), tracking preferences, appearance, data & backup |
+
+**Log food** (and the + on each meal) opens one sheet: pick the meal, tap a
+recent food to re-add it, enter a new food, or copy a previous day.
 
 Colors are semantic tokens (`bg`, `surface`, `ink`, `muted`, `line`, `brand`…)
 defined as CSS variables in `src/index.css`, so dark mode is one set of values

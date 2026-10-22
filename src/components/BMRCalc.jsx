@@ -84,7 +84,7 @@ export default function BMRCalc() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold text-ink">Calculate my calorie goal</span>
-          <span className="block text-[13px] text-muted">From your body stats and activity level</span>
+          <span className="block text-[13px] text-muted">Based on your body and activity</span>
         </span>
         <Icon name="chevronDown" size={18} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>

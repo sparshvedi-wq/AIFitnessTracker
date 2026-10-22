@@ -64,7 +64,7 @@ export default function CopyDayModal({ open, onClose, targetDate }) {
       footer={selectedDay && (
         <div className="flex items-center gap-3">
           <p className="flex-1 text-sm text-muted">
-            <span className="font-semibold text-ink">{selected.size}</span> selected · {Math.round(selectedTotal.calories)} cal
+            <span className="font-semibold text-ink">{selected.size}</span> selected · {Math.round(selectedTotal.calories).toLocaleString()} cal
           </p>
           <button onClick={copySelected} disabled={selected.size === 0} className="btn-primary">
             Copy to {labelForKey(targetDate)}

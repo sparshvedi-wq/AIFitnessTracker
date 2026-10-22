@@ -1,6 +1,5 @@
-// Today tab, top to bottom: date, calorie + macro summary, the four meals,
-// then daily habits (water, weight) and a note. Logging happens through the
-// center "+" button or the "+" on each meal.
+// Today tab, top to bottom: date, calorie + macro summary, the log button,
+// the four meals, then daily habits (water, weight) and a note.
 
 import { useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
@@ -11,6 +10,7 @@ import MealGroup from '../components/MealGroup.jsx'
 import WaterTracker from '../components/WaterTracker.jsx'
 import WeightLog from '../components/WeightLog.jsx'
 import DiaryNote from '../components/DiaryNote.jsx'
+import Icon from '../components/Icon.jsx'
 
 export default function DailyView({ date, setDate, onAdd, onEdit }) {
   const { state } = useApp()
@@ -27,6 +27,11 @@ export default function DailyView({ date, setDate, onAdd, onEdit }) {
       <DateNav date={date} onChange={setDate} />
 
       <DailySummary totals={totals} goals={state.settings.goals} />
+
+      <button onClick={() => onAdd()} className="btn-primary mt-3 h-12 w-full">
+        <Icon name="plus" size={20} strokeWidth={2.5} />
+        Log food
+      </button>
 
       <h2 className="section-title mb-2 mt-7">Meals</h2>
       <div className="space-y-3">

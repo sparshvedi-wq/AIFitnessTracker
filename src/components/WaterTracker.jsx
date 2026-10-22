@@ -19,10 +19,10 @@ export default function WaterTracker({ date }) {
       <p className="mt-3 text-2xl font-bold tabular-nums text-ink">
         {glasses}<span className="text-sm font-semibold text-muted"> / {goal} glasses</span>
       </p>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+      <div className="mb-3 mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
         <div className="h-full rounded-full bg-water transition-all duration-300" style={{ width: `${pct}%` }} />
       </div>
-      <div className="mt-3 flex gap-2">
+      <div className="mt-auto flex gap-2">
         <button
           onClick={() => setWater(glasses - 1)}
           disabled={glasses === 0}

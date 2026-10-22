@@ -1,5 +1,5 @@
 // Add / edit a food entry. Live scaled preview, quick-serving buttons,
-// optional library save, and (when editing) delete with undo.
+// and (when editing) delete with undo.
 
 import { useEffect, useState } from 'react'
 import Modal from './Modal.jsx'
@@ -39,7 +39,6 @@ const SERVING_PRESETS = [0.5, 1, 1.5, 2, 3]
 export default function FoodForm({ open, onClose, date, initial, defaultMeal }) {
   const { dispatch, toast } = useApp()
   const [form, setForm] = useState(EMPTY)
-  const [saveToLibrary, setSaveToLibrary] = useState(true)
   const editing = Boolean(initial?.id)
 
   useEffect(() => {
@@ -55,10 +54,8 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
         servingSize: initial.servingSize ?? '',
         servings: String(initial.servings ?? '1'),
       })
-      setSaveToLibrary(false)
     } else {
       setForm({ ...EMPTY, meal: defaultMeal ?? 'breakfast' })
-      setSaveToLibrary(true)
     }
   }, [open, initial, defaultMeal, editing])
 
@@ -90,11 +87,6 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
     } else {
       dispatch({ type: 'ADD_ENTRY', entry: { ...base, id: uid(), date } })
       toast(`Added to ${MEAL_LABELS[base.meal].toLowerCase()}`)
-    }
-
-    if (saveToLibrary || editing) {
-      dispatch({ type: 'SAVE_FOOD', food: { name: base.name, calories: base.calories, protein: base.protein, carbs: base.carbs, fat: base.fat, servingSize: base.servingSize } })
-      if (!editing) dispatch({ type: 'INCREMENT_FOOD_USAGE', name: base.name })
     }
     onClose()
   }
@@ -198,17 +190,6 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
           </div>
         </div>
 
-        {!editing && (
-          <label className="flex cursor-pointer items-center justify-between gap-3 text-[15px] text-ink2">
-            Save to My Foods for quick re-adding
-            <input
-              type="checkbox"
-              checked={saveToLibrary}
-              onChange={(e) => setSaveToLibrary(e.target.checked)}
-              className="h-5 w-5 shrink-0 rounded-md border-line accent-[rgb(var(--brand))]"
-            />
-          </label>
-        )}
 
         <div className="flex gap-2 pt-1">
           {editing && (

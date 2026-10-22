@@ -15,6 +15,7 @@
   --muted: 134 142 154;
   --brand: 12 140 98;
   --brand-soft: 230 245 239;
+  --on-brand: 255 255 255;
   --danger: 220 53 53;
   --success: 22 163 74;
 }
@@ -29,6 +30,7 @@
   --muted: 118 126 139;
   --brand: 45 196 140;
   --brand-soft: 18 46 37;
+  --on-brand: 4 32 22;
   --danger: 248 98 98;
   --success: 74 222 128;
 }
@@ -60,7 +62,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[15px] font-semibold
       transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
   }
-  .btn-primary { @apply btn bg-brand text-white hover:brightness-110; }
+  .btn-primary { @apply btn bg-brand text-on-brand hover:brightness-110; }
   .btn-secondary { @apply btn border border-line bg-surface text-ink hover:bg-surface2; }
   .btn-ghost { @apply btn text-ink2 hover:bg-surface2; }
   .btn-danger { @apply btn bg-danger text-white hover:brightness-110; }

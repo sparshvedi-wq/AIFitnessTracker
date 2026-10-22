@@ -34,6 +34,9 @@ npm run preview
 - **Trends** — calories per day (7/30-day), average macros, a weight line
   chart, logging streak, and weekly averages (Recharts).
 - **Backup** — export/import all data as a JSON file.
+- **Guided workouts** — step-by-step player with a get-ready countdown, rest
+  timers, timed sets, form tips, last-time numbers and automatic progression
+  (see below).
 - **Nice touches** — confirm before delete, toast notifications, mobile-first
   layout, graceful first-run empty states.
 
@@ -60,8 +63,37 @@ src/
 | Tab | What lives there |
 | --- | --- |
 | **Today** | Date, calories left + macros, **Log food** button, the four meals (tap an item to edit or delete), water, weight, daily note |
+| **Workout** | This week vs your goal, a suggested next routine, your routines, starter routines, history |
 | **Progress** | Streak, weekly summary, calorie / macro / weight charts, achievements |
 | **Settings** | Daily goals (with the goal calculator), tracking preferences, appearance, data & backup |
+
+## Guided workouts
+
+Pick a routine (six starters are built in: full body, upper, lower, HIIT,
+core, mobility) or build your own from ~37 exercises plus any you add. Then the
+player walks you through it:
+
+- **Get ready** countdown, then one set at a time: exercise, set *n of m*,
+  big −/+ controls for reps and weight, and form tips.
+- **Rest timer** after every set with −15s / +15s / skip and an *Up next*
+  card. Timed exercises (planks, HIIT) count down on their own.
+- **Circuits** run one set of each exercise per round.
+- **Progression**: targets come from your last session. Hit every rep and the
+  weight goes up one step (5 lb / 2.5 kg); bodyweight moves get one more rep,
+  timed moves 5 more seconds. *Last time* numbers show under each set.
+- **Cues**: 3-2-1 beeps, a voice coach that announces each exercise, and
+  vibration (each can be turned off in Settings). The screen stays awake.
+- **Change the plan mid-workout**: jump to any set, redo one, skip or restore
+  an exercise, add sets or exercises, pause.
+- Minimize the player and it keeps running in a bar above the tabs; reload the
+  page and it picks up where you left off.
+- **Summary**: time, sets, volume, new personal records, how it felt (1–5) and
+  notes. Saved workouts appear in History and on the Today tab.
+
+The logic lives in `src/lib/workout.js` (pure functions: building a session,
+moving between phases, progression, records, weekly stats) and
+`src/lib/exercises.js` (catalog and starter routines). Timers are stored as
+end times, so they stay accurate when the tab is in the background.
 
 **Log food** (and the + on each meal) opens one sheet: pick the meal, tap a
 recent food to re-add it, enter a new food, or copy a previous day.

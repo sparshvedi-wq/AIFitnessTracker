@@ -7,7 +7,7 @@ import {
   useReducer,
   useState,
 } from 'react'
-import { loadState, saveState, defaultState, gramGoalsFromPercent } from '../lib/storage.js'
+import { loadState, saveState, defaultState, normalizeState, gramGoalsFromPercent } from '../lib/storage.js'
 import { uid } from '../lib/id.js'
 import { todayKey } from '../lib/date.js'
 
@@ -104,8 +104,39 @@ function reducer(state, action) {
       return { ...state, settings }
     }
 
+    case 'SAVE_ROUTINE': {
+      const exists = state.routines.some((r) => r.id === action.routine.id)
+      return {
+        ...state,
+        routines: exists
+          ? state.routines.map((r) => (r.id === action.routine.id ? action.routine : r))
+          : [...state.routines, action.routine],
+      }
+    }
+
+    case 'DELETE_ROUTINE':
+      return { ...state, routines: state.routines.filter((r) => r.id !== action.id) }
+
+    case 'SAVE_EXERCISE':
+      return { ...state, customExercises: [...state.customExercises, action.exercise] }
+
+    case 'SET_ACTIVE_WORKOUT': // start, advance or discard (session: null)
+      return { ...state, activeWorkout: action.session }
+
+    case 'FINISH_WORKOUT':
+      return { ...state, activeWorkout: null, workouts: [...state.workouts, action.workout] }
+
+    case 'DELETE_WORKOUT':
+      return { ...state, workouts: state.workouts.filter((w) => w.id !== action.id) }
+
+    case 'RESTORE_WORKOUT':
+      return {
+        ...state,
+        workouts: [...state.workouts, action.workout].sort((a, b) => a.startedAt - b.startedAt),
+      }
+
     case 'IMPORT_STATE':
-      return action.state
+      return normalizeState(action.state)
 
     case 'RESET':
       return defaultState()

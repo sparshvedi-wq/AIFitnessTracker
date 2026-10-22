@@ -1,5 +1,5 @@
 // Today tab, top to bottom: date, calorie + macro summary, the log button,
-// the four meals, then daily habits (water, weight) and a note.
+// the four meals, then training, daily habits (water, weight) and a note.
 
 import { useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
@@ -11,8 +11,9 @@ import WaterTracker from '../components/WaterTracker.jsx'
 import WeightLog from '../components/WeightLog.jsx'
 import DiaryNote from '../components/DiaryNote.jsx'
 import Icon from '../components/Icon.jsx'
+import TrainingCard from '../components/TrainingCard.jsx'
 
-export default function DailyView({ date, setDate, onAdd, onEdit }) {
+export default function DailyView({ date, setDate, onAdd, onEdit, onWorkout }) {
   const { state } = useApp()
 
   const dayEntries = useMemo(
@@ -46,6 +47,9 @@ export default function DailyView({ date, setDate, onAdd, onEdit }) {
           />
         ))}
       </div>
+
+      <h2 className="section-title mb-2 mt-7">Training</h2>
+      <TrainingCard date={date} onOpen={onWorkout} />
 
       <h2 className="section-title mb-2 mt-7">Habits</h2>
       <div className="grid grid-cols-2 gap-3">

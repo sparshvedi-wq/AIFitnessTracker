@@ -1,5 +1,5 @@
 // Settings, grouped by what people come here to do:
-// Goals (with the calculator) → Tracking → Appearance → Data.
+// Goals (with the calculator) → Tracking → Workouts → Appearance → Data.
 
 import { useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
@@ -9,6 +9,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import BMRCalc from '../components/BMRCalc.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import Icon from '../components/Icon.jsx'
+import { Toggle } from '../components/workout/Controls.jsx'
 
 const MACROS = [
   { key: 'protein', label: 'Protein', color: '#E5484D' },
@@ -89,6 +90,7 @@ export default function Settings() {
   const update = (patch) => dispatch({ type: 'UPDATE_SETTINGS', patch })
   const updateGoals = (patch) => update({ goals: { ...goals, ...patch } })
   const updatePercent = (patch) => update({ macroPercent: { ...macroPercent, ...patch } })
+  const updateWorkout = (patch) => update({ workout: { ...settings.workout, ...patch } })
 
   function handleFile(e) {
     const file = e.target.files?.[0]
@@ -175,6 +177,24 @@ export default function Settings() {
         </Row>
       </Group>
 
+      <Group title="Workouts" footer="Voice cues use your device's built-in speech. The screen stays on during a workout where supported.">
+        <Row label="Weekly goal" sub="Workouts per week" first>
+          <NumberInput value={settings.workout.weeklyGoal} onChange={(v) => updateWorkout({ weeklyGoal: Math.min(14, v) })} />
+        </Row>
+        <Row label="Get-ready countdown" sub="Before the first set">
+          <NumberInput value={settings.workout.countdown} onChange={(v) => updateWorkout({ countdown: Math.min(30, v) })} suffix="s" />
+        </Row>
+        <Row label="Sounds" sub="Beeps for the last 3 seconds of a timer">
+          <Toggle checked={settings.workout.sound} onChange={(v) => updateWorkout({ sound: v })} label="Sounds" />
+        </Row>
+        <Row label="Voice coach" sub="Announces each exercise and rest">
+          <Toggle checked={settings.workout.voice} onChange={(v) => updateWorkout({ voice: v })} label="Voice coach" />
+        </Row>
+        <Row label="Vibration" sub="On phones that support it">
+          <Toggle checked={settings.workout.vibrate} onChange={(v) => updateWorkout({ vibrate: v })} label="Vibration" />
+        </Row>
+      </Group>
+
       <Group title="Appearance">
         <div className="p-3">
           <div className="segmented">
@@ -194,7 +214,7 @@ export default function Settings() {
 
       <Group
         title="Data & backup"
-        footer={`Everything is stored on this device only. ${state.entries.length} entries · ${Object.keys(state.metrics).length} days with habits.`}
+        footer={`Everything is stored on this device only. ${state.entries.length} entries · ${state.workouts.length} workouts · ${Object.keys(state.metrics).length} days with habits.`}
       >
         <ActionRow icon="download" label="Export backup" onClick={() => exportData(state)} first />
         <ActionRow icon="upload" label="Restore from backup" onClick={() => fileRef.current?.click()} />

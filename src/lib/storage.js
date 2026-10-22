@@ -11,6 +11,14 @@ export function defaultState() {
     foods: [],
     // metrics: { [dateKey]: { water, weight, note } }
     metrics: {},
+    // routines: your saved workout plans (see lib/workout.js)
+    routines: [],
+    // customExercises: exercises you added yourself, same shape as lib/exercises.js
+    customExercises: [],
+    // workouts: finished guided sessions, oldest first
+    workouts: [],
+    // activeWorkout: the session in progress, so a reload picks up where you left off
+    activeWorkout: null,
     settings: {
       goals: { calories: 2000, protein: 150, carbs: 200, fat: 67 },
       useMacroPercent: false,
@@ -19,6 +27,13 @@ export function defaultState() {
       weightUnit: 'lb',
       // 'system' | 'light' | 'dark'
       theme: 'system',
+      workout: {
+        weeklyGoal: 3,
+        countdown: 5, // get-ready seconds before the first set
+        sound: true,
+        voice: true,
+        vibrate: true,
+      },
     },
     createdAt: todayKey(),
   }
@@ -28,21 +43,30 @@ export function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return defaultState()
-    const parsed = JSON.parse(raw)
-    const base = defaultState()
-    return {
-      ...base,
-      ...parsed,
-      settings: {
-        ...base.settings,
-        ...(parsed.settings || {}),
-        goals: { ...base.settings.goals, ...(parsed.settings?.goals || {}) },
-        macroPercent: { ...base.settings.macroPercent, ...(parsed.settings?.macroPercent || {}) },
-      },
-    }
+    return normalizeState(JSON.parse(raw))
   } catch (err) {
     console.error('Failed to load state, starting fresh:', err)
     return defaultState()
+  }
+}
+
+// Fill in anything an older save or backup is missing.
+export function normalizeState(parsed) {
+  const base = defaultState()
+  return {
+    ...base,
+    ...parsed,
+    settings: {
+      ...base.settings,
+      ...(parsed.settings || {}),
+      goals: { ...base.settings.goals, ...(parsed.settings?.goals || {}) },
+      macroPercent: { ...base.settings.macroPercent, ...(parsed.settings?.macroPercent || {}) },
+      workout: { ...base.settings.workout, ...(parsed.settings?.workout || {}) },
+    },
+    routines: parsed.routines || [],
+    customExercises: parsed.customExercises || [],
+    workouts: parsed.workouts || [],
+    activeWorkout: parsed.activeWorkout || null,
   }
 }
 

@@ -39,7 +39,7 @@ export default function WorkoutPlayer({ session, now, onMinimize }) {
           </button>
           <div className="min-w-0 flex-1 text-center">
             <p className="truncate text-[13px] font-semibold text-muted">{session.name}</p>
-            <p className="text-[17px] font-bold tabular-nums text-ink">{fmtClock(elapsedMs(session, now))}</p>
+            <p className="num text-[24px] text-ink">{fmtClock(elapsedMs(session, now))}</p>
           </div>
           {session.phase !== 'done' && (
             <button onClick={() => update(paused ? resume : pause)} className="icon-btn" aria-label={paused ? 'Resume' : 'Pause'}>
@@ -54,7 +54,7 @@ export default function WorkoutPlayer({ session, now, onMinimize }) {
         {/* Overall progress */}
         <div className="px-4 pb-1 pt-2">
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-line/70">
-            <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+            <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
           <p className="mt-1.5 text-right text-[12px] font-semibold tabular-nums text-muted">{done} of {total} sets</p>
         </div>
@@ -87,7 +87,7 @@ function ReadyView({ session, now, update }) {
   return (
     <div className="flex min-h-full flex-col items-center justify-center py-6 text-center">
       <p className="text-[13px] font-semibold uppercase tracking-wide text-brand">Get ready</p>
-      <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-ink">{cur?.ex.name}</h2>
+      <h2 className="mt-1 font-display text-[36px] font-black uppercase leading-[0.95] text-ink">{cur?.ex.name}</h2>
       {cur && (
         <p className="mt-1.5 flex items-center gap-2 text-[15px] text-ink2">
           <MuscleTag muscle={cur.ex.muscle} />
@@ -96,7 +96,7 @@ function ReadyView({ session, now, update }) {
       )}
       <div className="my-8">
         <TimerRing progress={session.phaseTotal ? left / session.phaseTotal : 0}>
-          <span className="text-7xl font-extrabold tabular-nums text-ink">{Math.max(0, Math.ceil(left / 1000))}</span>
+          <span className="num text-[112px] text-ink">{Math.max(0, Math.ceil(left / 1000))}</span>
         </TimerRing>
       </div>
       <button onClick={() => update(skipRest)} className="btn-primary h-12 w-full max-w-xs">
@@ -114,7 +114,7 @@ function PausedView({ session, onResume }) {
       <span className="flex h-16 w-16 items-center justify-center rounded-full bg-surface2 text-ink2">
         <Icon name="pause" size={28} />
       </span>
-      <h2 className="mt-4 text-2xl font-extrabold tracking-tight text-ink">Paused</h2>
+      <h2 className="mt-4 font-display text-[36px] font-black uppercase leading-[0.95] text-ink">Paused</h2>
       {cur && (
         <p className="mt-1 text-[15px] text-muted">
           {session.phase === 'rest' ? 'Resting before ' : 'On '}
@@ -139,7 +139,7 @@ function RestView({ session, now, update }) {
       <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">Rest</p>
       <div className="my-6">
         <TimerRing progress={session.phaseTotal ? left / session.phaseTotal : 0} color="rgb(var(--brand))">
-          <span className="text-6xl font-extrabold tabular-nums text-ink">{fmtClock(left)}</span>
+          <span className="num text-[88px] text-ink">{fmtClock(left)}</span>
           <span className="mt-1 text-[13px] font-medium text-muted">Breathe, sip water</span>
         </TimerRing>
       </div>
@@ -219,7 +219,7 @@ function WorkView({ session, now, update, unit, onAdd }) {
         <MuscleTag muscle={ex.muscle} />
         {round ? `Round ${round.round} of ${round.rounds}` : `Exercise ${exNo} of ${session.exercises.length}`}
       </div>
-      <h2 className="mt-1.5 text-[28px] font-extrabold leading-tight tracking-tight text-ink">{ex.name}</h2>
+      <h2 className="mt-1.5 font-display text-[48px] font-black uppercase leading-[0.9] text-ink">{ex.name}</h2>
 
       {/* Set dots */}
       <div className="mt-3 flex items-center gap-3">
@@ -228,8 +228,8 @@ function WorkView({ session, now, update, unit, onAdd }) {
             <span
               key={i}
               className={`h-2.5 rounded-full transition-all ${
-                i === session.cursor.set ? 'w-7 bg-brand'
-                  : s.status === 'done' ? 'w-2.5 bg-brand/50'
+                i === session.cursor.set ? 'w-7 bg-accent'
+                  : s.status === 'done' ? 'w-2.5 bg-accent/50'
                   : s.status === 'skipped' ? 'w-2.5 bg-line'
                   : 'w-2.5 bg-surface2 ring-1 ring-inset ring-line'
               }`}
@@ -252,7 +252,7 @@ function WorkView({ session, now, update, unit, onAdd }) {
           running ? (
             <div className="py-2">
               <TimerRing progress={session.phaseTotal ? left / session.phaseTotal : 0} size={210}>
-                <span className="text-6xl font-extrabold tabular-nums text-ink">{fmtClock(left)}</span>
+                <span className="num text-[88px] text-ink">{fmtClock(left)}</span>
                 <span className="mt-1 text-[13px] font-medium text-muted">of {set.sec}s</span>
               </TimerRing>
             </div>
@@ -407,7 +407,7 @@ function Overview({ open, onClose, session, update }) {
                         key={j}
                         onClick={() => { update((x, n) => jumpTo(x, { ex: i, set: j }, n)); onClose() }}
                         className={`rounded-lg border px-2 py-1 text-[13px] font-semibold tabular-nums transition-colors ${
-                          current ? 'border-brand bg-brand text-on-brand'
+                          current ? 'border-brand bg-accent text-on-accent'
                             : s.status === 'done' ? 'border-brand/40 bg-brand-soft text-brand'
                             : s.status === 'skipped' ? 'border-line text-muted line-through'
                             : 'border-line bg-surface text-ink2 hover:border-brand/50'

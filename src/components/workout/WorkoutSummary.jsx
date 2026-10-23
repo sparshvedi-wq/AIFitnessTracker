@@ -5,6 +5,8 @@ import { useApp } from '../../store/AppContext.jsx'
 import { describeSets, elapsedMs, findRecords, fmtClock, fmtNum, setCounts, toWorkoutRecord, totals } from '../../lib/workout.js'
 import Icon from '../Icon.jsx'
 import ConfirmDialog from '../ConfirmDialog.jsx'
+import { TallyMark } from '../Brand.jsx'
+import { finishLine } from '../../lib/voice.js'
 
 export const EFFORT = [
   { value: 1, label: 'Easy' },
@@ -56,7 +58,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
   if (done === 0) {
     return (
       <div className="flex min-h-full flex-col items-center justify-center py-10 text-center">
-        <h2 className="text-2xl font-extrabold tracking-tight text-ink">Nothing logged yet</h2>
+        <h2 className="font-display text-[36px] font-black uppercase leading-[0.95] text-ink">Nothing logged yet</h2>
         <p className="mt-1 text-[15px] text-muted">Log at least one set to save this workout.</p>
         {remaining > 0 && <button onClick={onKeepGoing} className="btn-primary mt-6 h-12 w-full max-w-xs">Back to workout</button>}
         <button onClick={() => setConfirmDiscard(true)} className="btn-danger-ghost mt-2">Discard workout</button>
@@ -68,14 +70,15 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
   return (
     <div className="pt-3">
       <div className="text-center">
-        <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand-soft text-brand">
-          <Icon name={remaining > 0 ? 'flame' : 'trophy'} size={30} />
+        <span className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-surface2 text-ink">
+          <TallyMark size={46} />
         </span>
-        <h2 className="mt-3 text-[26px] font-extrabold tracking-tight text-ink">
-          {remaining > 0 ? 'Wrapping up' : 'Workout complete'}
+        <p className="eyebrow mt-4">{session.name}</p>
+        <h2 className="mt-1 font-display text-[52px] font-black uppercase leading-[0.9] text-ink">
+          {remaining > 0 ? 'Wrapping up' : 'Marked down'}
         </h2>
-        <p className="text-[15px] text-muted">
-          {remaining > 0 ? `${remaining} set${remaining === 1 ? '' : 's'} left in the plan` : session.name}
+        <p className="voice mt-2">
+          {remaining > 0 ? `${remaining} set${remaining === 1 ? '' : 's'} left in the plan. Your call.` : finishLine(records.length, done)}
         </p>
       </div>
 
@@ -88,7 +91,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
 
       {records.length > 0 && (
         <section className="card mt-3 p-4">
-          <h3 className="flex items-center gap-2 text-[15px] font-bold text-ink">
+          <h3 className="flex items-center gap-2 font-display text-[22px] font-extrabold uppercase text-ink">
             <Icon name="trophy" size={18} className="text-carbs" />
             New personal records
           </h3>
@@ -120,9 +123,9 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
           <button
             key={o.value}
             onClick={() => setEffort(effort === o.value ? null : o.value)}
-            className={`rounded-xl border px-1 py-2.5 text-center transition-colors ${effort === o.value ? 'border-brand bg-brand-soft text-brand' : 'border-line bg-surface text-ink2'}`}
+            className={`rounded-xl border px-1 py-2.5 text-center transition-colors ${effort === o.value ? 'border-accent bg-accent text-on-accent' : 'border-line bg-surface text-ink2'}`}
           >
-            <span className="block text-lg font-bold tabular-nums">{o.value}</span>
+            <span className="num block text-[28px]">{o.value}</span>
             <span className="block text-[11px] font-semibold leading-tight">{o.label}</span>
           </button>
         ))}
@@ -138,7 +141,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
 
       {!isSaved && (
         <label className="mt-3 flex items-center gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
-          <input type="checkbox" checked={saveRoutine} onChange={(e) => setSaveRoutine(e.target.checked)} className="h-5 w-5 accent-[rgb(var(--brand))]" />
+          <input type="checkbox" checked={saveRoutine} onChange={(e) => setSaveRoutine(e.target.checked)} className="h-5 w-5 accent-[rgb(var(--accent))]" />
           <span className="text-[15px] font-medium text-ink">Save as one of my routines</span>
         </label>
       )}
@@ -163,8 +166,8 @@ export default function WorkoutSummary({ session, now, onKeepGoing }) {
 function Stat({ label, value }) {
   return (
     <div className="card px-4 py-3">
-      <p className="text-[12px] font-semibold uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-0.5 text-xl font-bold tabular-nums text-ink">{value}</p>
+      <p className="eyebrow">{label}</p>
+      <p className="num mt-1 text-[34px] text-ink">{value}</p>
     </div>
   )
 }

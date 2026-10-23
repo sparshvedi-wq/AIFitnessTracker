@@ -1,18 +1,15 @@
-export default function ProgressBar({ label, value, goal, unit = 'g', color = 'rgb(var(--brand))', compact = false }) {
+export default function ProgressBar({ label, value, goal, unit = 'g', color = 'rgb(var(--accent))', compact = false }) {
   const pct = goal > 0 ? Math.min(100, (value / goal) * 100) : 0
   const over = goal > 0 && value > goal
   if (compact) {
     return (
       <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-          <span className="truncate text-[13px] font-medium text-ink2">{label}</span>
-        </div>
-        <p className="mt-1 text-[15px] font-semibold tabular-nums text-ink">
-          {Math.round(value)}
-          <span className="text-[13px] font-medium text-muted">/{Math.round(goal)}{unit}</span>
+        <p className="eyebrow truncate" style={{ color }}>{label}</p>
+        <p className="mt-1 text-ink">
+          <span className="num text-[24px]">{Math.round(value)}</span>
+          <span className="text-[12px] font-medium text-muted"> / {Math.round(goal)}{unit}</span>
         </p>
-        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-ink/[0.08]">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{ width: `${pct}%`, backgroundColor: over ? 'rgb(var(--danger))' : color }}
@@ -30,7 +27,7 @@ export default function ProgressBar({ label, value, goal, unit = 'g', color = 'r
           <span className="font-medium text-muted"> / {Math.round(goal)} {unit}</span>
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-ink/[0.08]">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${pct}%`, backgroundColor: over ? 'rgb(var(--danger))' : color }}

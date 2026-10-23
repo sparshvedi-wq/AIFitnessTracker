@@ -1,5 +1,5 @@
-// Mon–Sun strip under the Today header: tap a day to jump to it. A green dot
-// marks days with a workout, a grey dot days with anything else logged.
+// Mon–Sun strip under the Today header: tap a day to jump to it. A tally
+// stroke marks days with a workout, a grey dot days with anything else logged.
 
 import { useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
@@ -21,27 +21,32 @@ export default function WeekStrip({ date, onChange }) {
   }, [state.workouts, state.entries, state.metrics])
 
   return (
-    <div className="card mb-4 grid grid-cols-7 gap-1 p-1.5">
+    <div className="mb-3 grid grid-cols-7 gap-1">
       {days.map((k) => {
         const d = fromKey(k)
         const selected = k === date
         const isToday = k === today
-        const dot = marks.trained.has(k) ? 'bg-brand' : marks.logged.has(k) ? 'bg-muted/60' : 'bg-transparent'
+        const trained = marks.trained.has(k)
+        const logged = marks.logged.has(k)
         return (
           <button
             key={k}
             onClick={() => onChange(k)}
             aria-label={d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
             aria-pressed={selected}
-            className={`flex flex-col items-center gap-0.5 rounded-xl py-1.5 transition-colors ${
-              selected ? 'bg-brand text-on-brand shadow-brand' : 'hover:bg-surface2'
+            className={`flex flex-col items-center gap-1 rounded-2xl py-2 transition-colors ${
+              selected ? 'bg-ink text-bg' : 'hover:bg-surface2'
             }`}
           >
-            <span className={`text-[11px] font-semibold uppercase ${selected ? 'opacity-80' : isToday ? 'text-brand' : 'text-muted'}`}>
-              {d.toLocaleDateString(undefined, { weekday: 'narrow' })}
+            <span className={`text-[10px] font-bold uppercase tracking-[0.12em] ${selected ? 'opacity-70' : isToday ? 'text-brand' : 'text-muted'}`}>
+              {d.toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2)}
             </span>
-            <span className={`text-[16px] font-bold tabular-nums ${selected ? '' : isToday ? 'text-brand' : 'text-ink'}`}>{d.getDate()}</span>
-            <span className={`h-1.5 w-1.5 rounded-full ${selected && dot !== 'bg-transparent' ? 'bg-on-brand' : dot}`} />
+            <span className={`num text-[22px] ${selected ? '' : isToday ? 'text-brand' : 'text-ink'}`}>{d.getDate()}</span>
+            {trained ? (
+              <span className="h-[3px] w-4 -skew-x-12 rounded-full bg-accent" />
+            ) : (
+              <span className={`h-[3px] w-[3px] rounded-full ${logged ? (selected ? 'bg-bg/50' : 'bg-muted/70') : 'bg-transparent'}`} />
+            )}
           </button>
         )
       })}

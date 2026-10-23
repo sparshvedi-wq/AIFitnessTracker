@@ -15,7 +15,7 @@ function ActionRow({ icon, title, sub, onClick }) {
       onClick={onClick}
       className="flex w-full items-center gap-3.5 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-surface2 active:bg-line/60"
     >
-      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface2 text-ink">
         <Icon name={icon} size={21} />
       </span>
       <span className="min-w-0 flex-1">

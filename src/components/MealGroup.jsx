@@ -7,18 +7,18 @@ import Icon from './Icon.jsx'
 export default function MealGroup({ meal, items, totals, onAdd, onEdit }) {
   return (
     <section className="card overflow-hidden">
-      <div className="flex items-center justify-between py-2 pl-4 pr-2">
+      <div className="flex items-center justify-between py-2.5 pl-4 pr-2">
         <div className="flex items-baseline gap-2">
-          <h3 className="text-[16px] font-bold text-ink">{MEAL_LABELS[meal]}</h3>
+          <h3 className="font-display text-[22px] font-extrabold uppercase leading-none tracking-[0.02em] text-ink">{MEAL_LABELS[meal]}</h3>
           {items.length > 0 && (
-            <span className="text-[13px] font-medium tabular-nums text-muted">
+            <span className="text-[12px] font-semibold tabular-nums text-muted">
               {Math.round(totals.calories).toLocaleString()} cal
             </span>
           )}
         </div>
         <button
           onClick={() => onAdd(meal)}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-brand transition-colors hover:bg-brand-soft"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-surface2 text-ink transition-colors hover:bg-accent hover:text-on-accent"
           aria-label={`Add to ${MEAL_LABELS[meal]}`}
         >
           <Icon name="plus" size={20} strokeWidth={2.5} />
@@ -30,7 +30,7 @@ export default function MealGroup({ meal, items, totals, onAdd, onEdit }) {
           onClick={() => onAdd(meal)}
           className="block w-full border-t border-line/70 px-4 py-3 text-left text-sm text-muted transition-colors hover:bg-surface2"
         >
-          Nothing logged yet
+          Nothing yet. Tap to log.
         </button>
       ) : (
         <ul className="border-t border-line/70">
@@ -54,7 +54,7 @@ export default function MealGroup({ meal, items, totals, onAdd, onEdit }) {
                       {entry.servingSize ? ` · ${entry.servingSize}` : ''}
                     </p>
                   </div>
-                  <span className="shrink-0 text-[15px] font-semibold tabular-nums text-ink">
+                  <span className="num shrink-0 text-[22px] text-ink">
                     {Math.round(v.calories)}
                   </span>
                 </button>

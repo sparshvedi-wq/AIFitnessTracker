@@ -18,7 +18,7 @@ import CopyDayModal from './components/CopyDayModal.jsx'
 
 const TABS = [
   { id: 'today', label: 'Today', icon: 'today' },
-  { id: 'workout', label: 'Workout', icon: 'dumbbell' },
+  { id: 'workout', label: 'Train', icon: 'dumbbell' },
   { id: 'progress', label: 'Progress', icon: 'progress' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
@@ -27,15 +27,18 @@ function TabButton({ tab, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-1 flex-col items-center gap-0.5 pb-2 pt-2 text-[11px] font-semibold tracking-wide transition-colors ${
-        active ? 'text-brand' : 'text-muted hover:text-ink2'
+      className={`relative flex flex-1 flex-col items-center gap-1 pb-2 pt-2.5 text-[10px] font-bold uppercase tracking-[0.14em] transition-colors ${
+        active ? 'text-ink' : 'text-muted hover:text-ink2'
       }`}
       aria-current={active ? 'page' : undefined}
     >
-      {/* Pill behind the active icon */}
-      <span className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${active ? 'bg-brand-soft' : ''}`}>
-        <Icon name={tab.icon} size={22} strokeWidth={active ? 2.2 : 1.8} />
-      </span>
+      {/* A volt tally stroke marks the open tab */}
+      <span
+        className={`absolute top-0 h-[3px] w-8 -skew-x-12 rounded-full bg-accent transition-all duration-300 ${
+          active ? 'opacity-100' : 'scale-x-0 opacity-0'
+        }`}
+      />
+      <Icon name={tab.icon} size={22} strokeWidth={active ? 2.3 : 1.8} />
       {tab.label}
     </button>
   )
@@ -81,7 +84,7 @@ export default function App() {
           {tab === 'settings' && <Settings />}
         </main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-surface/85 shadow-[0_-4px_16px_-8px_rgb(16_24_40/0.12)] backdrop-blur-xl pb-safe">
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-bg/85 backdrop-blur-xl pb-safe">
           <div className="mx-auto flex max-w-xl px-2">
             {TABS.map((t) => (
               <TabButton key={t.id} tab={t} active={tab === t.id} onClick={() => setTab(t.id)} />

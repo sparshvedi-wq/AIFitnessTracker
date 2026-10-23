@@ -137,10 +137,10 @@ export default function FoodForm({ open, onClose, date, initial, defaultMeal }) 
             <p className="section-title px-0">Nutrition per serving</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <NumField label="Calories" value={form.calories} onChange={set('calories')} dot="rgb(var(--brand))" />
-            <NumField label="Protein (g)" value={form.protein} onChange={set('protein')} dot="#E5484D" />
-            <NumField label="Carbs (g)" value={form.carbs} onChange={set('carbs')} dot="#F0A020" />
-            <NumField label="Fat (g)" value={form.fat} onChange={set('fat')} dot="#7C66DC" />
+            <NumField label="Calories" value={form.calories} onChange={set('calories')} dot="rgb(var(--accent))" />
+            <NumField label="Protein (g)" value={form.protein} onChange={set('protein')} dot="rgb(var(--protein))" />
+            <NumField label="Carbs (g)" value={form.carbs} onChange={set('carbs')} dot="rgb(var(--carbs))" />
+            <NumField label="Fat (g)" value={form.fat} onChange={set('fat')} dot="rgb(var(--fat))" />
           </div>
         </div>
 

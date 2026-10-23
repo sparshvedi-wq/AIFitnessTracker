@@ -25,8 +25,8 @@ export function defaultState() {
       macroPercent: { protein: 30, carbs: 40, fat: 30 },
       waterGoal: 8,
       weightUnit: 'lb',
-      // 'system' | 'light' | 'dark'
-      theme: 'system',
+      // 'system' | 'light' | 'dark'. Tally is dark-first.
+      theme: 'dark',
       workout: {
         weeklyGoal: 3,
         countdown: 5, // get-ready seconds before the first set

@@ -151,6 +151,7 @@ function applyTheme(pref) {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   const isDark = pref === 'dark' || (pref === 'system' && prefersDark)
   document.documentElement.classList.toggle('dark', isDark)
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#08080A' : '#F0F0EB')
 }
 
 export function AppProvider({ children }) {

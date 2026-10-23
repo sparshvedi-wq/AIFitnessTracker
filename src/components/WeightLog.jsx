@@ -36,10 +36,8 @@ export default function WeightLog({ date }) {
 
   return (
     <section className="card flex flex-col p-4">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-ink2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-fat/15 text-fat">
-          <Icon name="scale" size={16} />
-        </span>
+      <div className="eyebrow flex items-center gap-1.5 text-fat">
+        <Icon name="scale" size={14} strokeWidth={2.4} />
         Weight
       </div>
 
@@ -55,7 +53,7 @@ export default function WeightLog({ date }) {
           onKeyDown={(e) => e.key === 'Enter' && save()}
           placeholder="—"
           style={{ width: `${Math.max(value.length, 1) + 0.3}ch` }}
-          className="min-w-0 bg-transparent text-2xl font-bold tabular-nums text-ink placeholder:text-muted/60 focus:outline-none"
+          className="num min-w-0 bg-transparent text-[40px] text-ink placeholder:text-muted/60 focus:outline-none"
           aria-label={`Weight in ${unit}`}
         />
         <span className="text-sm font-semibold text-muted">{unit}</span>

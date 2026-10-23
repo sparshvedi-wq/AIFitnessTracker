@@ -10,14 +10,14 @@ export default function DateNav({ date, onChange }) {
   const full = fromKey(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
-    <header className="mb-4 flex items-end justify-between gap-2 pt-2">
+    <header className="flex items-end justify-between gap-2">
       <label className="relative min-w-0 cursor-pointer">
-        <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">
+        <p className="eyebrow">
           {relative ? full : fromKey(date).getFullYear()}
         </p>
-        <h1 className="flex items-center gap-1 text-[28px] font-extrabold leading-tight tracking-tight text-ink">
+        <h1 className="flex items-center gap-1 font-display text-[44px] font-black uppercase leading-[0.9] tracking-[0.01em] text-ink">
           {label}
-          <Icon name="chevronDown" size={20} strokeWidth={2.5} className="text-muted" />
+          <Icon name="chevronDown" size={22} strokeWidth={2.5} className="mt-1 text-muted" />
         </h1>
         <input
           type="date"
@@ -34,10 +34,10 @@ export default function DateNav({ date, onChange }) {
             Today
           </button>
         )}
-        <button onClick={() => onChange(addDays(date, -1))} className="icon-btn border border-line bg-surface" aria-label="Previous day">
+        <button onClick={() => onChange(addDays(date, -1))} className="icon-btn h-9 w-9 bg-surface2" aria-label="Previous day">
           <Icon name="chevronLeft" size={20} />
         </button>
-        <button onClick={() => onChange(addDays(date, 1))} className="icon-btn border border-line bg-surface" aria-label="Next day">
+        <button onClick={() => onChange(addDays(date, 1))} className="icon-btn h-9 w-9 bg-surface2" aria-label="Next day">
           <Icon name="chevronRight" size={20} />
         </button>
       </div>

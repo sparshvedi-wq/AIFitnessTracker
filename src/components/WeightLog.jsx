@@ -1,11 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import Icon from './Icon.jsx'
+import { shortLabel } from '../lib/date.js'
 
 export default function WeightLog({ date }) {
   const { state, dispatch, toast } = useApp()
   const stored = state.metrics[date]?.weight
   const unit = state.settings.weightUnit || 'lb'
+  // Most recent weight logged before this day, for the change line.
+  const previous = useMemo(() => {
+    const keys = Object.keys(state.metrics).filter((k) => k < date && state.metrics[k]?.weight != null).sort()
+    return keys.length ? { date: keys[keys.length - 1], weight: state.metrics[keys[keys.length - 1]].weight } : null
+  }, [state.metrics, date])
+  const change = stored != null && previous ? Math.round((stored - previous.weight) * 10) / 10 : null
   const [value, setValue] = useState('')
   const inputRef = useRef(null)
 
@@ -47,13 +54,25 @@ export default function WeightLog({ date }) {
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && save()}
           placeholder="—"
-          style={{ width: `${Math.max(value.length, 1) + 0.6}ch` }}
+          style={{ width: `${Math.max(value.length, 1) + 0.3}ch` }}
           className="min-w-0 bg-transparent text-2xl font-bold tabular-nums text-ink placeholder:text-muted/60 focus:outline-none"
           aria-label={`Weight in ${unit}`}
         />
         <span className="text-sm font-semibold text-muted">{unit}</span>
       </label>
-      <p className="mb-3 mt-1 text-[13px] text-muted">{stored != null ? 'Logged for this day' : 'Not logged yet'}</p>
+      <p className="mb-3 mt-1 truncate text-[13px] text-muted">
+        {stored == null ? (
+          previous ? `Last: ${previous.weight} ${unit}` : 'Not logged yet'
+        ) : change == null ? (
+          'Logged for this day'
+        ) : change === 0 ? (
+          'Same as last time'
+        ) : (
+          <>
+            <span className="font-semibold text-ink2">{change > 0 ? '+' : '−'}{Math.abs(change)} {unit}</span> since {shortLabel(previous.date)}
+          </>
+        )}
+      </p>
 
       <button
         onClick={dirty ? save : () => inputRef.current?.focus()}

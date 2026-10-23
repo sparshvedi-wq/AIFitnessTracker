@@ -66,7 +66,7 @@ export default function WorkoutHost({ open, setOpen }) {
 
   // Keep the screen on while the player is showing.
   useEffect(() => {
-    if (!open || !session) return
+    if (!open || !session || !prefs.keepAwake) return
     let lock = null
     let cancelled = false
     const get = () => requestWakeLock().then((l) => { if (cancelled) l?.release(); else lock = l })
@@ -78,7 +78,7 @@ export default function WorkoutHost({ open, setOpen }) {
       document.removeEventListener('visibilitychange', onVisible)
       lock?.release().catch(() => {})
     }
-  }, [open, Boolean(session)]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, Boolean(session), prefs.keepAwake]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A finished or discarded workout closes the player.
   useEffect(() => {

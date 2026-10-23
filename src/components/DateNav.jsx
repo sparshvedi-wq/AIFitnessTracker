@@ -10,7 +10,7 @@ export default function DateNav({ date, onChange }) {
   const full = fromKey(date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
-    <header className="mb-5 flex items-end justify-between gap-2 pt-2">
+    <header className="mb-4 flex items-end justify-between gap-2 pt-2">
       <label className="relative min-w-0 cursor-pointer">
         <p className="text-[13px] font-semibold uppercase tracking-wide text-muted">
           {relative ? full : fromKey(date).getFullYear()}

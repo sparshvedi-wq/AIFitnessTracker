@@ -7,6 +7,7 @@ export default function WaterTracker({ date }) {
   const goal = state.settings.waterGoal || 8
   const setWater = (n) => dispatch({ type: 'SET_METRIC', date, patch: { water: Math.max(0, n) } })
   const pct = goal > 0 ? Math.min(100, (glasses / goal) * 100) : 0
+  const reached = goal > 0 && glasses >= goal
 
   return (
     <section className="card flex flex-col p-4">
@@ -15,13 +16,29 @@ export default function WaterTracker({ date }) {
           <Icon name="droplet" size={16} />
         </span>
         Water
+        {reached && (
+          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-water text-white" aria-label="Goal reached">
+            <Icon name="check" size={12} strokeWidth={3} />
+          </span>
+        )}
       </div>
       <p className="mt-3 text-2xl font-bold tabular-nums text-ink">
         {glasses}<span className="text-sm font-semibold text-muted"> / {goal} glasses</span>
       </p>
-      <div className="mb-3 mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-surface2">
-        <div className="h-full rounded-full bg-water transition-all duration-300" style={{ width: `${pct}%` }} />
+      {/* One segment per glass, so progress reads at a glance */}
+      <div className="mb-1.5 mt-2.5 flex gap-1" aria-hidden="true">
+        {Array.from({ length: Math.min(goal, 12) || 1 }, (_, i) => (
+          <span
+            key={i}
+            className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
+              i < Math.round((pct / 100) * Math.min(goal, 12)) ? 'bg-water' : 'bg-surface2'
+            }`}
+          />
+        ))}
       </div>
+      <p className="mb-3 text-[13px] text-muted">
+        {reached ? 'Goal reached' : `${goal - glasses} to go`}
+      </p>
       <div className="mt-auto flex gap-2">
         <button
           onClick={() => setWater(glasses - 1)}

@@ -33,6 +33,7 @@ export function defaultState() {
         sound: true,
         voice: true,
         vibrate: true,
+        keepAwake: true, // hold a screen wake lock while the player is open
       },
     },
     createdAt: todayKey(),

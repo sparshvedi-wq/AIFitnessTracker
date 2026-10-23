@@ -16,6 +16,7 @@ export default {
         bg: token('bg'),
         surface: token('surface'),
         surface2: token('surface-2'),
+        raised: token('raised'),
         line: token('line'),
         ink: token('ink'),
         ink2: token('ink-2'),
@@ -33,8 +34,10 @@ export default {
         water: '#3B9EFF',
       },
       boxShadow: {
-        card: '0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06)',
-        float: '0 8px 24px rgb(16 24 40 / 0.18)',
+        card: '0 1px 2px rgb(16 24 40 / 0.04), 0 2px 6px -1px rgb(16 24 40 / 0.06)',
+        float: '0 12px 32px -4px rgb(16 24 40 / 0.22), 0 2px 6px rgb(16 24 40 / 0.08)',
+        // Soft colored lift under primary buttons
+        brand: '0 1px 2px rgb(var(--brand) / 0.2), 0 6px 14px -6px rgb(var(--brand) / 0.55)',
       },
       keyframes: {
         'fade-in': { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },

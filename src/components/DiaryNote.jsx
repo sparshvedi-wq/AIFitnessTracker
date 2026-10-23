@@ -9,23 +9,36 @@ export default function DiaryNote({ date }) {
   const stored = state.metrics[date]?.note || ''
   const [value, setValue] = useState(stored)
   const textareaRef = useRef(null)
+  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     setValue(state.metrics[date]?.note || '')
   }, [date, state.metrics])
 
+  // Auto-grow, including when a longer note loads for another day
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+
+  useEffect(() => {
+    if (!saved) return
+    const id = setTimeout(() => setSaved(false), 1800)
+    return () => clearTimeout(id)
+  }, [saved])
+
   function save() {
     const trimmed = value.trim()
     if (trimmed !== stored.trim()) {
       dispatch({ type: 'SET_METRIC', date, patch: { note: trimmed } })
+      setSaved(true)
     }
   }
 
-  // Auto-grow textarea
   function handleChange(e) {
     setValue(e.target.value)
-    e.target.style.height = 'auto'
-    e.target.style.height = `${e.target.scrollHeight}px`
   }
 
   return (
@@ -35,13 +48,17 @@ export default function DiaryNote({ date }) {
           <Icon name="note" size={16} />
         </span>
         Note
+        <span className={`ml-auto flex items-center gap-1 text-[12px] font-medium text-brand transition-opacity ${saved ? 'opacity-100' : 'opacity-0'}`} aria-live="polite">
+          <Icon name="check" size={13} strokeWidth={3} />
+          {saved ? 'Saved' : ''}
+        </span>
       </div>
       <textarea
         ref={textareaRef}
         value={value}
         onChange={handleChange}
         onBlur={save}
-        placeholder="How did today go? Energy, mood, cravings…"
+        placeholder="How did today go? Energy, mood, sleep, soreness…"
         rows={2}
         className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none"
       />

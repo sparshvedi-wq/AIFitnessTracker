@@ -62,10 +62,10 @@ src/
 
 | Tab | What lives there |
 | --- | --- |
-| **Today** | Date, calories left + macros, **Log food** button, the four meals (tap an item to edit or delete), water, weight, daily note |
-| **Workout** | This week vs your goal, a suggested next routine, your routines, starter routines, history |
-| **Progress** | Streak, weekly summary, calorie / macro / weight charts, achievements |
-| **Settings** | Daily goals (with the goal calculator), tracking preferences, appearance, data & backup |
+| **Today** | Date and a tappable week strip, calories left + macros, **Log food** button, the four meals (tap an item to edit or delete), training (today's workout or what's up next, plus this week vs your goal), water, weight (with change since last time), daily note |
+| **Workout** | This week vs your goal, a suggested next routine, your routines (with the muscles they work), starter routines, history |
+| **Progress** | Workouts / streak / calories / weight at a glance, training (workouts per week, muscle focus, personal bests), nutrition this week, calorie / macro / weight charts, training and logging achievements |
+| **Settings** | A summary of what you've tracked, daily goals (with the goal calculator), tracking preferences, workout cues, appearance, data & backup |
 
 ## Guided workouts
 

@@ -4,6 +4,7 @@
 import { useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { gramGoalsFromPercent } from '../lib/storage.js'
+import { fromKey, todayKey } from '../lib/date.js'
 import { exportData, importData } from '../lib/backup.js'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import BMRCalc from '../components/BMRCalc.jsx'
@@ -33,10 +34,20 @@ function Group({ title, children, footer }) {
   )
 }
 
+// Colored icon tile at the start of a settings row.
+function RowIcon({ name, tint }) {
+  return (
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+      <Icon name={name} size={17} />
+    </span>
+  )
+}
+
 // A label on the left, a compact control on the right.
-function Row({ label, sub, children, first = false }) {
+function Row({ label, sub, children, icon = null, first = false }) {
   return (
     <div className={`flex items-center gap-3 px-4 py-3 ${first ? '' : 'border-t border-line'}`}>
+      {icon}
       <div className="min-w-0 flex-1">
         <p className="text-[15px] font-medium text-ink">{label}</p>
         {sub && <p className="text-[13px] text-muted">{sub}</p>}
@@ -87,6 +98,12 @@ export default function Settings() {
   const derived = gramGoalsFromPercent(goals.calories, macroPercent)
   const percentTotal = macroPercent.protein + macroPercent.carbs + macroPercent.fat
 
+  const daysTracked = new Set([
+    ...state.entries.map((e) => e.date),
+    ...state.workouts.map((w) => w.date),
+    ...Object.keys(state.metrics),
+  ]).size
+
   const update = (patch) => dispatch({ type: 'UPDATE_SETTINGS', patch })
   const updateGoals = (patch) => update({ goals: { ...goals, ...patch } })
   const updatePercent = (patch) => update({ macroPercent: { ...macroPercent, ...patch } })
@@ -111,8 +128,31 @@ export default function Settings() {
     <div className="pb-4">
       <PageHeader title="Settings" subtitle="Preferences" />
 
+      {/* At-a-glance summary of everything tracked so far */}
+      <section className="card mb-7 flex items-center gap-4 p-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 text-on-brand shadow-brand">
+          <Icon name="user" size={22} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold text-ink">Your journey</p>
+          <p className="truncate text-[13px] text-muted">
+            Since {fromKey(state.createdAt || todayKey()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-4 text-center">
+          <div>
+            <p className="text-[17px] font-bold tabular-nums text-ink">{state.workouts.length}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Workouts</p>
+          </div>
+          <div>
+            <p className="text-[17px] font-bold tabular-nums text-ink">{daysTracked}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Days</p>
+          </div>
+        </div>
+      </section>
+
       <Group title="Daily goals">
-        <Row label="Calories" sub="Your daily target" first>
+        <Row label="Calories" sub="Your daily target" icon={<RowIcon name="flame" tint="bg-brand-soft text-brand" />} first>
           <NumberInput value={goals.calories} onChange={(v) => updateGoals({ calories: v })} suffix="cal" width="w-32" />
         </Row>
 
@@ -163,10 +203,10 @@ export default function Settings() {
       </Group>
 
       <Group title="Tracking">
-        <Row label="Water goal" sub="Glasses per day" first>
+        <Row label="Water goal" sub="Glasses per day" icon={<RowIcon name="droplet" tint="bg-water/15 text-[#1F7AD6] dark:text-water" />} first>
           <NumberInput value={settings.waterGoal} onChange={(v) => update({ waterGoal: v })} />
         </Row>
-        <Row label="Weight unit">
+        <Row label="Weight unit" icon={<RowIcon name="scale" tint="bg-fat/15 text-fat" />}>
           <div className="segmented w-32">
             {['lb', 'kg'].map((u) => (
               <button key={u} onClick={() => update({ weightUnit: u })} className={`segment py-1 ${settings.weightUnit === u ? 'segment-active' : ''}`}>
@@ -177,21 +217,24 @@ export default function Settings() {
         </Row>
       </Group>
 
-      <Group title="Workouts" footer="Voice cues use your device's built-in speech. The screen stays on during a workout where supported.">
-        <Row label="Weekly goal" sub="Workouts per week" first>
+      <Group title="Workouts" footer="Voice cues use your device's built-in speech. Keeping the screen on works in most phone browsers.">
+        <Row label="Weekly goal" sub="Workouts per week" icon={<RowIcon name="target" tint="bg-brand-soft text-brand" />} first>
           <NumberInput value={settings.workout.weeklyGoal} onChange={(v) => updateWorkout({ weeklyGoal: Math.min(14, v) })} />
         </Row>
-        <Row label="Get-ready countdown" sub="Before the first set">
+        <Row label="Get-ready countdown" sub="Before the first set" icon={<RowIcon name="clock" tint="bg-carbs/15 text-[#B87400] dark:text-carbs" />}>
           <NumberInput value={settings.workout.countdown} onChange={(v) => updateWorkout({ countdown: Math.min(30, v) })} suffix="s" />
         </Row>
-        <Row label="Sounds" sub="Beeps for the last 3 seconds of a timer">
+        <Row label="Sounds" sub="Beeps for the last 3 seconds of a timer" icon={<RowIcon name="volume" tint="bg-surface2 text-ink2" />}>
           <Toggle checked={settings.workout.sound} onChange={(v) => updateWorkout({ sound: v })} label="Sounds" />
         </Row>
-        <Row label="Voice coach" sub="Announces each exercise and rest">
+        <Row label="Voice coach" sub="Announces each exercise and rest" icon={<RowIcon name="mic" tint="bg-surface2 text-ink2" />}>
           <Toggle checked={settings.workout.voice} onChange={(v) => updateWorkout({ voice: v })} label="Voice coach" />
         </Row>
-        <Row label="Vibration" sub="On phones that support it">
+        <Row label="Vibration" sub="On phones that support it" icon={<RowIcon name="phone" tint="bg-surface2 text-ink2" />}>
           <Toggle checked={settings.workout.vibrate} onChange={(v) => updateWorkout({ vibrate: v })} label="Vibration" />
+        </Row>
+        <Row label="Keep screen on" sub="While the workout player is open" icon={<RowIcon name="sun" tint="bg-surface2 text-ink2" />}>
+          <Toggle checked={settings.workout.keepAwake} onChange={(v) => updateWorkout({ keepAwake: v })} label="Keep screen on" />
         </Row>
       </Group>
 

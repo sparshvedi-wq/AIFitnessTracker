@@ -11,11 +11,12 @@ import BMRCalc from '../components/BMRCalc.jsx'
 import PageHeader from '../components/PageHeader.jsx'
 import Icon from '../components/Icon.jsx'
 import { Toggle } from '../components/workout/Controls.jsx'
+import { MACRO_COLORS } from '../lib/palette.js'
 
 const MACROS = [
-  { key: 'protein', label: 'Protein', color: '#E5484D' },
-  { key: 'carbs', label: 'Carbs', color: '#F0A020' },
-  { key: 'fat', label: 'Fat', color: '#7C66DC' },
+  { key: 'protein', label: 'Protein', color: MACRO_COLORS.protein },
+  { key: 'carbs', label: 'Carbs', color: MACRO_COLORS.carbs },
+  { key: 'fat', label: 'Fat', color: MACRO_COLORS.fat },
 ]
 
 const THEME_OPTIONS = [
@@ -34,10 +35,10 @@ function Group({ title, children, footer }) {
   )
 }
 
-// Colored icon tile at the start of a settings row.
-function RowIcon({ name, tint }) {
+// Icon at the start of a settings row. Monochrome: settings aren't data.
+function RowIcon({ name }) {
   return (
-    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface2 text-ink2">
       <Icon name={name} size={17} />
     </span>
   )
@@ -126,33 +127,30 @@ export default function Settings() {
 
   return (
     <div className="pb-4">
-      <PageHeader title="Settings" subtitle="Preferences" />
+      <PageHeader title="Settings" subtitle="Tally" voice="Set the targets. Then go hit them." />
 
-      {/* At-a-glance summary of everything tracked so far */}
-      <section className="card mb-7 flex items-center gap-4 p-4">
-        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-brand/70 text-on-brand shadow-brand">
-          <Icon name="user" size={22} />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-[15px] font-semibold text-ink">Your journey</p>
-          <p className="truncate text-[13px] text-muted">
+      {/* Your all-time tally */}
+      <section className="card mb-7 p-5">
+        <div className="flex items-center justify-between">
+          <p className="eyebrow">Your tally so far</p>
+          <p className="text-[12px] text-muted">
             Since {fromKey(state.createdAt || todayKey()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
           </p>
         </div>
-        <div className="flex shrink-0 gap-4 text-center">
+        <div className="mt-3 grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[17px] font-bold tabular-nums text-ink">{state.workouts.length}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Workouts</p>
+            <p className="num text-[56px] text-ink">{state.workouts.length}</p>
+            <p className="eyebrow mt-1">Workouts</p>
           </div>
           <div>
-            <p className="text-[17px] font-bold tabular-nums text-ink">{daysTracked}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">Days</p>
+            <p className="num text-[56px] text-ink">{daysTracked}</p>
+            <p className="eyebrow mt-1">Days tracked</p>
           </div>
         </div>
       </section>
 
       <Group title="Daily goals">
-        <Row label="Calories" sub="Your daily target" icon={<RowIcon name="flame" tint="bg-brand-soft text-brand" />} first>
+        <Row label="Calories" sub="Your daily target" icon={<RowIcon name="flame" />} first>
           <NumberInput value={goals.calories} onChange={(v) => updateGoals({ calories: v })} suffix="cal" width="w-32" />
         </Row>
 
@@ -203,10 +201,10 @@ export default function Settings() {
       </Group>
 
       <Group title="Tracking">
-        <Row label="Water goal" sub="Glasses per day" icon={<RowIcon name="droplet" tint="bg-water/15 text-[#1F7AD6] dark:text-water" />} first>
+        <Row label="Water goal" sub="Glasses per day" icon={<RowIcon name="droplet" />} first>
           <NumberInput value={settings.waterGoal} onChange={(v) => update({ waterGoal: v })} />
         </Row>
-        <Row label="Weight unit" icon={<RowIcon name="scale" tint="bg-fat/15 text-fat" />}>
+        <Row label="Weight unit" icon={<RowIcon name="scale" />}>
           <div className="segmented w-32">
             {['lb', 'kg'].map((u) => (
               <button key={u} onClick={() => update({ weightUnit: u })} className={`segment py-1 ${settings.weightUnit === u ? 'segment-active' : ''}`}>
@@ -218,22 +216,22 @@ export default function Settings() {
       </Group>
 
       <Group title="Workouts" footer="Voice cues use your device's built-in speech. Keeping the screen on works in most phone browsers.">
-        <Row label="Weekly goal" sub="Workouts per week" icon={<RowIcon name="target" tint="bg-brand-soft text-brand" />} first>
+        <Row label="Weekly goal" sub="Workouts per week" icon={<RowIcon name="target" />} first>
           <NumberInput value={settings.workout.weeklyGoal} onChange={(v) => updateWorkout({ weeklyGoal: Math.min(14, v) })} />
         </Row>
-        <Row label="Get-ready countdown" sub="Before the first set" icon={<RowIcon name="clock" tint="bg-carbs/15 text-[#B87400] dark:text-carbs" />}>
+        <Row label="Get-ready countdown" sub="Before the first set" icon={<RowIcon name="clock" />}>
           <NumberInput value={settings.workout.countdown} onChange={(v) => updateWorkout({ countdown: Math.min(30, v) })} suffix="s" />
         </Row>
-        <Row label="Sounds" sub="Beeps for the last 3 seconds of a timer" icon={<RowIcon name="volume" tint="bg-surface2 text-ink2" />}>
+        <Row label="Sounds" sub="Beeps for the last 3 seconds of a timer" icon={<RowIcon name="volume" />}>
           <Toggle checked={settings.workout.sound} onChange={(v) => updateWorkout({ sound: v })} label="Sounds" />
         </Row>
-        <Row label="Voice coach" sub="Announces each exercise and rest" icon={<RowIcon name="mic" tint="bg-surface2 text-ink2" />}>
+        <Row label="Voice coach" sub="Announces each exercise and rest" icon={<RowIcon name="mic" />}>
           <Toggle checked={settings.workout.voice} onChange={(v) => updateWorkout({ voice: v })} label="Voice coach" />
         </Row>
-        <Row label="Vibration" sub="On phones that support it" icon={<RowIcon name="phone" tint="bg-surface2 text-ink2" />}>
+        <Row label="Vibration" sub="On phones that support it" icon={<RowIcon name="phone" />}>
           <Toggle checked={settings.workout.vibrate} onChange={(v) => updateWorkout({ vibrate: v })} label="Vibration" />
         </Row>
-        <Row label="Keep screen on" sub="While the workout player is open" icon={<RowIcon name="sun" tint="bg-surface2 text-ink2" />}>
+        <Row label="Keep screen on" sub="While the workout player is open" icon={<RowIcon name="sun" />}>
           <Toggle checked={settings.workout.keepAwake} onChange={(v) => updateWorkout({ keepAwake: v })} label="Keep screen on" />
         </Row>
       </Group>

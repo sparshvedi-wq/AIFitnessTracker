@@ -6,6 +6,7 @@ import { useApp } from '../store/AppContext.jsx'
 import { TEMPLATES } from '../lib/exercises.js'
 import { estimateMinutes, fmtDuration, pickNextRoutine, weekSummary } from '../lib/workout.js'
 import Icon from './Icon.jsx'
+import { TallyMarks } from './Brand.jsx'
 
 export default function TrainingCard({ date, onOpen }) {
   const { state, today } = useApp()
@@ -15,7 +16,6 @@ export default function TrainingCard({ date, onOpen }) {
   const goal = state.settings.workout.weeklyGoal
   const week = useMemo(() => weekSummary(workouts, date > today ? today : date), [workouts, date, today])
   const next = useMemo(() => pickNextRoutine(routines.length ? routines : TEMPLATES, workouts), [routines, workouts])
-  const pct = goal ? Math.min(100, (week.count / goal) * 100) : 0
 
   let icon = 'dumbbell'
   let title
@@ -40,25 +40,23 @@ export default function TrainingCard({ date, onOpen }) {
     <button onClick={onOpen} className="card block w-full overflow-hidden text-left transition-colors hover:border-brand/40">
       <span className="flex items-center gap-3 p-4">
         <span
-          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-            done.length || active ? 'bg-brand text-on-brand shadow-brand' : 'bg-brand-soft text-brand'
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${
+            done.length || active ? 'bg-accent text-on-accent' : 'bg-surface2 text-ink'
           }`}
         >
           <Icon name={icon} size={20} strokeWidth={done.length ? 2.6 : 2} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold text-ink">{title}</span>
+          <span className="block truncate font-display text-[20px] font-extrabold uppercase leading-tight tracking-[0.02em] text-ink">{title}</span>
           <span className="block truncate text-[13px] text-muted">{sub}</span>
         </span>
         <Icon name="chevronRight" size={18} className="shrink-0 text-muted" />
       </span>
       {goal > 0 && (
-        <span className="flex items-center gap-3 border-t border-line/70 bg-surface2/50 px-4 py-2.5">
-          <span className="text-[13px] font-medium text-ink2">
-            <span className="font-semibold tabular-nums text-ink">{week.count}</span> of {goal} this week
-          </span>
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-line/70">
-            <span className="block h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${pct}%` }} />
+        <span className="flex items-center justify-between gap-3 border-t border-line/70 px-4 py-3">
+          <TallyMarks count={week.count} goal={goal} height={22} />
+          <span className="eyebrow">
+            <span className="text-ink">{week.count}</span> of {goal} this week
           </span>
         </span>
       )}

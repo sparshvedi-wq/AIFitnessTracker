@@ -43,11 +43,9 @@ export default function DiaryNote({ date }) {
 
   return (
     <section className="card p-4">
-      <div className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-ink2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-surface2 text-ink2">
-          <Icon name="note" size={16} />
-        </span>
-        Note
+      <div className="eyebrow mb-2 flex items-center gap-1.5">
+        <Icon name="note" size={14} strokeWidth={2.4} />
+        Note to self
         <span className={`ml-auto flex items-center gap-1 text-[12px] font-medium text-brand transition-opacity ${saved ? 'opacity-100' : 'opacity-0'}`} aria-live="polite">
           <Icon name="check" size={13} strokeWidth={3} />
           {saved ? 'Saved' : ''}
@@ -58,9 +56,9 @@ export default function DiaryNote({ date }) {
         value={value}
         onChange={handleChange}
         onBlur={save}
-        placeholder="How did today go? Energy, mood, sleep, soreness…"
+        placeholder="How did it go? Energy, sleep, soreness…"
         rows={2}
-        className="w-full resize-none bg-transparent text-[15px] leading-relaxed text-ink placeholder:text-muted/70 focus:outline-none"
+        className="w-full resize-none bg-transparent font-serif text-[20px] italic leading-snug text-ink placeholder:text-muted/60 focus:outline-none"
       />
     </section>
   )

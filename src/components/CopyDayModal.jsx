@@ -118,7 +118,7 @@ export default function CopyDayModal({ open, onClose, targetDate }) {
                       type="checkbox"
                       checked={checked}
                       onChange={() => toggleEntry(entry.id)}
-                      className="h-5 w-5 shrink-0 rounded-md accent-[rgb(var(--brand))]"
+                      className="h-5 w-5 shrink-0 rounded-md accent-[rgb(var(--accent))]"
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-[15px] font-medium text-ink">

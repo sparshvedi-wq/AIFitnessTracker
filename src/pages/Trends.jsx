@@ -16,27 +16,18 @@ import { addDays, shortLabel } from '../lib/date.js'
 import { fmtNum, muscleSets, personalBests, weekStreak, weeklyCounts, workoutAchievements } from '../lib/workout.js'
 import { MuscleTag } from '../components/workout/Controls.jsx'
 import { useIsDark } from '../lib/useTheme.js'
+import { chartColors } from '../lib/palette.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Icon from '../components/Icon.jsx'
+import ShareWeek from '../components/ShareWeek.jsx'
 
-// ── Chart colour helpers ──────────────────────────────────────────────
-// Recharts needs literal colors, so these mirror the CSS tokens.
-const chartColors = (dark) => ({
-  grid: dark ? '#282D36' : '#EEF0F3',
-  tick: dark ? '#767E8B' : '#868E9A',
-  brand: dark ? '#2DC48C' : '#0C8C62',
-  brandSoft: dark ? '#1E5C45' : '#A7DCC6',
-  danger: dark ? '#F86262' : '#DC3535',
-  empty: dark ? '#282D36' : '#E4E7EB',
-  ink: dark ? '#ECEFF3' : '#111827',
-})
-const tooltipStyle = (dark) => ({
-  borderRadius: 12,
-  border: `1px solid ${dark ? '#282D36' : '#E4E7EB'}`,
-  backgroundColor: dark ? '#15181D' : '#fff',
-  color: dark ? '#ECEFF3' : '#111827',
+const tooltipStyle = (c) => ({
+  borderRadius: 14,
+  border: `1px solid ${c.grid}`,
+  backgroundColor: c.surface,
+  color: c.ink,
   fontSize: 13,
-  boxShadow: '0 8px 24px rgb(16 24 40 / 0.12)',
+  boxShadow: '0 12px 28px rgb(0 0 0 / 0.25)',
 })
 
 const BADGE_ICONS = {
@@ -44,17 +35,18 @@ const BADGE_ICONS = {
   dedicated: 'barChart', hydrated: 'droplet', precision: 'target',
 }
 
-function StatCard({ icon, iconClass, label, value, sub }) {
+function StatCard({ icon, iconClass, label, value, unit, sub }) {
   return (
     <div className="card p-4">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-ink2">
-        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${iconClass}`}>
-          <Icon name={icon} size={16} />
-        </span>
+      <div className={`eyebrow flex items-center gap-1.5 ${iconClass}`}>
+        <Icon name={icon} size={14} strokeWidth={2.4} />
         {label}
       </div>
-      <p className="mt-3 truncate text-2xl font-bold tabular-nums text-ink">{value}</p>
-      {sub && <p className="truncate text-[13px] text-muted">{sub}</p>}
+      <p className="mt-2 truncate text-ink">
+        <span className="num text-[44px]">{value}</span>
+        {unit && <span className="text-[13px] font-semibold text-muted"> {unit}</span>}
+      </p>
+      {sub && <p className="mt-1 truncate text-[12px] text-muted">{sub}</p>}
     </div>
   )
 }
@@ -131,7 +123,7 @@ export default function Trends() {
   const tickProps = { fontSize: 11, fill: c.tick }
   const gridProps = { strokeDasharray: '3 3', vertical: false, stroke: c.grid }
   const axisProps = { axisLine: false, tickLine: false }
-  const tStyle = tooltipStyle(isDark)
+  const tStyle = tooltipStyle(c)
   const xInterval = range === 7 ? 0 : 'preserveStartEnd'
   // Calorie axes: always include the goal line and use evenly spaced round ticks
   const calTicks = useMemo(() => {
@@ -171,23 +163,27 @@ export default function Trends() {
         }
       />
 
+      <div className="mb-4">
+        <ShareWeek />
+      </div>
+
       {/* Headline stats */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard
-          icon="dumbbell" iconClass="bg-brand-soft text-brand" label="Workouts"
+          icon="dumbbell" iconClass="text-brand" label="Workouts"
           value={rangeWorkouts.length} sub={rangeMinutes ? `${rangeMinutes} min trained` : 'None yet in this range'}
         />
         <StatCard
-          icon="flame" iconClass="bg-carbs/15 text-[#B87400] dark:text-carbs" label="Streak"
-          value={`${streak} day${streak === 1 ? '' : 's'}`} sub="logged in a row"
+          icon="flame" iconClass="text-protein" label="Streak"
+          value={streak} unit={`day${streak === 1 ? '' : 's'}`} sub="logged in a row"
         />
         <StatCard
-          icon="target" iconClass="bg-protein/15 text-protein" label="Avg calories"
+          icon="target" iconClass="text-carbs" label="Avg calories"
           value={avg.calories ? avg.calories.toLocaleString() : '—'} sub={`${daysLogged} of ${range} days logged`}
         />
         <StatCard
-          icon="scale" iconClass="bg-fat/15 text-fat" label="Weight"
-          value={latestWeight != null ? `${fmtNum(latestWeight)} ${unit}` : '—'}
+          icon="scale" iconClass="text-fat" label="Weight"
+          value={latestWeight != null ? fmtNum(latestWeight) : '—'} unit={latestWeight != null ? unit : null}
           sub={latestWeight == null ? 'Log it on the Today tab' : weightChange == null ? 'Latest logged' : weightChange === 0 ? `No change in ${range} days` : `${weightChange > 0 ? '+' : '−'}${fmtNum(Math.abs(weightChange))} ${unit} in ${range} days`}
         />
       </div>
@@ -196,9 +192,9 @@ export default function Trends() {
       <h2 className="section-title mb-2 mt-7">Training</h2>
       <section className="card p-4">
         <div className="mb-3 flex items-baseline justify-between gap-3">
-          <p className="text-[15px] font-semibold text-ink">Workouts per week</p>
+          <p className="font-display text-[20px] font-extrabold uppercase text-ink">Workouts per week</p>
           {weeksOnGoal > 0 && (
-            <p className="flex items-center gap-1 text-[13px] font-semibold text-[#B87400] dark:text-carbs">
+            <p className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em] text-protein">
               <Icon name="flame" size={14} />
               {weeksOnGoal} week{weeksOnGoal === 1 ? '' : 's'} on goal
             </p>
@@ -221,9 +217,9 @@ export default function Trends() {
                   separator=""
                 />
                 {weeklyGoal > 0 && <ReferenceLine y={weeklyGoal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
-                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={26}>
+                <Bar dataKey="count" radius={[13, 13, 13, 13]} maxBarSize={26}>
                   {weeks.map((w, i) => (
-                    <Cell key={i} fill={w.count >= weeklyGoal ? c.brand : c.brandSoft} />
+                    <Cell key={i} fill={w.count >= weeklyGoal ? c.accent : c.accentSoft} />
                   ))}
                 </Bar>
               </BarChart>
@@ -235,7 +231,7 @@ export default function Trends() {
         {muscles.length > 0 && (
           <div className="mt-4 border-t border-line pt-4">
             <div className="mb-3 flex items-baseline justify-between">
-              <p className="text-[15px] font-semibold text-ink">Muscle focus</p>
+              <p className="font-display text-[20px] font-extrabold uppercase text-ink">Muscle focus</p>
               <p className="text-[13px] text-muted">sets, last {range} days</p>
             </div>
             <ul className="space-y-2.5">
@@ -244,7 +240,7 @@ export default function Trends() {
                   <span className="w-[84px] shrink-0"><MuscleTag muscle={m.muscle} /></span>
                   <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface2">
                     <span
-                      className="block h-full rounded-full bg-brand transition-all duration-500"
+                      className="block h-full rounded-full bg-accent transition-all duration-500"
                       style={{ width: `${(m.sets / muscles[0].sets) * 100}%` }}
                     />
                   </span>
@@ -264,7 +260,7 @@ export default function Trends() {
               <div key={b.exId} className="flex items-center gap-3 px-4 py-3">
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
-                    i === 0 ? 'bg-carbs/15 text-[#B87400] dark:text-carbs' : 'bg-surface2 text-ink2'
+                    i === 0 ? 'bg-accent text-on-accent' : 'bg-surface2 text-ink2'
                   }`}
                 >
                   {i === 0 ? <Icon name="trophy" size={15} /> : i + 1}
@@ -273,7 +269,7 @@ export default function Trends() {
                   <p className="truncate text-[15px] font-semibold text-ink">{b.name}</p>
                   <p className="text-[13px] text-muted">{shortLabel(b.date)}</p>
                 </div>
-                <p className="shrink-0 text-[15px] font-bold tabular-nums text-ink">
+                <p className="num shrink-0 text-[24px] text-ink">
                   {b.type === 'time' ? `${b.sec}s` : b.weighted ? `${fmtNum(b.weight)} ${b.unit}` : `${b.reps} reps`}
                   {b.weighted && b.type !== 'time' && <span className="text-[13px] font-medium text-muted"> × {b.reps}</span>}
                 </p>
@@ -288,8 +284,8 @@ export default function Trends() {
       <section className="card p-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-[13px] font-medium text-muted">Avg calories</p>
-            <p className="text-xl font-bold tabular-nums text-ink">{weekly.avgCalories ? weekly.avgCalories.toLocaleString() : '—'}</p>
+            <p className="eyebrow">Avg calories</p>
+            <p className="num mt-1 text-[36px] text-ink">{weekly.avgCalories ? weekly.avgCalories.toLocaleString() : '—'}</p>
             {weekly.avgLast > 0 && (
               <p className="flex items-center gap-1 text-[13px] font-medium text-muted">
                 <Icon name={weekly.avgCalories <= weekly.avgLast ? 'arrowDown' : 'arrowUp'} size={13} strokeWidth={2.5} />
@@ -298,13 +294,13 @@ export default function Trends() {
             )}
           </div>
           <div>
-            <p className="text-[13px] font-medium text-muted">{weekly.totalDeficit >= 0 ? 'Under goal' : 'Over goal'}</p>
+            <p className="eyebrow">{weekly.totalDeficit >= 0 ? 'Under goal' : 'Over goal'}</p>
             {weekly.daysLogged ? (
-              <p className={`text-xl font-bold tabular-nums ${weekly.totalDeficit >= 0 ? 'text-success' : 'text-danger'}`}>
+              <p className={`num mt-1 text-[36px] ${weekly.totalDeficit >= 0 ? 'text-brand' : 'text-danger'}`}>
                 {Math.abs(weekly.totalDeficit).toLocaleString()} <span className="text-sm font-semibold">cal</span>
               </p>
             ) : (
-              <p className="text-xl font-bold text-ink">—</p>
+              <p className="num mt-1 text-[36px] text-ink">—</p>
             )}
             {weekly.daysLogged > 0 && <p className="text-[13px] text-muted">total this week</p>}
           </div>
@@ -318,7 +314,7 @@ export default function Trends() {
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-surface2">
             <div
-              className="h-full rounded-full bg-brand transition-all duration-500"
+              className="h-full rounded-full bg-accent transition-all duration-500"
               style={{ width: `${weekly.daysLogged ? Math.round((weekly.onTarget / weekly.daysLogged) * 100) : 0}%` }}
             />
           </div>
@@ -339,7 +335,7 @@ export default function Trends() {
         {chartTab === 'calories' && (
           <div className="space-y-6">
             <div>
-              <p className="mb-3 text-[15px] font-semibold text-ink">Calories per day</p>
+              <p className="mb-3 font-display text-[20px] font-extrabold uppercase text-ink">Calories per day</p>
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid {...gridProps} />
@@ -347,14 +343,14 @@ export default function Trends() {
                   <YAxis tick={tickProps} {...axisProps} {...calAxis} />
                   <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} formatter={(v) => [`${v.toLocaleString()} cal`, 'Calories']} />
                   {goal > 0 && <ReferenceLine y={goal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
-                  <Bar dataKey="calories" fill={c.brand} radius={[6, 6, 0, 0]} maxBarSize={28} />
+                  <Bar dataKey="calories" fill={c.accent} radius={[14, 14, 14, 14]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>
               {goal > 0 && <p className="mt-1 text-center text-[13px] text-muted">Dashed line is your {goal.toLocaleString()} cal goal</p>}
             </div>
 
             <div className="border-t border-line pt-4">
-              <p className="mb-3 text-[15px] font-semibold text-ink">Under / over goal</p>
+              <p className="mb-3 font-display text-[20px] font-extrabold uppercase text-ink">Under / over goal</p>
               <ResponsiveContainer width="100%" height={180}>
                 <BarChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                   <CartesianGrid {...gridProps} />
@@ -370,19 +366,19 @@ export default function Trends() {
                   <ReferenceLine y={0} stroke={c.tick} />
                   <Bar dataKey="def" radius={[6, 6, 0, 0]} maxBarSize={28}>
                     {chartData.map((d, i) => (
-                      <Cell key={i} fill={d.def == null ? c.empty : d.def >= 0 ? c.brand : c.danger} />
+                      <Cell key={i} fill={d.def == null ? c.empty : d.def >= 0 ? c.accent : c.danger} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
-              <p className="mt-1 text-center text-[13px] text-muted">Green is under goal, red is over</p>
+              <p className="mt-1 text-center text-[13px] text-muted">Volt is under goal, red is over</p>
             </div>
           </div>
         )}
 
         {chartTab === 'macros' && (
           <div className="space-y-4">
-            <p className="text-[15px] font-semibold text-ink">Calories from each macro</p>
+            <p className="font-display text-[20px] font-extrabold uppercase text-ink">Calories from each macro</p>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={stackData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                 <CartesianGrid {...gridProps} />
@@ -391,9 +387,9 @@ export default function Trends() {
                 <Tooltip contentStyle={tStyle} cursor={{ fill: c.grid }} formatter={(v) => `${v.toLocaleString()} cal`} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: 12, color: c.tick }} />
                 {goal > 0 && <ReferenceLine y={goal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
-                <Bar dataKey="proteinCal" name="Protein" stackId="a" fill="#E5484D" maxBarSize={28} />
-                <Bar dataKey="carbsCal" name="Carbs" stackId="a" fill="#F0A020" maxBarSize={28} />
-                <Bar dataKey="fatCal" name="Fat" stackId="a" fill="#7C66DC" radius={[6, 6, 0, 0]} maxBarSize={28} />
+                <Bar dataKey="proteinCal" name="Protein" stackId="a" fill={c.protein} maxBarSize={28} />
+                <Bar dataKey="carbsCal" name="Carbs" stackId="a" fill={c.carbs} maxBarSize={28} />
+                <Bar dataKey="fatCal" name="Fat" stackId="a" fill={c.fat} radius={[6, 6, 0, 0]} maxBarSize={28} />
               </BarChart>
             </ResponsiveContainer>
 
@@ -404,7 +400,7 @@ export default function Trends() {
                 { label: 'Fat', value: avg.fat, color: 'text-fat' },
               ].map((m) => (
                 <div key={m.label} className="rounded-2xl bg-surface2 p-3 text-center">
-                  <p className={`text-xl font-bold tabular-nums ${m.color}`}>{m.value}g</p>
+                  <p className={`num text-[32px] ${m.color}`}>{m.value}g</p>
                   <p className="text-[13px] text-muted">avg {m.label.toLowerCase()}</p>
                 </div>
               ))}
@@ -415,7 +411,7 @@ export default function Trends() {
         {chartTab === 'weight' && (
           <div>
             <div className="mb-3 flex items-baseline justify-between">
-              <p className="text-[15px] font-semibold text-ink">Weight ({unit})</p>
+              <p className="font-display text-[20px] font-extrabold uppercase text-ink">Weight ({unit})</p>
               {latestWeight != null && (
                 <p className="text-[13px] text-muted">Latest <span className="font-semibold text-ink">{latestWeight} {unit}</span></p>
               )}
@@ -434,9 +430,9 @@ export default function Trends() {
                   <Tooltip contentStyle={tStyle} formatter={(v) => [`${v} ${unit}`, 'Weight']} />
                   <Line
                     type="monotone" dataKey="weight"
-                    stroke="#7C66DC"
+                    stroke={c.fat}
                     strokeWidth={2.5}
-                    dot={{ r: 3.5, fill: '#7C66DC', strokeWidth: 0 }}
+                    dot={{ r: 3.5, fill: c.fat, strokeWidth: 0 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -457,18 +453,18 @@ export default function Trends() {
         {achievements.map((badge) => (
           <div key={badge.id} className="flex items-center gap-3 px-4 py-3">
             <span
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                badge.earned ? 'bg-brand-soft text-brand' : 'bg-surface2 text-muted'
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
+                badge.earned ? 'bg-accent text-on-accent' : 'bg-surface2 text-muted'
               }`}
             >
               <Icon name={BADGE_ICONS[badge.id] || badge.icon || 'trophy'} size={19} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className={`text-[15px] font-semibold ${badge.earned ? 'text-ink' : 'text-ink2'}`}>{badge.label}</p>
+              <p className={`font-display text-[19px] font-extrabold uppercase leading-tight ${badge.earned ? 'text-ink' : 'text-ink2'}`}>{badge.label}</p>
               <p className="text-[13px] text-muted">{badge.desc}</p>
             </div>
             {badge.earned ? (
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-brand text-on-brand">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-on-accent">
                 <Icon name="check" size={14} strokeWidth={3} />
               </span>
             ) : (

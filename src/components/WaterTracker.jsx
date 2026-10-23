@@ -11,10 +11,8 @@ export default function WaterTracker({ date }) {
 
   return (
     <section className="card flex flex-col p-4">
-      <div className="flex items-center gap-2 text-[13px] font-semibold text-ink2">
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-water/15 text-water">
-          <Icon name="droplet" size={16} />
-        </span>
+      <div className="eyebrow flex items-center gap-1.5 text-water">
+        <Icon name="droplet" size={14} strokeWidth={2.4} />
         Water
         {reached && (
           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-water text-white" aria-label="Goal reached">
@@ -22,8 +20,8 @@ export default function WaterTracker({ date }) {
           </span>
         )}
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-ink">
-        {glasses}<span className="text-sm font-semibold text-muted"> / {goal} glasses</span>
+      <p className="mt-3 text-ink">
+        <span className="num text-[40px]">{glasses}</span><span className="text-[13px] font-semibold text-muted"> / {goal} glasses</span>
       </p>
       {/* One segment per glass, so progress reads at a glance */}
       <div className="mb-1.5 mt-2.5 flex gap-1" aria-hidden="true">
@@ -31,13 +29,13 @@ export default function WaterTracker({ date }) {
           <span
             key={i}
             className={`h-1.5 flex-1 rounded-full transition-colors duration-300 ${
-              i < Math.round((pct / 100) * Math.min(goal, 12)) ? 'bg-water' : 'bg-surface2'
+              i < Math.round((pct / 100) * Math.min(goal, 12)) ? 'bg-water' : 'bg-ink/[0.08]'
             }`}
           />
         ))}
       </div>
       <p className="mb-3 text-[13px] text-muted">
-        {reached ? 'Goal reached' : `${goal - glasses} to go`}
+        {reached ? 'Hydrated. Nice.' : `${goal - glasses} to go`}
       </p>
       <div className="mt-auto flex gap-2">
         <button
@@ -50,7 +48,7 @@ export default function WaterTracker({ date }) {
         </button>
         <button
           onClick={() => setWater(glasses + 1)}
-          className="btn h-10 flex-1 bg-water/15 p-0 text-[#1F7AD6] hover:bg-water/25 dark:text-water"
+          className="btn h-10 flex-1 bg-water/15 p-0 text-water hover:bg-water/25"
           aria-label="Add a glass"
         >
           <Icon name="plus" size={18} strokeWidth={2.5} /> Glass

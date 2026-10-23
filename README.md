@@ -1,6 +1,6 @@
-# 🍎 Calorie Tracker
+# Tally
 
-A simple, fully-local calorie & macro tracker. No backend, no login, no AI —
+Tally: a fully-local training and nutrition tracker. Count every rep, every meal, every glass. No backend, no login, no AI —
 all data lives in your browser's `localStorage` and never leaves your device.
 
 Built with **React + Vite + Tailwind**, charts via **Recharts**.
@@ -108,3 +108,21 @@ rather than `dark:` variants on every element.
 `localStorage` is the single source of truth: the store loads from it on start
 and persists the full state blob on every change. The data key is
 `calorie-tracker:v1`.
+
+## Brand
+
+Tally is dark-first and built to be screenshotted. The rules, so new screens
+stay on-brand:
+
+- **Name and mark**: four strokes and a volt slash (`src/components/Brand.jsx`).
+  Counts that matter (workouts this week) are drawn as tally marks.
+- **Color**: near-black (bone in light mode) as the dominant neutral, one volt
+  accent (`accent`) for the primary action and progress, and one hue per data
+  metric (`protein`, `carbs`, `fat`, `water`). Tags, settings and icons stay
+  monochrome. Tokens live in `src/index.css`.
+- **Type**: Big Shoulders Display in caps for titles and every big number
+  (`.num`), Instrument Sans for body copy, and Instrument Serif italic only for
+  the coach's voice (`.voice`).
+- **Voice**: a dry, encouraging coach, one line at a time (`src/lib/voice.js`).
+- **Share card**: "Share my week" draws a 1080×1920 story image
+  (`src/lib/shareCard.js`).

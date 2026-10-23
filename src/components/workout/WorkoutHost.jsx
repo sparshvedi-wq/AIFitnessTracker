@@ -105,7 +105,7 @@ function MiniBar({ session, now, onOpen }) {
         onClick={onOpen}
         className="mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-surface shadow-float"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand text-on-brand">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-on-accent">
           <Icon name="dumbbell" size={20} strokeWidth={2.2} />
         </span>
         <span className="min-w-0 flex-1">

@@ -32,7 +32,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
           <span className="h-1 w-10 rounded-full bg-line" />
         </div>
         <div className="flex items-center justify-between px-5 pb-2 pt-2 sm:pt-4">
-          <h2 className="text-lg font-bold tracking-tight text-ink">{title}</h2>
+          <h2 className="font-display text-[26px] font-black uppercase leading-none tracking-[0.01em] text-ink">{title}</h2>
           <button onClick={onClose} className="icon-btn -mr-2 h-9 w-9" aria-label="Close">
             <Icon name="x" size={20} />
           </button>

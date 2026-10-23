@@ -53,7 +53,7 @@ export default function WorkoutPlayer({ session, now, onMinimize }) {
 
         {/* Overall progress */}
         <div className="px-4 pb-1 pt-2">
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-line/70">
             <div className="h-full rounded-full bg-brand transition-all duration-500" style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
           </div>
           <p className="mt-1.5 text-right text-[12px] font-semibold tabular-nums text-muted">{done} of {total} sets</p>
@@ -88,6 +88,12 @@ function ReadyView({ session, now, update }) {
     <div className="flex min-h-full flex-col items-center justify-center py-6 text-center">
       <p className="text-[13px] font-semibold uppercase tracking-wide text-brand">Get ready</p>
       <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-ink">{cur?.ex.name}</h2>
+      {cur && (
+        <p className="mt-1.5 flex items-center gap-2 text-[15px] text-ink2">
+          <MuscleTag muscle={cur.ex.muscle} />
+          {cur.ex.sets.length} sets · {targetText(cur.ex, cur.set, session.unit)}
+        </p>
+      )}
       <div className="my-8">
         <TimerRing progress={session.phaseTotal ? left / session.phaseTotal : 0}>
           <span className="text-7xl font-extrabold tabular-nums text-ink">{Math.max(0, Math.ceil(left / 1000))}</span>

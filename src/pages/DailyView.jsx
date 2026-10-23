@@ -1,10 +1,11 @@
-// Today tab, top to bottom: date, calorie + macro summary, the log button,
+// Today tab, top to bottom: date and week strip, calorie + macro summary, the log button,
 // the four meals, then training, daily habits (water, weight) and a note.
 
 import { useMemo } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { groupByMeal, sumEntries } from '../lib/calc.js'
 import DateNav from '../components/DateNav.jsx'
+import WeekStrip from '../components/WeekStrip.jsx'
 import DailySummary from '../components/DailySummary.jsx'
 import MealGroup from '../components/MealGroup.jsx'
 import WaterTracker from '../components/WaterTracker.jsx'
@@ -26,6 +27,7 @@ export default function DailyView({ date, setDate, onAdd, onEdit, onWorkout }) {
   return (
     <div>
       <DateNav date={date} onChange={setDate} />
+      <WeekStrip date={date} onChange={setDate} />
 
       <DailySummary totals={totals} goals={state.settings.goals} />
 

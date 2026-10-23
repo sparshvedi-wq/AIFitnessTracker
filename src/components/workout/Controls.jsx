@@ -47,7 +47,7 @@ export function TimerRing({ progress, size = 220, stroke = 12, color = 'rgb(var(
   return (
     <div className="relative mx-auto" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--surface-2))" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--line) / 0.7)" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -73,7 +73,7 @@ export function Toggle({ checked, onChange, label }) {
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-line'}`}
+      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-brand' : 'bg-ink/15'}`}
     >
       <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-card transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
     </button>

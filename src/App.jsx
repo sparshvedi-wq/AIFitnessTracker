@@ -27,12 +27,15 @@ function TabButton({ tab, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-1 flex-col items-center gap-1 pb-2 pt-2.5 text-[11px] font-semibold tracking-wide transition-colors ${
+      className={`flex flex-1 flex-col items-center gap-0.5 pb-2 pt-2 text-[11px] font-semibold tracking-wide transition-colors ${
         active ? 'text-brand' : 'text-muted hover:text-ink2'
       }`}
       aria-current={active ? 'page' : undefined}
     >
-      <Icon name={tab.icon} size={22} strokeWidth={active ? 2.2 : 1.8} />
+      {/* Pill behind the active icon */}
+      <span className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${active ? 'bg-brand-soft' : ''}`}>
+        <Icon name={tab.icon} size={22} strokeWidth={active ? 2.2 : 1.8} />
+      </span>
       {tab.label}
     </button>
   )
@@ -78,7 +81,7 @@ export default function App() {
           {tab === 'settings' && <Settings />}
         </main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-surface/90 backdrop-blur-xl pb-safe">
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line/80 bg-surface/85 shadow-[0_-4px_16px_-8px_rgb(16_24_40/0.12)] backdrop-blur-xl pb-safe">
           <div className="mx-auto flex max-w-xl px-2">
             {TABS.map((t) => (
               <TabButton key={t.id} tab={t} active={tab === t.id} onClick={() => setTab(t.id)} />

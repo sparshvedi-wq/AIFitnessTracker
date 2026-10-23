@@ -1,4 +1,5 @@
-// Progress tab: headline stats, this week vs last, charts (calories, macros,
+// Progress tab: headline stats, training (workouts per week, muscle focus,
+// personal bests), nutrition this week vs last, charts (calories, macros,
 // weight) and achievements.
 
 import { useMemo, useState } from 'react'
@@ -11,7 +12,9 @@ import {
   dailySeries, deficitSeries, macroStackSeries, averageMacros,
   weightSeries, computeStreak, weeklyStats, computeAchievements,
 } from '../lib/calc.js'
-import { shortLabel } from '../lib/date.js'
+import { addDays, shortLabel } from '../lib/date.js'
+import { fmtNum, muscleSets, personalBests, weekStreak, weeklyCounts, workoutAchievements } from '../lib/workout.js'
+import { MuscleTag } from '../components/workout/Controls.jsx'
 import { useIsDark } from '../lib/useTheme.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Icon from '../components/Icon.jsx'
@@ -22,6 +25,7 @@ const chartColors = (dark) => ({
   grid: dark ? '#282D36' : '#EEF0F3',
   tick: dark ? '#767E8B' : '#868E9A',
   brand: dark ? '#2DC48C' : '#0C8C62',
+  brandSoft: dark ? '#1E5C45' : '#A7DCC6',
   danger: dark ? '#F86262' : '#DC3535',
   empty: dark ? '#282D36' : '#E4E7EB',
   ink: dark ? '#ECEFF3' : '#111827',
@@ -49,8 +53,17 @@ function StatCard({ icon, iconClass, label, value, sub }) {
         </span>
         {label}
       </div>
-      <p className="mt-3 text-2xl font-bold tabular-nums text-ink">{value}</p>
-      {sub && <p className="text-[13px] text-muted">{sub}</p>}
+      <p className="mt-3 truncate text-2xl font-bold tabular-nums text-ink">{value}</p>
+      {sub && <p className="truncate text-[13px] text-muted">{sub}</p>}
+    </div>
+  )
+}
+
+function EmptyChart({ icon, children }) {
+  return (
+    <div className="flex h-40 flex-col items-center justify-center rounded-2xl bg-surface2 px-6 text-center">
+      <Icon name={icon} size={22} className="mb-2 text-muted" />
+      <p className="text-sm text-muted">{children}</p>
     </div>
   )
 }
@@ -85,16 +98,34 @@ export default function Trends() {
   const weightData = useMemo(() => weights.map((w) => ({ ...w, label: shortLabel(w.date) })), [weights])
   const streak = useMemo(() => computeStreak(state, today), [state, today])
   const weekly = useMemo(() => weeklyStats(state, today), [state, today])
+  const weeklyGoal = state.settings.workout.weeklyGoal
   const achievements = useMemo(
-    // The food library is gone from the app, so its badge would be unreachable
-    () => computeAchievements(state, today).filter((b) => b.id !== 'library'),
-    [state, today],
+    () => [
+      ...workoutAchievements(state.workouts, weeklyGoal, today),
+      // The food library is gone from the app, so its badge would be unreachable
+      ...computeAchievements(state, today).filter((b) => b.id !== 'library'),
+    ],
+    [state, today, weeklyGoal],
   )
+
+  // Training
+  const rangeStart = addDays(today, -(range - 1))
+  const rangeWorkouts = useMemo(() => state.workouts.filter((w) => w.date >= rangeStart), [state.workouts, rangeStart])
+  const rangeMinutes = Math.round(rangeWorkouts.reduce((s, w) => s + (w.durationSec || 0), 0) / 60)
+  const weeks = useMemo(
+    () => weeklyCounts(state.workouts, 8, today).map((w) => ({ ...w, label: shortLabel(w.start) })),
+    [state.workouts, today],
+  )
+  const weeksOnGoal = useMemo(() => weekStreak(state.workouts, weeklyGoal, today), [state.workouts, weeklyGoal, today])
+  const muscles = useMemo(() => muscleSets(state.workouts, rangeStart), [state.workouts, rangeStart])
+  const bests = useMemo(() => personalBests(state.workouts).slice(0, 5), [state.workouts])
+  const latestWeight = weights.length ? weights[weights.length - 1].weight : null
+  const firstWeight = weights.find((w) => w.date >= rangeStart)?.weight
+  const weightChange = latestWeight != null && firstWeight != null ? Math.round((latestWeight - firstWeight) * 10) / 10 : null
 
   const goal = state.settings.goals.calories
   const unit = state.settings.weightUnit || 'lb'
   const daysLogged = series.filter((d) => d.calories > 0).length
-  const latestWeight = weights.length ? weights[weights.length - 1].weight : null
 
   const c = chartColors(isDark)
   const tickProps = { fontSize: 11, fill: c.tick }
@@ -143,25 +174,126 @@ export default function Trends() {
       {/* Headline stats */}
       <div className="grid grid-cols-2 gap-3">
         <StatCard
-          icon="flame" iconClass="bg-carbs/15 text-carbs" label="Streak"
+          icon="dumbbell" iconClass="bg-brand-soft text-brand" label="Workouts"
+          value={rangeWorkouts.length} sub={rangeMinutes ? `${rangeMinutes} min trained` : 'None yet in this range'}
+        />
+        <StatCard
+          icon="flame" iconClass="bg-carbs/15 text-[#B87400] dark:text-carbs" label="Streak"
           value={`${streak} day${streak === 1 ? '' : 's'}`} sub="logged in a row"
         />
         <StatCard
-          icon="target" iconClass="bg-brand-soft text-brand" label="Avg calories"
+          icon="target" iconClass="bg-protein/15 text-protein" label="Avg calories"
           value={avg.calories ? avg.calories.toLocaleString() : '—'} sub={`${daysLogged} of ${range} days logged`}
+        />
+        <StatCard
+          icon="scale" iconClass="bg-fat/15 text-fat" label="Weight"
+          value={latestWeight != null ? `${fmtNum(latestWeight)} ${unit}` : '—'}
+          sub={latestWeight == null ? 'Log it on the Today tab' : weightChange == null ? 'Latest logged' : weightChange === 0 ? `No change in ${range} days` : `${weightChange > 0 ? '+' : '−'}${fmtNum(Math.abs(weightChange))} ${unit} in ${range} days`}
         />
       </div>
 
+      {/* Training */}
+      <h2 className="section-title mb-2 mt-7">Training</h2>
+      <section className="card p-4">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <p className="text-[15px] font-semibold text-ink">Workouts per week</p>
+          {weeksOnGoal > 0 && (
+            <p className="flex items-center gap-1 text-[13px] font-semibold text-[#B87400] dark:text-carbs">
+              <Icon name="flame" size={14} />
+              {weeksOnGoal} week{weeksOnGoal === 1 ? '' : 's'} on goal
+            </p>
+          )}
+        </div>
+        {state.workouts.length === 0 ? (
+          <EmptyChart icon="dumbbell">Finish a workout to start tracking your weeks.</EmptyChart>
+        ) : (
+          <>
+            <ResponsiveContainer width="100%" height={170}>
+              <BarChart data={weeks} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <CartesianGrid {...gridProps} />
+                <XAxis dataKey="label" tick={tickProps} {...axisProps} interval="preserveStartEnd" />
+                <YAxis tick={tickProps} {...axisProps} allowDecimals={false} domain={[0, (max) => Math.max(max, weeklyGoal)]} />
+                <Tooltip
+                  contentStyle={tStyle}
+                  cursor={{ fill: c.grid }}
+                  labelFormatter={(l) => `Week of ${l}`}
+                  formatter={(v, _n, p) => [`${v} workout${v === 1 ? '' : 's'} · ${p.payload.minutes} min`, '']}
+                  separator=""
+                />
+                {weeklyGoal > 0 && <ReferenceLine y={weeklyGoal} stroke={c.ink} strokeOpacity={0.5} strokeDasharray="4 4" />}
+                <Bar dataKey="count" radius={[6, 6, 0, 0]} maxBarSize={26}>
+                  {weeks.map((w, i) => (
+                    <Cell key={i} fill={w.count >= weeklyGoal ? c.brand : c.brandSoft} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <p className="mt-1 text-center text-[13px] text-muted">Dashed line is your goal of {weeklyGoal} a week</p>
+          </>
+        )}
+
+        {muscles.length > 0 && (
+          <div className="mt-4 border-t border-line pt-4">
+            <div className="mb-3 flex items-baseline justify-between">
+              <p className="text-[15px] font-semibold text-ink">Muscle focus</p>
+              <p className="text-[13px] text-muted">sets, last {range} days</p>
+            </div>
+            <ul className="space-y-2.5">
+              {muscles.map((m) => (
+                <li key={m.muscle} className="flex items-center gap-3">
+                  <span className="w-[84px] shrink-0"><MuscleTag muscle={m.muscle} /></span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface2">
+                    <span
+                      className="block h-full rounded-full bg-brand transition-all duration-500"
+                      style={{ width: `${(m.sets / muscles[0].sets) * 100}%` }}
+                    />
+                  </span>
+                  <span className="w-7 shrink-0 text-right text-[13px] font-semibold tabular-nums text-ink">{m.sets}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
+      {bests.length > 0 && (
+        <>
+          <h2 className="section-title mb-2 mt-7">Personal bests</h2>
+          <section className="card divide-y divide-line/70 overflow-hidden">
+            {bests.map((b, i) => (
+              <div key={b.exId} className="flex items-center gap-3 px-4 py-3">
+                <span
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
+                    i === 0 ? 'bg-carbs/15 text-[#B87400] dark:text-carbs' : 'bg-surface2 text-ink2'
+                  }`}
+                >
+                  {i === 0 ? <Icon name="trophy" size={15} /> : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[15px] font-semibold text-ink">{b.name}</p>
+                  <p className="text-[13px] text-muted">{shortLabel(b.date)}</p>
+                </div>
+                <p className="shrink-0 text-[15px] font-bold tabular-nums text-ink">
+                  {b.type === 'time' ? `${b.sec}s` : b.weighted ? `${fmtNum(b.weight)} ${b.unit}` : `${b.reps} reps`}
+                  {b.weighted && b.type !== 'time' && <span className="text-[13px] font-medium text-muted"> × {b.reps}</span>}
+                </p>
+              </div>
+            ))}
+          </section>
+        </>
+      )}
+
       {/* Weekly summary */}
-      <h2 className="section-title mb-2 mt-7">This week</h2>
+      <h2 className="section-title mb-2 mt-7">Nutrition this week</h2>
       <section className="card p-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-[13px] font-medium text-muted">Avg calories</p>
             <p className="text-xl font-bold tabular-nums text-ink">{weekly.avgCalories ? weekly.avgCalories.toLocaleString() : '—'}</p>
             {weekly.avgLast > 0 && (
-              <p className={`text-[13px] font-medium ${weekly.avgCalories <= weekly.avgLast ? 'text-success' : 'text-danger'}`}>
-                {weekly.avgCalories <= weekly.avgLast ? '↓' : '↑'} vs {weekly.avgLast.toLocaleString()} last week
+              <p className="flex items-center gap-1 text-[13px] font-medium text-muted">
+                <Icon name={weekly.avgCalories <= weekly.avgLast ? 'arrowDown' : 'arrowUp'} size={13} strokeWidth={2.5} />
+                vs {weekly.avgLast.toLocaleString()} last week
               </p>
             )}
           </div>
@@ -329,7 +461,7 @@ export default function Trends() {
                 badge.earned ? 'bg-brand-soft text-brand' : 'bg-surface2 text-muted'
               }`}
             >
-              <Icon name={BADGE_ICONS[badge.id] || 'trophy'} size={19} />
+              <Icon name={BADGE_ICONS[badge.id] || badge.icon || 'trophy'} size={19} />
             </span>
             <div className="min-w-0 flex-1">
               <p className={`text-[15px] font-semibold ${badge.earned ? 'text-ink' : 'text-ink2'}`}>{badge.label}</p>

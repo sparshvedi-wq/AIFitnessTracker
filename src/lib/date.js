@@ -53,3 +53,10 @@ export function shortLabel(key) {
     day: 'numeric',
   })
 }
+
+// labelForKey for use mid-sentence: "today", "yesterday", but "Tue, Oct 20"
+// keeps its capitals.
+export function inlineLabel(key) {
+  const label = labelForKey(key)
+  return ['Today', 'Yesterday', 'Tomorrow'].includes(label) ? label.toLowerCase() : label
+}

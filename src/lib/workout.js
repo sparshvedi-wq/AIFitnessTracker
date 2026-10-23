@@ -465,6 +465,16 @@ export function estimateMinutes(routine) {
   return Math.max(1, Math.round(sec / 60))
 }
 
+// The distinct muscle groups a routine works, in the order they appear.
+export function routineMuscles(routine, custom) {
+  const seen = []
+  for (const item of routine.items) {
+    const m = findExercise(item.exId, custom)?.muscle
+    if (m && !seen.includes(m)) seen.push(m)
+  }
+  return seen
+}
+
 export function lastDoneDate(workouts, routineId) {
   for (let i = workouts.length - 1; i >= 0; i--) if (workouts[i].routineId === routineId) return workouts[i].date
   return null
@@ -522,6 +532,73 @@ export function weekStreak(workouts, goal, today = todayKey()) {
   return streak
 }
 
+// Workouts per Monday-start week for the last `weeks` weeks, oldest first.
+export function weeklyCounts(workouts, weeks = 8, today = todayKey()) {
+  const thisWeek = weekStart(today)
+  const out = []
+  for (let i = weeks - 1; i >= 0; i--) {
+    const start = addDays(thisWeek, -7 * i)
+    const end = addDays(start, 6)
+    const list = workouts.filter((w) => w.date >= start && w.date <= end)
+    out.push({
+      start,
+      count: list.length,
+      minutes: Math.round(list.reduce((s, w) => s + (w.durationSec || 0), 0) / 60),
+    })
+  }
+  return out
+}
+
+// Finished sets per muscle group since `fromKey`, most worked first.
+export function muscleSets(workouts, fromKey) {
+  const counts = new Map()
+  for (const w of workouts) {
+    if (w.date < fromKey) continue
+    for (const e of w.exercises) {
+      const muscle = e.muscle || findExercise(e.exId)?.muscle || 'Other'
+      counts.set(muscle, (counts.get(muscle) || 0) + e.sets.length)
+    }
+  }
+  return [...counts.entries()].map(([muscle, sets]) => ({ muscle, sets })).sort((a, b) => b.sets - a.sets)
+}
+
+// Best result for each exercise you've done, heaviest lifts first:
+// weighted moves by top weight, bodyweight moves by reps, timed moves by seconds.
+export function personalBests(workouts) {
+  const best = new Map()
+  for (const w of workouts) {
+    for (const e of w.exercises) {
+      for (const s of e.sets) {
+        const cur = best.get(e.exId) || { exId: e.exId, name: e.name, type: e.type, weighted: e.weighted, unit: w.unit, weight: 0, reps: 0, sec: 0, date: w.date }
+        if (e.type === 'time') {
+          if ((s.sec || 0) > cur.sec) Object.assign(cur, { sec: s.sec, date: w.date })
+        } else if (e.weighted) {
+          if ((s.weight || 0) > cur.weight || ((s.weight || 0) === cur.weight && (s.reps || 0) > cur.reps)) {
+            Object.assign(cur, { weight: s.weight || 0, reps: s.reps || 0, date: w.date, unit: w.unit })
+          }
+        } else if ((s.reps || 0) > cur.reps) Object.assign(cur, { reps: s.reps, date: w.date })
+        best.set(e.exId, cur)
+      }
+    }
+  }
+  const rank = (b) => (b.weighted ? 2 : b.type === 'time' ? 0 : 1)
+  return [...best.values()].sort((a, b) => rank(b) - rank(a) || b.weight - a.weight || b.reps - a.reps || b.sec - a.sec)
+}
+
+// Training badges for the Progress tab.
+export function workoutAchievements(workouts, weeklyGoal, today = todayKey()) {
+  const minutes = workouts.reduce((s, w) => s + (w.durationSec || 0), 0) / 60
+  const records = workouts.reduce((s, w) => s + (w.records?.length || 0), 0)
+  const streak = weekStreak(workouts, weeklyGoal, today)
+  return [
+    { id: 'w-first', icon: 'dumbbell', label: 'First Rep', desc: 'Finished your first workout', earned: workouts.length >= 1 },
+    { id: 'w-ten', icon: 'zap', label: 'Building Habits', desc: '10 workouts finished', earned: workouts.length >= 10 },
+    { id: 'w-weeks', icon: 'flame', label: 'Consistent', desc: 'Weekly goal hit 4 weeks in a row', earned: streak >= 4 },
+    { id: 'w-record', icon: 'trophy', label: 'Record Breaker', desc: 'Set a personal record', earned: records >= 1 },
+    { id: 'w-hours', icon: 'clock', label: 'Ten Hours In', desc: '10 hours of training', earned: minutes >= 600 },
+  ]
+}
+
 // ── Formatting ──────────────────────────────────────────────────────
 
 export function fmtClock(ms) {
@@ -531,6 +608,15 @@ export function fmtClock(ms) {
   const s = total % 60
   const ss = String(s).padStart(2, '0')
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`
+}
+
+// Workout length for lists: "48 min", "1 h 05 min", "45 s".
+export function fmtDuration(sec) {
+  const s = Math.max(0, Math.round(sec || 0))
+  if (s < 60) return `${s} s`
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min`
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`
 }
 
 export function fmtNum(n) {

@@ -5,10 +5,10 @@ import { useMemo, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { TEMPLATES, findExercise } from '../lib/exercises.js'
 import {
-  buildSession, describeSets, estimateMinutes, fmtClock, fmtNum, lastDoneDate,
-  pickNextRoutine, startReady, weekStreak, weekSummary,
+  buildSession, describeSets, estimateMinutes, fmtDuration, fmtNum, lastDoneDate,
+  pickNextRoutine, routineMuscles, startReady, weekStreak, weekSummary,
 } from '../lib/workout.js'
-import { addDays, labelForKey } from '../lib/date.js'
+import { addDays, inlineLabel, labelForKey } from '../lib/date.js'
 import { unlockAudio } from '../lib/coach.js'
 import PageHeader from '../components/PageHeader.jsx'
 import Icon from '../components/Icon.jsx'
@@ -19,6 +19,16 @@ import { MuscleTag } from '../components/workout/Controls.jsx'
 import { EFFORT } from '../components/workout/WorkoutSummary.jsx'
 
 const DAY_LETTERS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+
+// Icon and accent for each starter routine card.
+const TEMPLATE_STYLE = {
+  'tpl-full-body': { icon: 'dumbbell', tint: 'bg-brand-soft text-brand' },
+  'tpl-upper': { icon: 'arrowUp', tint: 'bg-protein/15 text-protein' },
+  'tpl-lower': { icon: 'arrowDown', tint: 'bg-water/15 text-[#1F7AD6] dark:text-water' },
+  'tpl-hiit': { icon: 'zap', tint: 'bg-carbs/15 text-[#B87400] dark:text-carbs' },
+  'tpl-core': { icon: 'target', tint: 'bg-fat/15 text-fat' },
+  'tpl-mobility': { icon: 'sprout', tint: 'bg-success/15 text-success' },
+}
 
 export default function Workouts({ onOpenPlayer }) {
   const { state, dispatch, today } = useApp()
@@ -67,11 +77,16 @@ export default function Workouts({ onOpenPlayer }) {
               {week.count}
               <span className="text-sm font-semibold text-muted"> / {prefs.weeklyGoal} workouts</span>
             </p>
+            <p className={`mt-0.5 text-[13px] font-medium ${week.count >= prefs.weeklyGoal ? 'text-brand' : 'text-muted'}`}>
+              {week.count >= prefs.weeklyGoal
+                ? 'Goal reached. Nice work!'
+                : `${prefs.weeklyGoal - week.count} more to hit your goal`}
+            </p>
           </div>
           {streak > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-carbs/15 px-2.5 py-1 text-[13px] font-semibold text-[#B87400] dark:text-carbs">
+            <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-carbs/15 px-2.5 py-1 text-[13px] font-semibold text-[#B87400] dark:text-carbs">
               <Icon name="flame" size={15} />
-              {streak} week{streak === 1 ? '' : 's'} on goal
+              {streak} wk streak
             </span>
           )}
         </div>
@@ -83,12 +98,16 @@ export default function Workouts({ onOpenPlayer }) {
             const key = addDays(week.start, i)
             const did = week.days.has(key)
             const isToday = key === today
+            const future = key > today
             return (
               <div key={i} className="flex flex-col items-center gap-1">
-                <span className={`text-[11px] font-semibold ${isToday ? 'text-ink' : 'text-muted'}`}>{d}</span>
+                <span className={`text-[11px] font-semibold ${isToday ? 'text-brand' : 'text-muted'}`}>{d}</span>
                 <span
-                  className={`flex h-7 w-7 items-center justify-center rounded-full ${
-                    did ? 'bg-brand text-on-brand' : isToday ? 'ring-2 ring-inset ring-brand/40' : 'bg-surface2'
+                  className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                    did ? 'bg-brand text-on-brand shadow-brand'
+                      : isToday ? 'ring-2 ring-inset ring-brand/50'
+                      : future ? 'border border-dashed border-line'
+                      : 'bg-surface2'
                   }`}
                 >
                   {did && <Icon name="check" size={14} strokeWidth={3} />}
@@ -98,9 +117,18 @@ export default function Workouts({ onOpenPlayer }) {
           })}
         </div>
         {(week.minutes > 0 || week.volume > 0) && (
-          <p className="mt-3 border-t border-line pt-3 text-[13px] text-muted">
-            {week.minutes} min trained{week.volume > 0 ? ` · ${fmtNum(week.volume)} ${state.settings.weightUnit} lifted` : ''}
-          </p>
+          <div className="mt-3 flex gap-4 border-t border-line pt-3 text-[13px] text-muted">
+            <span className="flex items-center gap-1.5">
+              <Icon name="clock" size={15} />
+              <span><span className="font-semibold text-ink">{week.minutes}</span> min trained</span>
+            </span>
+            {week.volume > 0 && (
+              <span className="flex items-center gap-1.5">
+                <Icon name="dumbbell" size={15} />
+                <span><span className="font-semibold text-ink">{fmtNum(week.volume)}</span> {state.settings.weightUnit} lifted</span>
+              </span>
+            )}
+          </div>
         )}
       </section>
 
@@ -118,13 +146,23 @@ export default function Workouts({ onOpenPlayer }) {
         </button>
       ) : next && (
         <section className="card mt-3 overflow-hidden">
-          <div className="p-4">
-            <p className="text-[13px] font-semibold text-brand">Up next for you</p>
-            <p className="mt-0.5 text-xl font-bold tracking-tight text-ink">{next.name}</p>
-            <p className="mt-0.5 text-[14px] text-muted">
-              {next.items.length} exercises · about {estimateMinutes(next)} min
-              {lastDoneDate(workouts, next.id) ? ` · last done ${labelForKey(lastDoneDate(workouts, next.id)).toLowerCase()}` : ''}
-            </p>
+          <div className="relative p-4">
+            {/* Soft brand wash so the suggestion stands out from the other cards */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-brand-soft via-transparent to-transparent" aria-hidden="true" />
+            <div className="relative">
+              <p className="flex items-center gap-1.5 text-[13px] font-semibold text-brand">
+                <Icon name="star" size={14} />
+                Up next for you
+              </p>
+              <p className="mt-0.5 text-xl font-bold tracking-tight text-ink">{next.name}</p>
+              <p className="mt-0.5 text-[14px] text-muted">
+                {next.items.length} exercises · about {estimateMinutes(next)} min
+                {lastDoneDate(workouts, next.id) ? ` · last done ${inlineLabel(lastDoneDate(workouts, next.id))}` : ' · not done yet'}
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {routineMuscles(next, state.customExercises).map((m) => <MuscleTag key={m} muscle={m} />)}
+              </div>
+            </div>
           </div>
           <div className="flex gap-2 border-t border-line p-3">
             <button onClick={() => setPreview(next)} className="btn-secondary flex-1">Preview</button>
@@ -154,6 +192,7 @@ export default function Workouts({ onOpenPlayer }) {
             <RoutineCard
               key={r.id}
               routine={r}
+              muscles={routineMuscles(r, state.customExercises)}
               lastDone={lastDoneDate(workouts, r.id)}
               onOpen={() => setPreview(r)}
               onStart={() => start(r)}
@@ -172,21 +211,30 @@ export default function Workouts({ onOpenPlayer }) {
 
       {/* Starters */}
       <h2 className="section-title mb-2 mt-7">Starter routines</h2>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
-        {TEMPLATES.map((t) => (
+      <div className="no-scrollbar -mx-4 flex snap-x scroll-px-4 gap-3 overflow-x-auto px-4 pb-2 pt-0.5">
+        {TEMPLATES.map((t) => {
+          const style = TEMPLATE_STYLE[t.id] || TEMPLATE_STYLE['tpl-full-body']
+          return (
           <button
             key={t.id}
             onClick={() => setPreview(t)}
             className="card flex w-56 shrink-0 snap-start flex-col p-4 text-left transition-colors hover:border-brand/40"
           >
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{t.level}</span>
-            <span className="mt-1 text-[16px] font-bold leading-snug text-ink">{t.name}</span>
+            <span className="flex items-center justify-between">
+              <span className={`flex h-9 w-9 items-center justify-center rounded-xl ${style.tint}`}>
+                <Icon name={style.icon} size={18} strokeWidth={2.2} />
+              </span>
+              <span className="rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink2">{t.level}</span>
+            </span>
+            <span className="mt-3 text-[16px] font-bold leading-snug text-ink">{t.name}</span>
             <span className="mt-1 line-clamp-2 text-[13px] text-ink2">{t.blurb}</span>
-            <span className="mt-auto pt-3 text-[13px] font-semibold text-brand">
+            <span className="mt-auto flex items-center gap-1.5 pt-3 text-[13px] font-semibold text-brand">
+              <Icon name="clock" size={14} />
               {estimateMinutes(t)} min · {t.circuit ? 'Circuit' : `${t.items.length} exercises`}
             </span>
           </button>
-        ))}
+          )
+        })}
       </div>
 
       {/* History */}
@@ -196,14 +244,15 @@ export default function Workouts({ onOpenPlayer }) {
       ) : (
         <div className="card divide-y divide-line overflow-hidden">
           {(showAll ? history : history.slice(0, 6)).map((w) => (
-            <button key={w.id} onClick={() => setDetail(w)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface2">
+            <button key={w.id} onClick={() => setDetail(w)} className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-surface2 active:bg-surface2">
+              <DateBadge date={w.date} />
               <div className="min-w-0 flex-1">
                 <p className="flex items-center gap-1.5 truncate text-[15px] font-semibold text-ink">
                   {w.name}
                   {w.records?.length > 0 && <Icon name="trophy" size={14} className="shrink-0 text-carbs" />}
                 </p>
                 <p className="text-[13px] text-muted">
-                  {labelForKey(w.date)} · {fmtClock(w.durationSec * 1000)} · {w.totals.sets} sets
+                  {fmtDuration(w.durationSec)} · {w.totals.sets} sets
                   {w.totals.volume > 0 ? ` · ${fmtNum(w.totals.volume)} ${w.unit}` : ''}
                 </p>
               </div>
@@ -242,7 +291,20 @@ export default function Workouts({ onOpenPlayer }) {
   )
 }
 
-function RoutineCard({ routine, lastDone, onOpen, onStart }) {
+// Small calendar tile: weekday over day number.
+function DateBadge({ date }) {
+  const d = new Date(`${date}T12:00:00`)
+  return (
+    <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl bg-surface2 leading-none">
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+        {d.toLocaleDateString(undefined, { weekday: 'short' })}
+      </span>
+      <span className="mt-0.5 text-[16px] font-bold tabular-nums text-ink">{d.getDate()}</span>
+    </span>
+  )
+}
+
+function RoutineCard({ routine, muscles, lastDone, onOpen, onStart }) {
   return (
     <div className="card flex items-center gap-3 p-3 pl-4">
       <button onClick={onOpen} className="min-w-0 flex-1 text-left">
@@ -250,8 +312,13 @@ function RoutineCard({ routine, lastDone, onOpen, onStart }) {
         <p className="truncate text-[13px] text-muted">
           {routine.items.length} exercises · ~{estimateMinutes(routine)} min
           {routine.circuit ? ' · circuit' : ''}
-          {lastDone ? ` · ${labelForKey(lastDone).toLowerCase()}` : ' · not done yet'}
+          {lastDone ? ` · ${inlineLabel(lastDone)}` : ' · not done yet'}
         </p>
+        {muscles.length > 0 && (
+          <span className="mt-1.5 flex flex-wrap gap-1">
+            {muscles.slice(0, 4).map((m) => <MuscleTag key={m} muscle={m} />)}
+          </span>
+        )}
       </button>
       <button onClick={onStart} className="btn-primary h-10 w-10 shrink-0 rounded-full p-0" aria-label={`Start ${routine.name}`}>
         <Icon name="play" size={16} />
@@ -346,7 +413,7 @@ function WorkoutDetail({ workout, onClose, onRepeat }) {
           {labelForKey(workout.date)} at {started.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
         </p>
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MiniStat label="Time" value={fmtClock(workout.durationSec * 1000)} />
+          <MiniStat label="Time" value={fmtDuration(workout.durationSec)} />
           <MiniStat label="Sets" value={workout.totals.sets} />
           <MiniStat label={workout.totals.volume > 0 ? 'Volume' : 'Reps'} value={workout.totals.volume > 0 ? fmtNum(workout.totals.volume) : workout.totals.reps} />
         </div>

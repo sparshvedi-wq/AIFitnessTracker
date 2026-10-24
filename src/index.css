@@ -2,29 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { color-scheme: light; }
-.dark { color-scheme: dark; }
-
-html, body, #root {
-  height: 100%;
+/* ── Tally · Ink ───────────────────────────────────────────────
+   Near-black ground, warm paper for text and hero cards, one ice-blue
+   accent. RGB triplets so Tailwind can apply opacity (bg-accent/15). */
+:root {
+  color-scheme: dark;
+  --bg: 19 20 22;          /* #131416 */
+  --surface: 27 28 31;     /* #1B1C1F cards */
+  --surface-2: 36 37 42;   /* #24252A chips, tiles inside cards */
+  --raised: 44 45 51;
+  --line: 42 43 48;        /* #2A2B30 */
+  --outline: 58 59 64;     /* #3A3B40 */
+  --ink: 236 233 226;      /* #ECE9E2 */
+  --ink-2: 185 181 172;    /* #B9B5AC */
+  --muted: 163 160 152;    /* #A3A098 */
+  --faint: 128 125 118;    /* #807D76 */
+  --paper-muted: 94 91 85; /* #5E5B55 */
+  --paper-chip: 220 216 206;
+  --accent: 122 162 255;   /* #7AA2FF */
+  --accent-2: 93 127 204;  /* #5D7FCC */
+  --brand-soft: 33 41 61;
+  --danger: 255 122 110;
 }
 
-/* Base body colors — expressed as plain utilities so Tailwind JIT picks them up */
+html, body, #root { height: 100%; }
+
 body {
   margin: 0;
-  @apply antialiased;
+  @apply bg-bg font-sans text-ink antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Spinner removal */
-input[type='number']::-webkit-inner-spin-button,
-input[type='number']::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+@layer components {
+  .card { @apply rounded-tuck bg-surface; }
+
+  /* Numbers: lining, even-width figures */
+  .num { @apply font-num font-medium leading-none; font-variant-numeric: lining-nums tabular-nums; font-variation-settings: 'SOFT' 50, 'WONK' 0; }
+  /* Small muted label (sentence case, never caps) */
+  .eyebrow { @apply text-[13px] font-normal text-muted; }
+  .h-page { @apply font-display text-[34px] leading-[1.1] text-ink; }
+  .section-title { @apply font-display text-[22px] leading-tight text-ink; }
+
+  .field-label { @apply mb-1.5 block text-[13px] font-medium text-ink2; }
+  .input {
+    @apply w-full rounded-2xl border border-transparent bg-surface2 px-4 py-3 text-[15px] text-ink
+      placeholder:text-faint transition-colors focus:border-accent/70 focus:outline-none;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-btn px-5 py-3 text-[15px] font-bold
+      transition-all active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-primary { @apply btn bg-ink text-on-paper; }
+  .btn-accent { @apply btn bg-accent text-on-accent; }
+  .btn-secondary { @apply btn rounded-full border-[1.5px] border-outline bg-transparent font-semibold text-ink; }
+  .btn-ghost { @apply btn rounded-full font-semibold text-ink2 hover:bg-surface2; }
+  .btn-danger { @apply btn rounded-full bg-danger text-on-accent; }
+  .btn-danger-ghost { @apply btn rounded-full font-semibold text-danger hover:bg-danger/10; }
+
+  .icon-btn {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface text-ink transition-colors active:bg-surface2;
+  }
+
+  .segmented { @apply grid auto-cols-fr grid-flow-col rounded-2xl bg-surface p-1; }
+  .segment { @apply flex h-[34px] items-center justify-center rounded-xl text-[13px] font-semibold text-muted transition-all; }
+  .segment-active { @apply bg-ink font-bold text-on-paper; }
+
+  .chip {
+    @apply inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-surface px-3.5 text-[13px] font-semibold text-ink2 transition-colors;
+  }
+  .chip-active { @apply bg-ink text-on-paper; }
+
+  .pill { @apply inline-flex h-7 items-center rounded-full bg-surface2 px-[11px] text-[13px] font-semibold text-ink; }
+  .pill-paper { @apply pill bg-paper-chip text-on-paper; }
+  .badge { @apply inline-flex h-5 items-center rounded-full bg-accent/15 px-2 text-[11px] font-bold text-accent; }
+
+  /* Circle with a perfectly centred number or icon */
+  .dot { @apply flex shrink-0 items-center justify-center rounded-full leading-none; }
+
+  .tag { @apply inline-flex items-center rounded-full bg-surface2 px-2.5 py-0.5 text-[12px] font-medium text-ink2; }
+
+  .row-line + .row-line { @apply border-t border-line; }
 }
+
+:where(button, a, [role='switch'], input[type='checkbox']):focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type='number'] { -moz-appearance: textfield; }
 
-/* Scrollbar styling */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { @apply bg-slate-300 dark:bg-slate-600 rounded-full; }
-::-webkit-scrollbar-thumb:hover { @apply bg-slate-400 dark:bg-slate-500; }
+::-webkit-scrollbar-thumb { @apply rounded-full bg-line; }
+
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }

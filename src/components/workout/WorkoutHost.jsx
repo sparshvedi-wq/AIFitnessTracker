@@ -100,20 +100,19 @@ function MiniBar({ session, now, onOpen }) {
   else if (cur) status = `${cur.ex.name} · set ${session.cursor.set + 1} of ${cur.ex.sets.length}`
 
   return (
-    <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+64px)] z-30 px-3 animate-slide-up">
+    <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+76px)] z-30 px-3 animate-slide-up">
       <button
         onClick={onOpen}
-        className="mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl bg-ink px-4 py-3 text-left text-surface shadow-float"
+        className="mx-auto flex w-full max-w-xl items-center gap-3 rounded-btn bg-accent py-2.5 pl-2.5 pr-4 text-left text-on-accent shadow-float"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent text-on-accent">
-          <Icon name="dumbbell" size={20} strokeWidth={2.2} />
+        <span className="dot h-9 w-9 bg-on-accent text-accent">
+          <Icon name="play" size={13} filled strokeWidth={0} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold">{session.name}</span>
-          <span className="block truncate text-[13px] opacity-70">{status}</span>
+          <span className="block truncate text-[15px] font-bold">{session.name}</span>
+          <span className="block truncate text-[12px] opacity-75">{status}</span>
         </span>
-        <span className="text-[15px] font-semibold tabular-nums opacity-80">{fmtClock(elapsedMs(session, now))}</span>
-        <Icon name="chevronRight" size={18} className="opacity-60" />
+        <span className="num text-[16px]">{fmtClock(elapsedMs(session, now))}</span>
       </button>
     </div>
   )

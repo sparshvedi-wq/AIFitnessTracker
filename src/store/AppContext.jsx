@@ -10,6 +10,7 @@ import {
 import { loadState, saveState, defaultState, normalizeState, gramGoalsFromPercent } from '../lib/storage.js'
 import { uid } from '../lib/id.js'
 import { todayKey } from '../lib/date.js'
+import { makeSampleWeights, makeSampleWorkouts } from '../lib/sample.js'
 
 const AppContext = createContext(null)
 
@@ -135,6 +136,28 @@ function reducer(state, action) {
         workouts: [...state.workouts, action.workout].sort((a, b) => a.startedAt - b.startedAt),
       }
 
+    // Load or remove the preview history from lib/sample.js
+    case 'SET_SAMPLE': {
+      if (action.on) {
+        const weights = makeSampleWeights()
+        const metrics = { ...state.metrics }
+        for (const [date, weight] of Object.entries(weights)) {
+          if (metrics[date]?.weight == null) metrics[date] = { ...(metrics[date] || {}), weight, sampleWeight: true }
+        }
+        return {
+          ...state,
+          sample: true,
+          metrics,
+          workouts: [...state.workouts.filter((w) => !w.sample), ...makeSampleWorkouts()].sort((a, b) => a.startedAt - b.startedAt),
+        }
+      }
+      const metrics = {}
+      for (const [date, m] of Object.entries(state.metrics)) {
+        metrics[date] = m.sampleWeight ? { ...m, weight: null, sampleWeight: false } : m
+      }
+      return { ...state, sample: false, metrics, workouts: state.workouts.filter((w) => !w.sample) }
+    }
+
     case 'IMPORT_STATE':
       return normalizeState(action.state)
 
@@ -146,29 +169,11 @@ function reducer(state, action) {
   }
 }
 
-// Apply 'dark' class to <html> based on the theme setting + OS preference.
-function applyTheme(pref) {
-  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-  const isDark = pref === 'dark' || (pref === 'system' && prefersDark)
-  document.documentElement.classList.toggle('dark', isDark)
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isDark ? '#08080A' : '#F0F0EB')
-}
-
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, undefined, loadState)
   const [toasts, setToasts] = useState([])
 
   useEffect(() => { saveState(state) }, [state])
-
-  // Re-apply theme whenever the setting changes or OS preference changes
-  useEffect(() => {
-    const pref = state.settings.theme || 'system'
-    applyTheme(pref)
-    const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onChange = () => applyTheme(pref)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [state.settings.theme])
 
   const toast = useCallback((message, kind = 'success', action = null) => {
     const id = uid()

@@ -480,9 +480,14 @@ export function lastDoneDate(workouts, routineId) {
   return null
 }
 
-// Suggest the routine you've gone longest without doing.
+// Suggest the routine you've gone longest without doing. With only starter
+// routines to pick from, stick to the ones you've actually done.
 export function pickNextRoutine(routines, workouts) {
   if (!routines.length) return null
+  if (routines.every((r) => String(r.id).startsWith('tpl-'))) {
+    const done = routines.filter((r) => lastDoneDate(workouts, r.id))
+    if (done.length) routines = done
+  }
   let best = null
   let bestDate = null
   for (const r of routines) {
@@ -620,7 +625,10 @@ export function fmtDuration(sec) {
 }
 
 export function fmtNum(n) {
-  return Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 1 })
+  const v = Math.round(Number(n || 0) * 10) / 10
+  const [int, dec] = String(Math.abs(v)).split('.')
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return (v < 0 ? '-' : '') + grouped + (dec ? '.' + dec : '')
 }
 
 // "3 × 10 @ 60 lb", "3 × 40s"

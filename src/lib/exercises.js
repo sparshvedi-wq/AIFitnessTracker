@@ -73,28 +73,54 @@ const t = (exId, sets, sec, restSec) => ({ exId, sets, sec, restSec })
 // Starter routines. `circuit` routines run one set of every exercise per round.
 export const TEMPLATES = [
   {
+    id: 'tpl-push',
+    name: 'Push day',
+    blurb: 'Chest, shoulders and triceps.',
+    level: 'Intermediate',
+    tag: 'Push',
+    icon: 'push',
+    items: [r('bench-press', 4, 8, 120), r('ohp', 3, 10, 90), r('db-bench', 3, 10, 90), r('lateral-raise', 3, 12, 60), r('triceps-pushdown', 3, 12, 60)],
+  },
+  {
+    id: 'tpl-pull',
+    name: 'Pull day',
+    blurb: 'Back and biceps, with face pulls for healthy shoulders.',
+    level: 'Intermediate',
+    tag: 'Pull',
+    icon: 'pull',
+    items: [r('pull-up', 4, 6, 120), r('barbell-row', 4, 8, 120), r('lat-pulldown', 3, 10, 90), r('face-pull', 3, 15, 60), r('biceps-curl', 3, 12, 60)],
+  },
+  {
     id: 'tpl-full-body',
-    name: 'Full body basics',
+    tag: 'Full body',
+    icon: 'full',
+    name: 'Full body',
     blurb: 'Five moves that cover everything. Great first workout.',
     level: 'Beginner',
     items: [r('goblet-squat', 3, 10, 60), r('push-up', 3, 10, 60), r('db-row', 3, 10, 60), r('glute-bridge', 3, 12, 45), t('plank', 3, 30, 45)],
   },
   {
     id: 'tpl-upper',
-    name: 'Upper body strength',
+    tag: 'Upper',
+    icon: 'upper',
+    name: 'Upper body',
     blurb: 'Press, pull and arms with longer rests for heavier sets.',
     level: 'Intermediate',
     items: [r('bench-press', 4, 8, 120), r('barbell-row', 4, 8, 120), r('ohp', 3, 10, 90), r('lat-pulldown', 3, 10, 90), r('biceps-curl', 3, 12, 60), r('triceps-pushdown', 3, 12, 60)],
   },
   {
     id: 'tpl-lower',
-    name: 'Lower body strength',
+    tag: 'Legs',
+    icon: 'legs',
+    name: 'Leg day',
     blurb: 'Squat, hinge and single-leg work.',
     level: 'Intermediate',
     items: [r('back-squat', 4, 6, 150), r('rdl', 3, 8, 120), r('lunge', 3, 10, 90), r('calf-raise', 3, 15, 60), t('side-plank', 2, 40, 30)],
   },
   {
     id: 'tpl-hiit',
+    tag: 'Conditioning',
+    icon: 'zap',
     name: '20-minute HIIT',
     blurb: 'Bodyweight circuit, 40 seconds on, 20 off, three rounds.',
     level: 'All levels',
@@ -103,6 +129,8 @@ export const TEMPLATES = [
   },
   {
     id: 'tpl-core',
+    tag: 'Conditioning',
+    icon: 'target',
     name: 'Core circuit',
     blurb: 'Ten minutes of planks, holds and twists.',
     level: 'All levels',
@@ -111,9 +139,13 @@ export const TEMPLATES = [
   },
   {
     id: 'tpl-mobility',
+    tag: 'Conditioning',
+    icon: 'sprout',
     name: 'Mobility reset',
     blurb: 'Gentle stretches for rest days or after a session.',
     level: 'All levels',
     items: [t('cat-cow', 1, 60, 10), t('worlds-greatest', 1, 60, 10), t('hip-flexor', 1, 60, 10), t('hamstring-stretch', 1, 60, 10), t('childs-pose', 1, 60, 0)],
   },
 ]
+
+export const ROUTINE_TAGS = ['Push', 'Pull', 'Legs', 'Upper', 'Full body', 'Conditioning']

@@ -25,6 +25,10 @@ export function defaultState() {
       macroPercent: { protein: 30, carbs: 40, fat: 30 },
       waterGoal: 8,
       weightUnit: 'lb',
+      // Shown on Home ("Evening, Sid.") and the You tab
+      name: '',
+      // Strength goal on the You tab
+      liftGoal: { exId: 'bench-press', target: 225 },
       // 'system' | 'light' | 'dark'. Tally is dark-first.
       theme: 'dark',
       workout: {

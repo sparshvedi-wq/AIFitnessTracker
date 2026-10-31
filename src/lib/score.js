@@ -16,11 +16,18 @@ const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n))
 function windowStats(workouts, from, to) {
   let sessions = 0
   let volume = 0
+  const days = new Set()
   for (const w of workouts) {
-    if (w.date < from || w.date > to) continue
-    sessions++
+    if (w.sample || w.date < from || w.date > to) continue
+    if (
+      ['sport', 'recovery', 'pump'].includes(w.kind) ||
+      !w.exercises?.some((e) => e.sets?.some((s) => s.kind !== 'warmup'))
+    )
+      continue
+    days.add(w.date)
     volume += w.totals?.volume || 0
   }
+  sessions = days.size
   return { sessions, volume }
 }
 

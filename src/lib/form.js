@@ -16,17 +16,101 @@ const MUSCLES = {
 }
 
 const BY_EXERCISE = {
+  'seated-knee-extension': {
+    muscles: { primary: 'Quads', secondary: 'Gentle knee movement; no added load' },
+    mistakes: [
+      'Kicking or swinging the leg',
+      'Forcing the knee straight',
+      'Using a rolling or unstable chair',
+    ],
+  },
+  'seated-heel-raise': {
+    muscles: { primary: 'Calves', secondary: 'Gentle ankle control' },
+    mistakes: ['Bouncing the heels', 'Rushing the lowering phase', 'Using a chair that moves'],
+  },
+  'seated-scapular': {
+    muscles: { primary: 'Upper-back control', secondary: 'Light shoulder movement' },
+    mistakes: ['Shrugging toward the ears', 'Forcing the shoulder blades together', 'Arching the back'],
+  },
+  'seated-reach': {
+    muscles: { primary: 'Gentle shoulder movement', secondary: 'Upper-back control' },
+    mistakes: ['Forcing overhead range', 'Leaning backward to reach higher', 'Moving through discomfort'],
+  },
+  'seated-brace': {
+    muscles: { primary: 'Abdominal control', secondary: 'Upright seated posture' },
+    mistakes: [
+      'Holding your breath',
+      'Bracing as hard as possible',
+      'Leaning or slumping instead of sitting comfortably',
+    ],
+  },
+  'standing-brace': {
+    muscles: { primary: 'Abdominal control', secondary: 'Upright standing posture' },
+    mistakes: ['Holding your breath', 'Locking the knees', 'Leaning backward'],
+  },
+  'standing-w': {
+    muscles: { primary: 'Upper-back control', secondary: 'Light shoulder movement' },
+    mistakes: ['Shrugging the shoulders', 'Forcing the arms backward', 'Arching the lower back'],
+  },
+  'db-rdl': {
+    muscles: { primary: 'Hamstrings and glutes', secondary: 'Back, core and grip help keep control' },
+    mistakes: [
+      'Reaching down by rounding your back',
+      'Letting the dumbbells drift away',
+      'Using more range or weight than you can control',
+    ],
+  },
+  'db-overhead-press': {
+    muscles: { primary: 'Shoulders', secondary: 'Triceps and core' },
+    mistakes: [
+      'Arching your back to move the weights',
+      'Rushing the lowering phase',
+      'Pressing through discomfort',
+    ],
+  },
+  'quiet-march': {
+    muscles: { primary: 'Gentle whole-body movement', secondary: 'Legs and balance' },
+    mistakes: [
+      'Stamping instead of placing each foot softly',
+      'Holding your breath',
+      'Rushing beyond a comfortable pace',
+    ],
+  },
+  'quiet-step': {
+    muscles: { primary: 'Gentle leg movement and balance', secondary: 'Hip control' },
+    mistakes: [
+      'Hopping instead of stepping',
+      'Taking steps wider than you can control',
+      'Rushing a direction change',
+    ],
+  },
+  'quiet-squat': {
+    muscles: { primary: 'Quads and glutes', secondary: 'Core and balance' },
+    mistakes: ['Jumping between repetitions', 'Lifting your heels', 'Using an uncomfortable depth'],
+  },
   rdl: {
     muscles: { primary: 'Hamstrings and glutes', secondary: 'Lower back and grip' },
-    mistakes: ['Rounding your back to reach lower', 'Bending the knees into a squat', 'Letting the bar drift away from your legs'],
+    mistakes: [
+      'Rounding your back to reach lower',
+      'Bending the knees into a squat',
+      'Letting the bar drift away from your legs',
+    ],
   },
   'back-squat': {
     muscles: { primary: 'Quads and glutes', secondary: 'Hamstrings, adductors and core' },
-    mistakes: ['Knees caving in on the way up', 'Heels lifting off the floor', 'Cutting depth short as you tire'],
+    mistakes: [
+      'Knees caving in on the way up',
+      'Heels lifting off the floor',
+      'Cutting depth short as you tire',
+    ],
   },
   'bench-press': {
     muscles: { primary: 'Chest', secondary: 'Front shoulders and triceps' },
-    mistakes: ['Bouncing the bar off your chest', 'Flaring elbows straight out', 'Hips lifting off the bench'],
+    mistakes: [
+      'Bouncing the bar off your chest',
+      'Flaring elbows straight out',
+      'Hips lifting off the bench',
+    ],
   },
   deadlift: {
     muscles: { primary: 'Glutes, hamstrings and back', secondary: 'Quads, traps and grip' },
@@ -34,11 +118,19 @@ const BY_EXERCISE = {
   },
   ohp: {
     muscles: { primary: 'Shoulders', secondary: 'Triceps and upper chest' },
-    mistakes: ['Arching your lower back', 'Pressing the bar out in front', 'Not finishing with arms straight overhead'],
+    mistakes: [
+      'Arching your lower back',
+      'Pressing the bar out in front',
+      'Not finishing with arms straight overhead',
+    ],
   },
   'pull-up': {
     muscles: { primary: 'Lats', secondary: 'Biceps and mid back' },
-    mistakes: ['Kicking or swinging for momentum', 'Stopping short of a full hang', 'Shrugging shoulders to your ears'],
+    mistakes: [
+      'Kicking or swinging for momentum',
+      'Stopping short of a full hang',
+      'Shrugging shoulders to your ears',
+    ],
   },
   'barbell-row': {
     muscles: { primary: 'Mid back and lats', secondary: 'Rear shoulders and biceps' },
@@ -58,9 +150,25 @@ const BY_EXERCISE = {
   },
 }
 
-const GENERIC_MISTAKES = ['Rushing the lowering half of each rep', 'Losing your brace as you tire', 'Adding weight before the reps look clean']
+const GENERIC_MISTAKES = [
+  'Rushing the lowering half of each rep',
+  'Losing your brace as you tire',
+  'Adding weight before the reps look clean',
+]
 
 export function formGuide(exId, muscle) {
+  if (exId?.startsWith('wu-'))
+    return {
+      muscles: {
+        primary: 'Easy sport preparation',
+        secondary: 'Movement and control, rather than maximum effort',
+      },
+      mistakes: [
+        'Rushing into high-speed movement',
+        'Forcing a range that feels uncomfortable',
+        'Holding your breath instead of moving easily',
+      ],
+    }
   const own = BY_EXERCISE[exId] || {}
   return {
     muscles: own.muscles || MUSCLES[muscle] || { primary: muscle, secondary: '' },

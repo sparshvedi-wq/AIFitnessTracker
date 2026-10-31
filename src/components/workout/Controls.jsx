@@ -1,6 +1,7 @@
 // Small shared pieces for the workout screens.
 
 import Icon from '../Icon.jsx'
+export { Toggle } from '../Ink.jsx'
 
 // Big −/+ control for reps, weight and seconds. Tap to step, or type a
 // number directly.
@@ -47,7 +48,14 @@ export function TimerRing({ progress, size = 220, stroke = 12, color = 'rgb(var(
   return (
     <div className="relative mx-auto" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgb(var(--ink) / 0.09)" strokeWidth={stroke} />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="rgb(var(--ink) / 0.09)"
+          strokeWidth={stroke}
+        />
         <circle
           cx={size / 2}
           cy={size / 2}
@@ -63,20 +71,6 @@ export function TimerRing({ progress, size = 220, stroke = 12, color = 'rgb(var(
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
     </div>
-  )
-}
-
-export function Toggle({ checked, onChange, label }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-ink/15'}`}
-    >
-      <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-card transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
-    </button>
   )
 }
 

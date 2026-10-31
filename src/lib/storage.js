@@ -1,15 +1,20 @@
 import { todayKey } from './date.js'
+import { isNativeApp, persistNativeState, readNativeState } from './native.js'
+import { DEFAULT_PROFILE } from './planner.js'
+import { DEFAULT_DISPLAY } from './preferences.js'
+import { LEGACY_STORAGE_KEY, STORAGE_KEY, validateSnapshot } from '../../expo/src/protocol.js'
 
-export const STORAGE_KEY = 'calorie-tracker:v1'
-export const KCAL_PER_GRAM = { protein: 4, carbs: 4, fat: 9 }
+export { STORAGE_KEY }
+
+// Fields left over from the app's calorie-tracker origins. Old saves and
+// backups may still carry them; they are dropped when a save is opened.
+const RETIRED_KEYS = ['entries', 'foods']
+const RETIRED_SETTINGS = ['goals', 'useMacroPercent', 'macroPercent', 'waterGoal']
 
 export function defaultState() {
   return {
-    version: 1,
-    entries: [],
-    // foods: { id, name, calories, protein, carbs, fat, servingSize, favorite, usageCount }
-    foods: [],
-    // metrics: { [dateKey]: { water, weight, note } }
+    version: 2,
+    // metrics: { [dateKey]: { weight, sampleWeight } }
     metrics: {},
     // routines: your saved workout plans (see lib/workout.js)
     routines: [],
@@ -17,22 +22,21 @@ export function defaultState() {
     customExercises: [],
     // workouts: finished guided sessions, oldest first
     workouts: [],
+    checkins: [],
+    readiness: null,
     // activeWorkout: the session in progress, so a reload picks up where you left off
     activeWorkout: null,
     settings: {
-      goals: { calories: 2000, protein: 150, carbs: 200, fat: 67 },
-      useMacroPercent: false,
-      macroPercent: { protein: 30, carbs: 40, fat: 30 },
-      waterGoal: 8,
+      training: { ...DEFAULT_PROFILE },
+      display: { ...DEFAULT_DISPLAY },
       weightUnit: 'lb',
-      // Shown on Home ("Evening, Sid.") and the You tab
+      // Shown in the Home greeting and on the You tab
       name: '',
       // Strength goal on the You tab
-      liftGoal: { exId: 'bench-press', target: 225 },
-      // 'system' | 'light' | 'dark'. Tally is dark-first.
-      theme: 'dark',
+      liftGoal: null,
       workout: {
         weeklyGoal: 3,
+        goalMode: 'flexible',
         countdown: 5, // get-ready seconds before the first set
         sound: true,
         voice: true,
@@ -44,49 +48,59 @@ export function defaultState() {
   }
 }
 
+function readBrowserSave() {
+  // Older versions saved under the legacy key. It is read, never deleted.
+  return localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+}
+
 export function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = isNativeApp() ? readNativeState() : readBrowserSave()
     if (!raw) return defaultState()
-    return normalizeState(JSON.parse(raw))
+    return normalizeState(validateSnapshot(raw))
   } catch (err) {
-    console.error('Failed to load state, starting fresh:', err)
-    return defaultState()
+    console.error('Failed to load saved training:', err)
+    throw new Error('Your saved training could not be opened. The saved copy has not been replaced.')
   }
 }
+
+export const byDate = (a, b) =>
+  String(a.date).localeCompare(String(b.date)) || (a.startedAt ?? 0) - (b.startedAt ?? 0)
 
 // Fill in anything an older save or backup is missing.
 export function normalizeState(parsed) {
   const base = defaultState()
+  const state = { ...base, ...parsed }
+  for (const key of RETIRED_KEYS) delete state[key]
+  const settings = { ...base.settings, ...(parsed.settings || {}) }
+  for (const key of RETIRED_SETTINGS) delete settings[key]
   return {
-    ...base,
-    ...parsed,
+    ...state,
+    version: base.version,
     settings: {
-      ...base.settings,
-      ...(parsed.settings || {}),
-      goals: { ...base.settings.goals, ...(parsed.settings?.goals || {}) },
-      macroPercent: { ...base.settings.macroPercent, ...(parsed.settings?.macroPercent || {}) },
+      ...settings,
       workout: { ...base.settings.workout, ...(parsed.settings?.workout || {}) },
+      training: { ...DEFAULT_PROFILE, ...(parsed.settings?.training || {}) },
+      display: { ...DEFAULT_DISPLAY, ...(parsed.settings?.display || {}) },
     },
+    metrics: parsed.metrics || {},
     routines: parsed.routines || [],
     customExercises: parsed.customExercises || [],
-    workouts: parsed.workouts || [],
+    // Restored backups are not guaranteed to be in order; every screen assumes oldest first.
+    workouts: [...(parsed.workouts || [])].sort(byDate),
+    checkins: parsed.checkins || [],
     activeWorkout: parsed.activeWorkout || null,
   }
 }
 
 export function saveState(state) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    const raw = JSON.stringify(state)
+    if (isNativeApp()) return persistNativeState(raw)
+    localStorage.setItem(STORAGE_KEY, raw)
+    return Promise.resolve()
   } catch (err) {
     console.error('Failed to save state:', err)
-  }
-}
-
-export function gramGoalsFromPercent(calories, macroPercent) {
-  return {
-    protein: Math.round((calories * (macroPercent.protein / 100)) / KCAL_PER_GRAM.protein),
-    carbs: Math.round((calories * (macroPercent.carbs / 100)) / KCAL_PER_GRAM.carbs),
-    fat: Math.round((calories * (macroPercent.fat / 100)) / KCAL_PER_GRAM.fat),
+    return Promise.reject(err)
   }
 }

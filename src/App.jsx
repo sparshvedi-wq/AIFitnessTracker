@@ -1,7 +1,7 @@
 // App shell: four tabs (Home, Train, History, You), plus the active workout,
 // which keeps running above whichever tab is open.
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Home from './pages/Home.jsx'
 import Train from './pages/Train.jsx'
 import History from './pages/History.jsx'
@@ -10,6 +10,37 @@ import WorkoutHost from './components/workout/WorkoutHost.jsx'
 import { useApp } from './store/AppContext.jsx'
 import ToastHost from './components/Toast.jsx'
 import Icon from './components/Icon.jsx'
+import SessionSetup from './components/training/SessionSetup.jsx'
+import TrainingProfile from './components/training/TrainingProfile.jsx'
+import PhotoCheckins from './components/training/PhotoCheckins.jsx'
+import PersonalSettings from './components/training/PersonalSettings.jsx'
+import { displayOf } from './lib/preferences.js'
+import TrainingEvents from './components/training/TrainingEvents.jsx'
+import { ONBOARDING_VERSION } from './lib/onboarding.js'
+import { shortSessionRequest } from './lib/flexible-training.js'
+import { photoDraft } from './lib/photo-draft.js'
+
+// Follows the Appearance setting; "system" tracks the device and updates live.
+function useTheme(preference = 'system') {
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const apply = () => {
+      const dark = preference === 'dark' || (preference !== 'light' && media.matches)
+      document.documentElement.classList.toggle('dark', dark)
+      document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().split(/\s+/)
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', `rgb(${bg.join(',')})`)
+      try {
+        localStorage.setItem('tally:theme', preference)
+      } catch {
+        // Only a first-paint hint; the saved setting is the source of truth.
+      }
+    }
+    apply()
+    media.addEventListener('change', apply)
+    return () => media.removeEventListener('change', apply)
+  }, [preference])
+}
 
 const TABS = [
   { id: 'home', label: 'Home', icon: 'home' },
@@ -19,28 +50,85 @@ const TABS = [
 ]
 
 export default function App() {
-  const { state } = useApp()
+  const { state, dispatch, toast } = useApp()
   const [tab, setTab] = useState('home')
+  const [setup, setSetup] = useState(null)
+  const [profileOpen, setProfileOpen] = useState(
+    !state.settings.training.completed ||
+      (state.settings.training.onboardingVersion || 0) < ONBOARDING_VERSION,
+  )
+  const [eventsOpen, setEventsOpen] = useState(null)
+  const [photosOpen, setPhotosOpen] = useState(false)
+  const [photoId, setPhotoId] = useState(null)
+  const [personalOpen, setPersonalOpen] = useState(false)
+  const display = displayOf(state)
   // Reopen the player after a reload if a workout was in progress.
   const [playerOpen, setPlayerOpen] = useState(() => Boolean(state.activeWorkout))
 
+  useTheme(state.settings.theme)
+  // Erasing all data returns to first-run setup.
+  const needsSetup = !state.settings.training.completed
+  useEffect(() => {
+    if (needsSetup) setProfileOpen(true)
+  }, [needsSetup])
+
+  // Each tab keeps its scroll position; tapping the current tab returns to its top.
+  const scrollByTab = useRef({})
   const go = (id) => {
+    if (id === tab) {
+      window.scrollTo({ top: 0, behavior: display.reducedMotion ? 'auto' : 'smooth' })
+      return
+    }
+    scrollByTab.current[tab] = window.scrollY
     setTab(id)
-    window.scrollTo(0, 0)
+    requestAnimationFrame(() => window.scrollTo(0, scrollByTab.current[id] || 0))
   }
-  const nav = { go, openPlayer: () => setPlayerOpen(true) }
+  const resetTesting = (stage) => {
+    if (!['onboarding', 'after-onboarding'].includes(stage)) return
+    void photoDraft('clear').catch(() => {})
+    dispatch({ type: 'RESET_TESTING', stage })
+    setSetup(null)
+    setPlayerOpen(false)
+    setPhotosOpen(false)
+    setProfileOpen(stage === 'onboarding')
+    scrollByTab.current = {}
+    setTab('home')
+    window.scrollTo(0, 0)
+    toast(
+      stage === 'onboarding' ? 'Fresh start at onboarding' : 'Fresh dashboard · training preferences kept',
+      'info',
+    )
+  }
+  const nav = {
+    go,
+    openPlayer: () => setPlayerOpen(true),
+    prepareWorkout: setSetup,
+    openProfile: () => setProfileOpen(true),
+    openCheckins: (id) => {
+      setPhotoId(typeof id === 'string' ? id : null)
+      setPhotosOpen(true)
+    },
+    openPersonal: () => setPersonalOpen(true),
+    openEvents: (initial = 'list') => setEventsOpen(initial),
+    openSportSchedule: () => setEventsOpen('list'),
+    resetTesting,
+  }
 
   return (
-    <div className="min-h-full bg-bg text-ink">
+    <div
+      className={`min-h-full bg-bg text-ink ${display.largeText ? 'tally-large-text' : ''} ${display.reducedMotion ? 'tally-reduce-motion' : ''}`}
+    >
       <div className="mx-auto flex min-h-full max-w-xl flex-col">
-        <main className={`flex-1 px-[22px] pt-[max(env(safe-area-inset-top),20px)] ${state.activeWorkout ? 'pb-44' : 'pb-28'}`}>
+        <main
+          className={`flex-1 px-[22px] pt-[max(env(safe-area-inset-top),20px)] ${state.activeWorkout && tab !== 'home' ? 'pb-44' : 'pb-28'}`}
+        >
           {tab === 'home' && <Home nav={nav} />}
           {tab === 'train' && <Train nav={nav} />}
           {tab === 'history' && <History nav={nav} />}
           {tab === 'you' && <You nav={nav} />}
         </main>
 
-        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-[#222327] bg-bg pb-safe">
+        <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 pb-safe backdrop-blur">
           <div className="mx-auto grid max-w-xl grid-cols-4 px-3 pb-3 pt-2.5">
             {TABS.map((t) => {
               const on = tab === t.id
@@ -49,9 +137,9 @@ export default function App() {
                   key={t.id}
                   onClick={() => go(t.id)}
                   aria-current={on ? 'page' : undefined}
-                  className={`flex flex-col items-center gap-[5px] text-[12px] transition-colors ${on ? 'font-bold text-accent' : 'font-medium text-[#8A877F]'}`}
+                  className={`flex min-h-14 flex-col items-center justify-center gap-[5px] text-[12px] transition-colors ${on ? 'font-semibold text-accent' : 'font-medium text-muted'}`}
                 >
-                  <Icon name={t.icon} size={26} strokeWidth={1.8} />
+                  <Icon name={t.icon} size={24} strokeWidth={1.8} />
                   {t.label}
                 </button>
               )
@@ -59,7 +147,56 @@ export default function App() {
           </div>
         </nav>
 
-        <WorkoutHost open={playerOpen} setOpen={setPlayerOpen} />
+        <WorkoutHost
+          open={playerOpen}
+          setOpen={setPlayerOpen}
+          showMiniBar={tab !== 'home'}
+          onPreviewShort={() => {
+            go('train')
+            setSetup(shortSessionRequest())
+          }}
+        />
+        {setup && (
+          <SessionSetup
+            routine={setup}
+            onClose={() => setSetup(null)}
+            onStart={() => {
+              setSetup(null)
+              setPlayerOpen(true)
+            }}
+          />
+        )}
+        {profileOpen && (
+          <TrainingProfile onClose={() => setProfileOpen(false)} onPhotos={() => setPhotosOpen(true)} />
+        )}
+        {eventsOpen && (
+          <TrainingEvents
+            initial={eventsOpen}
+            onClose={() => setEventsOpen(null)}
+            onPrepare={(event) => {
+              setEventsOpen(null)
+              setSetup(
+                event.kind === 'occasion'
+                  ? { kind: 'pump', event, items: [] }
+                  : { kind: 'adaptive', event, items: [] },
+              )
+            }}
+          />
+        )}
+        {photosOpen && <PhotoCheckins initialId={photoId} onClose={() => setPhotosOpen(false)} />}
+        {personalOpen && (
+          <PersonalSettings
+            onSetup={() => {
+              setPersonalOpen(false)
+              setProfileOpen(true)
+            }}
+            onEvents={() => {
+              setPersonalOpen(false)
+              setEventsOpen('list')
+            }}
+            onClose={() => setPersonalOpen(false)}
+          />
+        )}
         <ToastHost />
       </div>
     </div>

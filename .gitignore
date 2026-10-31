@@ -4,3 +4,10 @@ dist-ssr
 *.local
 .vite
 .DS_Store
+expo/.expo/
+expo/node_modules/
+expo/.env
+artifacts/
+server/.env
+server/node_modules/
+server/dist/

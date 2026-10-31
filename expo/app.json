@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Tally · Ink",
+    "slug": "tally-ink",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#131416",
+    "scheme": "tally-ink",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": [
+      "expo-status-bar",
+      "expo-sqlite",
+      "expo-sharing",
+      ["expo-image-picker", { "photosPermission": "Choose your own fitness check-in photos.", "cameraPermission": "Take an optional fitness check-in photo.", "microphonePermission": false }]
+    ]
+  }
+}

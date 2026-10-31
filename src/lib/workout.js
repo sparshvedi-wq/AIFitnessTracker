@@ -8,16 +8,23 @@
 import { findExercise } from './exercises.js'
 import { uid } from './id.js'
 import { addDays, fromKey, todayKey, toKey } from './date.js'
+import { DUMBBELL_MOVES, fitAvailableLoad } from './preferences.js'
+import { trainingTitle } from './training-copy.js'
 
 export const WEIGHT_STEP = { lb: 5, kg: 2.5 }
 
 // ── Building a session ──────────────────────────────────────────────
 
 // The most recent finished workout that included this exercise.
-export function lastPerformance(workouts, exId) {
+export function lastPerformance(workouts, exId, unit) {
   for (let i = workouts.length - 1; i >= 0; i--) {
-    const ex = workouts[i].exercises.find((e) => e.exId === exId && e.sets.length > 0)
-    if (ex) return { date: workouts[i].date, sets: ex.sets }
+    if (workouts[i].sample || ['sport', 'pump', 'recovery'].includes(workouts[i].kind)) continue
+    if (unit && workouts[i].unit && workouts[i].unit !== unit) continue
+    const sets = workouts[i].exercises
+      .filter((e) => e.exId === exId)
+      .flatMap((e) => e.sets)
+      .filter((s) => s.kind !== 'warmup')
+    if (sets.length) return { date: workouts[i].date, sets }
   }
   return null
 }
@@ -32,7 +39,8 @@ export function suggestTarget(def, item, last, unit) {
   if (def.type === 'time') {
     const goal = item.sec || 0
     const hit = done.every((s) => (s.sec || 0) >= (s.targetSec ?? goal))
-    if (hit && goal > 0) return { target: { ...target, sec: goal + 5 }, note: '5 seconds longer than last time', up: true }
+    if (hit && goal > 0)
+      return { target: { ...target, sec: goal + 5 }, note: '5 seconds longer than last time', up: true }
     return { target, note: null, up: false }
   }
 
@@ -42,9 +50,17 @@ export function suggestTarget(def, item, last, unit) {
     if (lastWeight <= 0) return { target, note: null, up: false }
     if (hitAll) {
       const step = WEIGHT_STEP[unit] || 5
-      return { target: { ...target, weight: lastWeight + step }, note: `Up ${step} ${unit}: you hit every rep last time`, up: true }
+      return {
+        target: { ...target, weight: lastWeight + step },
+        note: `Up ${step} ${unit}: you hit every rep last time`,
+        up: true,
+      }
     }
-    return { target: { ...target, weight: lastWeight }, note: `Same weight: aim for all ${item.reps} reps this time`, up: false }
+    return {
+      target: { ...target, weight: lastWeight },
+      note: `Same weight: aim for all ${item.reps} reps this time`,
+      up: false,
+    }
   }
 
   const bestReps = Math.max(0, ...done.map((s) => s.reps || 0))
@@ -54,21 +70,52 @@ export function suggestTarget(def, item, last, unit) {
   return { target, note: null, up: false }
 }
 
-export function buildSession(routine, { workouts = [], customExercises = [], unit = 'lb', now = Date.now() } = {}) {
+export const LOGGED_WORKOUT = 'Logged workout'
+
+export function buildSession(
+  routine,
+  { workouts = [], customExercises = [], unit = 'lb', now = Date.now(), dumbbellWeights = [] } = {},
+) {
   const exercises = routine.items
     .map((item) => {
       const def = findExercise(item.exId, customExercises)
       if (!def) return null
-      const last = lastPerformance(workouts, item.exId)
-      const { target, note, up } = suggestTarget(def, item, last, unit)
+      const last = lastPerformance(workouts, item.exId, unit)
+      const { target, note, up } = routine.lockedTargets
+        ? {
+            target: { reps: item.reps ?? null, sec: item.sec ?? null, weight: item.weight ?? null },
+            note: item.note,
+            up: false,
+          }
+        : suggestTarget(def, item, last, unit)
+      if (DUMBBELL_MOVES.includes(def.id)) target.weight = fitAvailableLoad(target.weight, dumbbellWeights)
       return makeSessionExercise(def, item, target, { last, note, up })
     })
     .filter(Boolean)
+  const kind =
+    routine.kind !== 'sport' && routine.movement?.position === 'seated'
+      ? 'recovery'
+      : routine.kind || 'routine'
+  if (!routine.circuit && !['sport', 'pump', 'recovery'].includes(kind))
+    addWarmupSet(exercises, dumbbellWeights)
 
   const session = {
     id: uid(),
     routineId: routine.id,
     name: routine.name,
+    kind,
+    sport: routine.sport || null,
+    focus: routine.focus || '',
+    reasons: routine.reasons || [],
+    planning: routine.planning || null,
+    requestedMinutes: routine.requestedMinutes,
+    location: routine.location || null,
+    // Kept with the record so History can name the place even after it's deleted.
+    placeName: routine.placeName || null,
+    readiness: routine.readiness || null,
+    equipmentProfile: routine.equipmentProfile || null,
+    movement: routine.movement || null,
+    schedule: routine.schedule || null,
     circuit: Boolean(routine.circuit),
     unit,
     startedAt: now,
@@ -84,6 +131,25 @@ export function buildSession(routine, { workouts = [], customExercises = [], uni
   return session
 }
 
+// One lighter warm-up set before the first loaded lift, at about half the
+// working weight. It is saved as a warm-up and never counts toward records.
+export const WARMUP_SHARE = 0.5
+function addWarmupSet(exercises, dumbbellWeights = []) {
+  const first = exercises.find((e) => e.weighted && e.type !== 'time' && e.sets[0]?.weight > 0)
+  if (!first) return
+  const work = first.sets[0]
+  const half = Math.round(work.weight * WARMUP_SHARE * 2) / 2
+  const weight = DUMBBELL_MOVES.includes(first.exId)
+    ? (fitAvailableLoad(half, dumbbellWeights) ?? dumbbellWeights[0] ?? half)
+    : half
+  first.sets.unshift({
+    ...work,
+    targetWeight: weight,
+    weight,
+    kind: 'warmup',
+  })
+}
+
 export function makeSessionExercise(def, item, target, { last = null, note = null, up = false } = {}) {
   const sets = Array.from({ length: Math.max(1, item.sets || 1) }, () => ({
     targetReps: target.reps,
@@ -93,6 +159,7 @@ export function makeSessionExercise(def, item, target, { last = null, note = nul
     sec: target.sec,
     weight: target.weight,
     status: 'todo',
+    kind: 'work',
   }))
   return {
     key: uid(),
@@ -106,6 +173,9 @@ export function makeSessionExercise(def, item, target, { last = null, note = nul
     sets,
     last: last ? { date: last.date, sets: last.sets } : null,
     note,
+    phaseLabel: item.phaseLabel,
+    sideExtra: item.sideExtra,
+    unilateral: item.unilateral,
     up,
   }
 }
@@ -120,7 +190,9 @@ export function stepOrder(session) {
   if (session.circuit) {
     const rounds = Math.max(0, ...exercises.map((e) => e.sets.length))
     for (let s = 0; s < rounds; s++) {
-      exercises.forEach((e, i) => { if (s < e.sets.length) out.push({ ex: i, set: s }) })
+      exercises.forEach((e, i) => {
+        if (s < e.sets.length) out.push({ ex: i, set: s })
+      })
     }
   } else {
     exercises.forEach((e, i) => e.sets.forEach((_, s) => out.push({ ex: i, set: s })))
@@ -158,8 +230,25 @@ export function roundInfo(session) {
 }
 
 export function elapsedMs(session, now = Date.now()) {
+  if (!session.startedAt || session.phase === 'prepared') return 0
   const pausedNow = session.pausedAt ? now - session.pausedAt : 0
   return Math.max(0, now - session.startedAt - session.pausedMs - pausedNow)
+}
+
+export function prepareSession(session) {
+  return {
+    ...session,
+    phase: 'prepared',
+    startedAt: null,
+    pausedAt: null,
+    phaseEndsAt: null,
+    phaseLeft: null,
+  }
+}
+
+export function beginPrepared(session, now = Date.now()) {
+  if (session.phase !== 'prepared') return session
+  return { ...session, startedAt: now, phase: 'work', phaseEndsAt: null, pausedAt: null, lastActivityAt: now }
 }
 
 // Phase changes. Each returns a new session; the store just saves it.
@@ -174,7 +263,7 @@ export function finish(session, now = Date.now()) {
 export function keepGoing(session, now = Date.now()) {
   const to = nextStep(session, null)
   if (!to) return session
-  return enterWork({ ...resume(session, now), cursor: to }, now, false)
+  return enterWork({ ...resume(session, now), cursor: to }, now)
 }
 
 function timed(session, phase, sec, now) {
@@ -189,16 +278,16 @@ export function currentSet(session) {
 }
 
 export function startReady(session, sec, now = Date.now()) {
-  if (!sec) return enterWork(session, now, true)
+  if (!sec) return enterWork(session, now)
   return timed({ ...session, phase: 'ready' }, 'ready', sec, now)
 }
 
-// Start the current set. Timed sets start their countdown right away when
-// `autoStart` (coming out of a rest or the get-ready countdown).
-export function enterWork(session, now = Date.now(), autoStart = true) {
+// Move to the current set. Timed sets always wait for an explicit Start.
+export function enterWork(session, now = Date.now()) {
+  if (session.phase === 'prepared') return session
   const cur = currentSet(session)
   if (!cur) return finish(session, now)
-  if (cur.ex.type === 'time' && autoStart) return timed(session, 'work', cur.set.sec || cur.set.targetSec || 30, now)
+  // Each timed set needs an explicit Start, including after a rest/get-ready countdown.
   return { ...session, phase: 'work', phaseEndsAt: null, phaseLeft: null, phaseTotal: 0 }
 }
 
@@ -224,28 +313,37 @@ export function completeSet(session, now = Date.now(), patch = {}) {
   const c = session.cursor
   if (!c) return session
   const ex = session.exercises[c.ex]
-  let next = patchSet(session, c, { ...patch, status: 'done' })
+  let next = { ...patchSet(session, c, { ...patch, status: 'done' }), lastLogged: { ...c } }
   // Carry a changed weight into the sets still to come, unless you've
   // already set those yourself.
   const weight = next.exercises[c.ex].sets[c.set].weight
-  if (ex.weighted && weight != null) {
+  if (ex.weighted && weight != null && next.exercises[c.ex].sets[c.set].kind !== 'warmup') {
     next.exercises[c.ex] = {
       ...next.exercises[c.ex],
       sets: next.exercises[c.ex].sets.map((s, j) =>
-        j > c.set && s.status === 'todo' && s.weight === s.targetWeight ? { ...s, weight } : s,
+        j > c.set && s.status === 'todo' && s.kind !== 'warmup' && s.weight === s.targetWeight
+          ? { ...s, weight }
+          : s,
       ),
     }
   }
   const to = nextStep(next, c)
-  if (!to) return finish(next, now)
+  if (!to) return session.kind === 'manual' ? { ...finish(next, now), phase: 'between' } : finish(next, now)
   next = { ...next, cursor: to }
   const rest = ex.restSec || 0
   if (rest > 0) return timed(next, 'rest', rest, now)
-  return enterWork(next, now, true)
+  return enterWork(next, now)
 }
 
 export function skipRest(session, now = Date.now()) {
-  return enterWork(session, now, true)
+  return enterWork(session, now)
+}
+
+export function undoLastSet(session, now = Date.now()) {
+  const c = session.lastLogged
+  if (!c || session.exercises[c.ex]?.sets[c.set]?.status !== 'done') return session
+  const next = patchSet(session, c, { status: 'todo' })
+  return enterWork({ ...resume(next, now), cursor: c, lastLogged: null }, now)
 }
 
 export function adjustTimer(session, deltaSec, now = Date.now()) {
@@ -267,26 +365,40 @@ export function pause(session, now = Date.now()) {
 export function resume(session, now = Date.now()) {
   if (!session.pausedAt) return session
   const phaseEndsAt = session.phaseLeft != null ? now + session.phaseLeft : null
-  return { ...session, pausedAt: null, pausedMs: session.pausedMs + (now - session.pausedAt), phaseEndsAt, phaseLeft: null }
+  return {
+    ...session,
+    pausedAt: null,
+    pausedMs: session.pausedMs + (now - session.pausedAt),
+    phaseEndsAt,
+    phaseLeft: null,
+  }
 }
 
 // Skip what's left of the current exercise.
-export function skipExercise(session, now = Date.now()) {
+export function skipExercise(session, now = Date.now(), reason = 'other') {
   const c = session.cursor
   if (!c) return session
   const exercises = session.exercises.map((e, i) =>
-    i !== c.ex ? e : { ...e, sets: e.sets.map((s) => (s.status === 'todo' ? { ...s, status: 'skipped' } : s)) },
+    i !== c.ex
+      ? e
+      : {
+          ...e,
+          skipReason: reason,
+          sets: e.sets.map((s) => (s.status === 'todo' ? { ...s, status: 'skipped' } : s)),
+        },
   )
   const next = { ...session, exercises }
   const to = nextStep(next, c)
   if (!to) return finish(next, now)
-  return enterWork({ ...next, cursor: to }, now, false)
+  return enterWork({ ...next, cursor: to }, now)
 }
 
 // Bring a skipped exercise back into the plan.
 export function unskipExercise(session, exIndex) {
   const exercises = session.exercises.map((e, i) =>
-    i !== exIndex ? e : { ...e, sets: e.sets.map((s) => (s.status === 'skipped' ? { ...s, status: 'todo' } : s)) },
+    i !== exIndex
+      ? e
+      : { ...e, sets: e.sets.map((s) => (s.status === 'skipped' ? { ...s, status: 'todo' } : s)) },
   )
   return { ...session, exercises }
 }
@@ -310,7 +422,7 @@ export function removeExercise(session, exIndex) {
   let next = { ...session, exercises, cursor }
   if (!cursor) {
     const to = nextStep(next, null)
-    next = to ? enterWork({ ...next, cursor: to }, Date.now(), false) : finish(next)
+    next = to ? enterWork({ ...next, cursor: to }, Date.now()) : finish(next)
   }
   return next
 }
@@ -319,8 +431,12 @@ export function appendExercise(session, exercise) {
   const exercises = [...session.exercises, exercise]
   const next = { ...session, exercises }
   // A finished workout with a new exercise added picks back up there.
-  if (session.phase === 'done' || !session.cursor) {
-    return enterWork({ ...resume(next), cursor: { ex: exercises.length - 1, set: 0 } }, Date.now(), false)
+  if (['done', 'between'].includes(session.phase) || !session.cursor) {
+    const now = Date.now()
+    const resumed = next.startedAt
+      ? resume(next, now)
+      : { ...next, startedAt: now, pausedAt: null, pausedMs: 0 }
+    return enterWork({ ...resumed, cursor: { ex: exercises.length - 1, set: 0 } }, now)
   }
   return next
 }
@@ -328,16 +444,15 @@ export function appendExercise(session, exercise) {
 // Jump straight to any set (from the overview list).
 export function jumpTo(session, c, now = Date.now()) {
   const target = session.exercises[c.ex]?.sets[c.set]
-  if (!target) return session
+  if (!target || target.status !== 'todo') return session
   let next = session.phase === 'done' ? resume(session, now) : session
-  if (target.status !== 'todo') next = patchSet(next, c, { status: 'todo' })
-  return enterWork({ ...next, cursor: c }, now, false)
+  return enterWork({ ...next, cursor: c }, now)
 }
 
 // Advance when a timer runs out. Returns the same object when nothing changed.
 export function tick(session, now = Date.now()) {
   if (session.pausedAt || !session.phaseEndsAt || now < session.phaseEndsAt) return session
-  if (session.phase === 'ready' || session.phase === 'rest') return enterWork(session, now, true)
+  if (session.phase === 'ready' || session.phase === 'rest') return enterWork(session, now)
   if (session.phase === 'work') {
     const cur = currentSet(session)
     return completeSet(session, now, { sec: cur?.set.sec || cur?.set.targetSec })
@@ -352,9 +467,14 @@ export function totals(exercises) {
   let reps = 0
   let volume = 0
   let seconds = 0
+  let warmupSets = 0
   for (const e of exercises) {
     for (const s of e.sets) {
       if (s.status && s.status !== 'done') continue
+      if (s.kind === 'warmup') {
+        warmupSets++
+        continue
+      }
       sets++
       if (e.type === 'time') seconds += s.sec || 0
       else {
@@ -363,7 +483,7 @@ export function totals(exercises) {
       }
     }
   }
-  return { sets, reps, volume: Math.round(volume), seconds }
+  return { sets, reps, volume: Math.round(volume), seconds, warmupSets }
 }
 
 // Epley estimate of a one-rep max.
@@ -375,9 +495,11 @@ export function bestLifts(workouts, exId) {
   let reps = 0
   let sec = 0
   for (const w of workouts) {
+    if (w.sample || ['sport', 'pump', 'recovery'].includes(w.kind)) continue
     for (const e of w.exercises) {
       if (e.exId !== exId) continue
       for (const s of e.sets) {
+        if (s.kind === 'warmup') continue
         weight = Math.max(weight, s.weight || 0)
         e1rm = Math.max(e1rm, oneRepMax(s.weight || 0, s.reps || 0))
         reps = Math.max(reps, s.reps || 0)
@@ -391,11 +513,15 @@ export function bestLifts(workouts, exId) {
 // New personal records in this session compared with all earlier workouts.
 // Only counts exercises you've done before, so a first try isn't a "record".
 export function findRecords(session, workouts) {
+  if (['sport', 'recovery', 'pump'].includes(session.kind)) return []
+  workouts = workouts.filter((w) => !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind))
   const out = []
   for (const e of session.exercises) {
-    const done = e.sets.filter((s) => s.status === 'done')
+    const done = e.sets.filter((s) => s.status === 'done' && s.kind !== 'warmup')
     if (!done.length) continue
-    const prior = workouts.some((w) => w.exercises.some((x) => x.exId === e.exId && x.sets.length))
+    const prior = workouts.some((w) =>
+      w.exercises.some((x) => x.exId === e.exId && x.sets.some((s) => s.kind !== 'warmup')),
+    )
     if (!prior) continue
     const best = bestLifts(workouts, e.exId)
     const unit = session.unit
@@ -405,8 +531,14 @@ export function findRecords(session, workouts) {
     } else if (e.weighted) {
       const weight = Math.max(...done.map((s) => s.weight || 0))
       const e1rm = Math.max(...done.map((s) => oneRepMax(s.weight || 0, s.reps || 0)))
-      if (weight > best.weight) out.push({ exId: e.exId, name: e.name, label: `Heaviest: ${fmtNum(weight)} ${unit}` })
-      else if (e1rm > best.e1rm + 0.01) out.push({ exId: e.exId, name: e.name, label: `Best set: est. 1RM ${fmtNum(Math.round(e1rm))} ${unit}` })
+      if (weight > best.weight)
+        out.push({ exId: e.exId, name: e.name, label: `Heaviest: ${fmtNum(weight)} ${unit}` })
+      else if (e1rm > best.e1rm + 0.01)
+        out.push({
+          exId: e.exId,
+          name: e.name,
+          label: `Best set: est. 1RM ${fmtNum(Math.round(e1rm))} ${unit}`,
+        })
     } else {
       const reps = Math.max(...done.map((s) => s.reps || 0))
       if (reps > best.reps) out.push({ exId: e.exId, name: e.name, label: `Most reps: ${reps}` })
@@ -427,6 +559,7 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
       sets: e.sets
         .filter((s) => s.status === 'done')
         .map((s) => ({
+          kind: s.kind || 'work',
           reps: e.type === 'time' ? null : s.reps || 0,
           sec: e.type === 'time' ? s.sec || 0 : null,
           weight: e.weighted ? s.weight || 0 : null,
@@ -439,9 +572,36 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
   return {
     id: session.id,
     routineId: session.routineId,
-    name: session.name,
+    // A freely logged workout is named after what was actually logged.
+    name:
+      session.kind === 'manual' && session.name === LOGGED_WORKOUT
+        ? trainingTitle(session.exercises)
+        : session.name,
+    kind: session.kind || 'routine',
+    sport: session.sport,
+    requestedMinutes: session.requestedMinutes,
+    location: session.location,
+    placeName: session.placeName || null,
+    movement: session.movement,
+    schedule: session.schedule,
+    planning: session.planning,
+    focus: session.focus,
+    finishReason: session.finishReason || 'other',
+    unfinished:
+      session.kind === 'manual'
+        ? []
+        : session.exercises
+            .filter((e) => e.sets.some((s) => s.status !== 'done'))
+            .map((e) => ({
+              exId: e.exId,
+              reason: e.skipReason || session.finishReason || 'other',
+              at: now,
+              carried: Boolean(
+                session.planning?.carriedFrom?.some((source) => source.endsWith(`:${e.exId}`)),
+              ),
+            })),
     unit: session.unit,
-    date: toKey(new Date(session.startedAt)),
+    date: session.logDate || toKey(new Date(session.startedAt || now)),
     startedAt: session.startedAt,
     endedAt: now,
     durationSec: Math.round(elapsedMs(session, now) / 1000),
@@ -476,7 +636,8 @@ export function routineMuscles(routine, custom) {
 }
 
 export function lastDoneDate(workouts, routineId) {
-  for (let i = workouts.length - 1; i >= 0; i--) if (workouts[i].routineId === routineId) return workouts[i].date
+  for (let i = workouts.length - 1; i >= 0; i--)
+    if (workouts[i].routineId === routineId) return workouts[i].date
   return null
 }
 
@@ -493,7 +654,10 @@ export function pickNextRoutine(routines, workouts) {
   for (const r of routines) {
     const d = lastDoneDate(workouts, r.id)
     if (!d) return r
-    if (!bestDate || d < bestDate) { best = r; bestDate = d }
+    if (!bestDate || d < bestDate) {
+      best = r
+      bestDate = d
+    }
   }
   return best
 }
@@ -523,14 +687,16 @@ export function weekStreak(workouts, goal, today = todayKey()) {
   if (!goal) return 0
   const perWeek = new Map()
   for (const w of workouts) {
+    if (w.sample || ['sport', 'recovery', 'pump'].includes(w.kind)) continue
     const k = weekStart(w.date)
-    perWeek.set(k, (perWeek.get(k) || 0) + 1)
+    if (!perWeek.has(k)) perWeek.set(k, new Set())
+    perWeek.get(k).add(w.date)
   }
   let week = weekStart(today)
   // This week still counts as "in progress" — don't break the streak yet.
-  if ((perWeek.get(week) || 0) < goal) week = addDays(week, -7)
+  if ((perWeek.get(week)?.size || 0) < goal) week = addDays(week, -7)
   let streak = 0
-  while ((perWeek.get(week) || 0) >= goal) {
+  while ((perWeek.get(week)?.size || 0) >= goal) {
     streak++
     week = addDays(week, -7)
   }
@@ -561,7 +727,7 @@ export function muscleSets(workouts, fromKey) {
     if (w.date < fromKey) continue
     for (const e of w.exercises) {
       const muscle = e.muscle || findExercise(e.exId)?.muscle || 'Other'
-      counts.set(muscle, (counts.get(muscle) || 0) + e.sets.length)
+      counts.set(muscle, (counts.get(muscle) || 0) + e.sets.filter((s) => s.kind !== 'warmup').length)
     }
   }
   return [...counts.entries()].map(([muscle, sets]) => ({ muscle, sets })).sort((a, b) => b.sets - a.sets)
@@ -572,9 +738,21 @@ export function muscleSets(workouts, fromKey) {
 export function personalBests(workouts) {
   const best = new Map()
   for (const w of workouts) {
+    if (w.sample || ['sport', 'recovery', 'pump'].includes(w.kind)) continue
     for (const e of w.exercises) {
       for (const s of e.sets) {
-        const cur = best.get(e.exId) || { exId: e.exId, name: e.name, type: e.type, weighted: e.weighted, unit: w.unit, weight: 0, reps: 0, sec: 0, date: w.date }
+        if (s.kind === 'warmup') continue
+        const cur = best.get(e.exId) || {
+          exId: e.exId,
+          name: e.name,
+          type: e.type,
+          weighted: e.weighted,
+          unit: w.unit,
+          weight: 0,
+          reps: 0,
+          sec: 0,
+          date: w.date,
+        }
         if (e.type === 'time') {
           if ((s.sec || 0) > cur.sec) Object.assign(cur, { sec: s.sec, date: w.date })
         } else if (e.weighted) {
@@ -587,7 +765,9 @@ export function personalBests(workouts) {
     }
   }
   const rank = (b) => (b.weighted ? 2 : b.type === 'time' ? 0 : 1)
-  return [...best.values()].sort((a, b) => rank(b) - rank(a) || b.weight - a.weight || b.reps - a.reps || b.sec - a.sec)
+  return [...best.values()].sort(
+    (a, b) => rank(b) - rank(a) || b.weight - a.weight || b.reps - a.reps || b.sec - a.sec,
+  )
 }
 
 // Training badges for the Progress tab.
@@ -596,11 +776,41 @@ export function workoutAchievements(workouts, weeklyGoal, today = todayKey()) {
   const records = workouts.reduce((s, w) => s + (w.records?.length || 0), 0)
   const streak = weekStreak(workouts, weeklyGoal, today)
   return [
-    { id: 'w-first', icon: 'dumbbell', label: 'First Rep', desc: 'Finished your first workout', earned: workouts.length >= 1 },
-    { id: 'w-ten', icon: 'zap', label: 'Building Habits', desc: '10 workouts finished', earned: workouts.length >= 10 },
-    { id: 'w-weeks', icon: 'flame', label: 'Consistent', desc: 'Weekly goal hit 4 weeks in a row', earned: streak >= 4 },
-    { id: 'w-record', icon: 'trophy', label: 'Record Breaker', desc: 'Set a personal record', earned: records >= 1 },
-    { id: 'w-hours', icon: 'clock', label: 'Ten Hours In', desc: '10 hours of training', earned: minutes >= 600 },
+    {
+      id: 'w-first',
+      icon: 'dumbbell',
+      label: 'First Rep',
+      desc: 'Finished your first workout',
+      earned: workouts.length >= 1,
+    },
+    {
+      id: 'w-ten',
+      icon: 'zap',
+      label: 'Building Habits',
+      desc: '10 workouts finished',
+      earned: workouts.length >= 10,
+    },
+    {
+      id: 'w-weeks',
+      icon: 'flame',
+      label: 'Consistent',
+      desc: 'Weekly goal hit 4 weeks in a row',
+      earned: streak >= 4,
+    },
+    {
+      id: 'w-record',
+      icon: 'trophy',
+      label: 'Record Breaker',
+      desc: 'Set a personal record',
+      earned: records >= 1,
+    },
+    {
+      id: 'w-hours',
+      icon: 'clock',
+      label: 'Ten Hours In',
+      desc: '10 hours of training',
+      earned: minutes >= 600,
+    },
   ]
 }
 
@@ -635,11 +845,17 @@ export function fmtNum(n) {
 export function describeSets(e, unit) {
   const sets = e.sets
   if (!sets.length) return ''
-  const same = sets.every((s) => s.reps === sets[0].reps && s.sec === sets[0].sec && s.weight === sets[0].weight)
+  const same = sets.every(
+    (s) =>
+      s.reps === sets[0].reps &&
+      s.sec === sets[0].sec &&
+      s.weight === sets[0].weight &&
+      s.kind === sets[0].kind,
+  )
   const one = (s) => {
-    if (e.type === 'time') return `${s.sec}s`
+    if (e.type === 'time') return `${s.sec}s${s.kind === 'warmup' ? ' (warmup)' : ''}`
     const w = e.weighted && s.weight ? ` @ ${fmtNum(s.weight)} ${unit}` : ''
-    return `${s.reps}${w}`
+    return `${s.reps}${w}${s.kind === 'warmup' ? ' (warmup)' : ''}`
   }
   if (same) return `${sets.length} × ${one(sets[0])}`
   return sets.map(one).join(', ')
@@ -649,4 +865,18 @@ export function describeItem(item, def, unit) {
   const work = def?.type === 'time' ? `${item.sec}s` : `${item.reps} reps`
   const w = item.weight ? ` @ ${fmtNum(item.weight)} ${unit}` : ''
   return `${item.sets} × ${work}${w}`
+}
+
+// One line describing where the workout stands; shared by the mini bar and Home.
+export function sessionStatus(session, now = Date.now()) {
+  const cur = currentSet(session)
+  if (session.pausedAt) return 'Paused'
+  if (session.phase === 'rest' && session.phaseEndsAt)
+    return `Rest ${fmtClock(Math.max(0, session.phaseEndsAt - now))} · next ${cur?.ex.name}`
+  if (session.phase === 'prepared') return 'Plan ready · start when you are'
+  if (session.phase === 'ready') return 'Starting…'
+  if (session.phase === 'done') return 'Ready to save'
+  if (session.phase === 'between') return 'Exercise logged · add the next one'
+  if (cur) return `${cur.ex.name} · set ${session.cursor.set + 1} of ${cur.ex.sets.length}`
+  return 'Tap to continue'
 }

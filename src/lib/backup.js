@@ -1,17 +1,31 @@
 // Export/import all app data as a JSON file for backup & restore.
 
-import { STORAGE_KEY } from './storage.js'
+import { isNativeApp, nativeRequest } from './native.js'
+import { todayKey } from './date.js'
+import { validateSnapshot } from '../../expo/src/protocol.js'
+import { withoutPhotoPreviews } from './photos.js'
 
-export function exportData(state) {
+export async function exportData(state) {
+  state = withoutPhotoPreviews(state)
+  if (isNativeApp()) {
+    await nativeRequest('backup.export', { raw: JSON.stringify(state, null, 2) }, 300_000)
+    return
+  }
   const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `tally-backup-${new Date().toISOString().slice(0, 10)}.json`
+  // Named by the local date, so an evening export isn't labelled tomorrow.
+  a.download = `tally-backup-${todayKey()}.json`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+export async function pickNativeBackup() {
+  const raw = await nativeRequest('backup.pick', {}, 300_000)
+  return raw === null ? null : validateSnapshot(raw)
 }
 
 // Read & validate an imported JSON file. Resolves with the parsed state.
@@ -20,11 +34,7 @@ export function importData(file) {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const data = JSON.parse(reader.result)
-        // Minimal shape validation — must look like our state blob.
-        if (!data || typeof data !== 'object' || !Array.isArray(data.entries)) {
-          throw new Error('This file does not look like a valid backup.')
-        }
+        const data = validateSnapshot(String(reader.result))
         resolve(data)
       } catch (err) {
         reject(err)
@@ -34,5 +44,3 @@ export function importData(file) {
     reader.readAsText(file)
   })
 }
-
-export { STORAGE_KEY }

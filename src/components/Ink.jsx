@@ -7,22 +7,44 @@ import Icon from './Icon.jsx'
 // The hand-drawn tally mark: four strokes and an accent slash.
 export function TallyLogo({ width = 30, className = '' }) {
   return (
-    <svg width={width} height={(width * 22) / 28} viewBox="0 0 28 22" className={className} aria-label="Tally" role="img">
-      <path d="M5 3c.4 5 .2 11-.3 16M11 2c.3 6 .1 12-.2 17M17 3c.2 5 .3 11 0 16M23 2c.3 6 0 12-.3 17" fill="none" stroke="rgb(var(--ink))" strokeWidth="2.2" strokeLinecap="round" />
-      <path d="M1 15c8-3 17-7 26-11" fill="none" stroke="rgb(var(--accent))" strokeWidth="2.6" strokeLinecap="round" />
+    <svg
+      width={width}
+      height={(width * 22) / 28}
+      viewBox="0 0 28 22"
+      className={className}
+      aria-label="Tally"
+      role="img"
+    >
+      <path
+        d="M5 3c.4 5 .2 11-.3 16M11 2c.3 6 .1 12-.2 17M17 3c.2 5 .3 11 0 16M23 2c.3 6 0 12-.3 17"
+        fill="none"
+        stroke="rgb(var(--ink))"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+      />
+      <path
+        d="M1 15c8-3 17-7 26-11"
+        fill="none"
+        stroke="rgb(var(--accent))"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+      />
     </svg>
   )
 }
 
 export function SectionHead({ title, right = null, onRight, className = '' }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 ${className}`}>
+    <div className={`section-heading ${className}`}>
       <h2 className="section-title">{title}</h2>
-      {right != null && (onRight ? (
-        <button onClick={onRight} className="text-[13px] font-medium text-accent">{right}</button>
-      ) : (
-        <span className="text-[13px] text-muted">{right}</span>
-      ))}
+      {right != null &&
+        (onRight ? (
+          <button onClick={onRight} className="text-link">
+            {right}
+          </button>
+        ) : (
+          <span className="text-[13px] text-muted">{right}</span>
+        ))}
     </div>
   )
 }
@@ -62,7 +84,15 @@ function smoothPath(xs, ys) {
 let gradId = 0
 
 // Line chart that fills its container. `values` oldest first.
-export function LineChart({ values, height = 110, min, max, fill = true, dotFill = 'rgb(var(--surface))', pad = 8 }) {
+export function LineChart({
+  values,
+  height = 110,
+  min,
+  max,
+  fill = true,
+  dotFill = 'rgb(var(--surface))',
+  pad = 8,
+}) {
   const [ref, w] = useWidth()
   const [id] = useState(() => `fade${gradId++}`)
   const lo = min ?? Math.min(...values)
@@ -84,16 +114,39 @@ export function LineChart({ values, height = 110, min, max, fill = true, dotFill
         </defs>
         {fill && <path d={area} fill={`url(#${id})`} />}
         <path d={line} fill="none" stroke="rgb(var(--accent))" strokeWidth="2.5" strokeLinecap="round" />
-        <circle cx={xs[xs.length - 1]} cy={ys[ys.length - 1]} r="5.5" fill={dotFill} stroke="rgb(var(--ink))" strokeWidth="2.2" />
+        <circle
+          cx={xs[xs.length - 1]}
+          cy={ys[ys.length - 1]}
+          r="5.5"
+          fill={dotFill}
+          stroke="rgb(var(--ink))"
+          strokeWidth="2.2"
+        />
       </svg>
     )
   }
-  return <div ref={ref} style={{ height }}>{svg}</div>
+  return (
+    <div ref={ref} style={{ height }}>
+      {svg}
+    </div>
+  )
 }
 
 // Big number with −/+ under it. Tap the number to type one.
-export function BigStepper({ label, value, onChange, step = 1, min = 0, decimals = false, size = 'text-[76px]' }) {
+export function BigStepper({
+  label,
+  value,
+  onChange,
+  step = 1,
+  min = 0,
+  decimals = false,
+  size = 'text-[76px]',
+  // Optional custom stepping, e.g. to the next dumbbell someone owns.
+  stepTo,
+}) {
   const set = (v) => onChange(Math.max(min, decimals ? Math.round(v * 10) / 10 : Math.round(v)))
+  const move = (direction) =>
+    stepTo ? onChange(stepTo(value, direction)) : set((value || 0) + direction * step)
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center py-5">
       <input
@@ -108,10 +161,19 @@ export function BigStepper({ label, value, onChange, step = 1, min = 0, decimals
       />
       <span className="mt-1 text-[13px] text-muted">{label}</span>
       <div className="mt-3.5 flex gap-2.5">
-        <button onClick={() => set((value || 0) - step)} disabled={(value || 0) <= min} className="dot h-10 w-10 border-[1.5px] border-outline text-ink disabled:opacity-40" aria-label={`Less ${label}`}>
+        <button
+          onClick={() => move(-1)}
+          disabled={(value || 0) <= min}
+          className="dot h-12 w-12 border-[1.5px] border-outline text-ink disabled:opacity-40"
+          aria-label={`Less ${label}`}
+        >
           <Icon name="minus" size={16} strokeWidth={2.2} />
         </button>
-        <button onClick={() => set((value || 0) + step)} className="dot h-10 w-10 border-[1.5px] border-outline text-ink" aria-label={`More ${label}`}>
+        <button
+          onClick={() => move(1)}
+          className="dot h-12 w-12 border-[1.5px] border-outline text-ink"
+          aria-label={`More ${label}`}
+        >
           <Icon name="plus" size={16} strokeWidth={2.2} />
         </button>
       </div>
@@ -124,14 +186,13 @@ export function DateTile({ date }) {
   const d = new Date(`${date}T12:00:00`)
   return (
     <span className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-[14px] bg-surface2 leading-none">
-      <span className="text-[10px] font-semibold text-muted">{['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][d.getDay()]}</span>
+      <span className="text-[11px] font-medium text-muted">
+        {d.toLocaleDateString(undefined, { weekday: 'short' })}
+      </span>
       <span className="num mt-[3px] text-[18px] text-ink">{d.getDate()}</span>
     </span>
   )
 }
-
-const CORNERS = ['rounded-tuck', 'rounded-tuck-r', 'rounded-tuck-tr', 'rounded-tuck-tl']
-export const corner = (i) => CORNERS[i % 4]
 
 export function Toggle({ checked, onChange, label }) {
   return (
@@ -140,9 +201,34 @@ export function Toggle({ checked, onChange, label }) {
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-outline'}`}
+      className="relative h-11 w-12 shrink-0 rounded-full"
     >
-      <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-ink transition-all ${checked ? 'left-[22px]' : 'left-0.5'}`} />
+      <span
+        className={`absolute inset-x-0 top-2 h-7 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-outline'}`}
+      />
+      <span
+        className={`absolute top-2.5 h-6 w-6 rounded-full bg-ink transition-[left] ${checked ? 'left-[22px]' : 'left-0.5'}`}
+      />
     </button>
+  )
+}
+
+// One choice from a short list. Announced as a radio group.
+export function Segmented({ label, options, value, onChange, className = '' }) {
+  return (
+    <div className={`segmented ${className}`} role="radiogroup" aria-label={label}>
+      {options.map(([v, text]) => (
+        <button
+          key={v}
+          type="button"
+          role="radio"
+          aria-checked={value === v}
+          className={`segment ${value === v ? 'segment-active' : ''}`}
+          onClick={() => onChange(v)}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
   )
 }

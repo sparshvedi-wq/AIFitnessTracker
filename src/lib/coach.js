@@ -1,6 +1,8 @@
 // Sound, voice and vibration cues for the workout player, plus a screen
 // wake lock. Every call is best-effort: unsupported browsers just stay quiet.
 
+import { isNativeApp, nativeRequest } from './native.js'
+
 let ctx = null
 
 function audio() {
@@ -34,6 +36,10 @@ export function beep({ freq = 880, ms = 140, volume = 0.18 } = {}) {
 }
 
 export function say(text) {
+  if (isNativeApp()) {
+    void nativeRequest('speech.say', { text }).catch(() => {})
+    return
+  }
   if (typeof window === 'undefined' || !window.speechSynthesis) return
   try {
     window.speechSynthesis.cancel()
@@ -46,7 +52,15 @@ export function say(text) {
 }
 
 export function buzz(pattern) {
-  try { navigator.vibrate?.(pattern) } catch { /* ignore */ }
+  if (isNativeApp()) {
+    void nativeRequest('haptics.buzz', { strong: Array.isArray(pattern) }).catch(() => {})
+    return
+  }
+  try {
+    navigator.vibrate?.(pattern)
+  } catch {
+    /* ignore */
+  }
 }
 
 // One place that respects the user's cue settings.
@@ -70,6 +84,10 @@ export function makeCoach(prefs) {
 // Keep the screen awake while a workout is open.
 export async function requestWakeLock() {
   try {
+    if (isNativeApp()) {
+      await nativeRequest('screen.keepAwake', { active: true })
+      return { release: () => nativeRequest('screen.keepAwake', { active: false }) }
+    }
     if (!('wakeLock' in navigator)) return null
     return await navigator.wakeLock.request('screen')
   } catch {

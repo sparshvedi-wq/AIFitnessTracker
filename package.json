@@ -1,21 +1,39 @@
 {
-  "name": "calorie-tracker",
+  "name": "tally",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:photos": "npm --prefix server run dev",
+    "setup:photos": "npm --prefix server install",
+    "dev:phone": "node scripts/start-expo.mjs",
+    "expo": "node scripts/start-expo.mjs",
+    "setup:phone": "node --use-system-ca scripts/setup-expo.mjs",
+    "typecheck": "npm --prefix expo run typecheck",
+    "lint": "eslint . && npm --prefix expo run lint",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\" \"tests/**/*.mjs\""
   },
   "dependencies": {
+    "@fontsource-variable/fraunces": "^5.3.0",
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^17.13.0",
     "postcss": "^8.4.38",
+    "prettier": "^3.9.10",
     "tailwindcss": "^3.4.4",
     "vite": "^5.3.1"
   }

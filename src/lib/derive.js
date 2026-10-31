@@ -1,6 +1,6 @@
 // Numbers the screens show, worked out from saved workouts.
 
-import { addDays, fromKey, todayKey } from './date.js'
+import { addDays, fromKey, todayKey, WEEKDAY_INITIALS } from './date.js'
 import { muscleSets, weekStart } from './workout.js'
 
 export function greeting(now = new Date()) {
@@ -15,14 +15,20 @@ export function greeting(now = new Date()) {
 export function weekDays(workouts, today = todayKey()) {
   const start = weekStart(today)
   const trained = new Set(workouts.map((w) => w.date))
-  return ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((l, i) => {
+  return WEEKDAY_INITIALS.map((l, i) => {
     const date = addDays(start, i)
     return { l, date, done: trained.has(date), today: date === today, future: date > today }
   })
 }
 
 export function volumeBetween(workouts, from, to) {
-  return workouts.reduce((s, w) => (w.date >= from && w.date <= to ? s + (w.totals?.volume || 0) : s), 0)
+  return workouts.reduce(
+    (s, w) =>
+      !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind) && w.date >= from && w.date <= to
+        ? s + (w.totals?.volume || 0)
+        : s,
+    0,
+  )
 }
 
 // This week's volume against the same days last week.
@@ -35,14 +41,21 @@ export function weekVolume(workouts, today = todayKey()) {
 }
 
 export function avgSessionMin(workouts, n = 10) {
-  const last = workouts.slice(-n)
+  const last = workouts.filter((w) => !w.sample).slice(-n)
   if (!last.length) return null
   return Math.round(last.reduce((s, w) => s + (w.durationSec || 0), 0) / last.length / 60)
 }
 
 // Muscle groups trained in the last 4 weeks, folded into five buckets.
 export function muscleBalance(workouts, today = todayKey()) {
-  const fold = { Glutes: 'Legs', Biceps: 'Arms', Triceps: 'Arms', Core: 'Core', Cardio: 'Other', Mobility: 'Other' }
+  const fold = {
+    Glutes: 'Legs',
+    Biceps: 'Arms',
+    Triceps: 'Arms',
+    Core: 'Core',
+    Cardio: 'Other',
+    Mobility: 'Other',
+  }
   const raw = muscleSets(workouts, addDays(today, -27))
   const map = new Map()
   for (const { muscle, sets } of raw) {
@@ -69,7 +82,17 @@ export function monthlyVolume(workouts, months = 6, today = todayKey()) {
   for (let i = months - 1; i >= 0; i--) {
     const m = new Date(d.getFullYear(), d.getMonth() - i, 1)
     const prefix = `${m.getFullYear()}-${String(m.getMonth() + 1).padStart(2, '0')}`
-    out.push({ year: m.getFullYear(), month: m.getMonth(), volume: workouts.reduce((s, w) => (w.date.startsWith(prefix) ? s + (w.totals?.volume || 0) : s), 0) })
+    out.push({
+      year: m.getFullYear(),
+      month: m.getMonth(),
+      volume: workouts.reduce(
+        (s, w) =>
+          !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind) && w.date.startsWith(prefix)
+            ? s + (w.totals?.volume || 0)
+            : s,
+        0,
+      ),
+    })
   }
   return out
 }

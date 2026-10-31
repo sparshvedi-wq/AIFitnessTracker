@@ -1,16 +1,28 @@
 // Train: today's recommendation, every routine (yours first, then starters),
 // and ways to build a new one or just start logging.
 
+import { count } from '../lib/presentation.js'
 import { useMemo, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
-import { ROUTINE_TAGS, TEMPLATES, findExercise } from '../lib/exercises.js'
-import { estimateMinutes, fmtNum, lastDoneDate, pickNextRoutine } from '../lib/workout.js'
-import { daysSince, relativeDay } from '../lib/derive.js'
+import { ROUTINE_TAGS, TEMPLATES, allExercises, findExercise } from '../lib/exercises.js'
+import { LOGGED_WORKOUT, estimateMinutes, fmtNum, lastDoneDate } from '../lib/workout.js'
+import { relativeDay } from '../lib/derive.js'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
-import { PageTitle, SectionHead, corner } from '../components/Ink.jsx'
+import { PageTitle, SectionHead } from '../components/Ink.jsx'
 import RoutineEditor from '../components/workout/RoutineEditor.jsx'
 import useStartWorkout from '../components/workout/useStartWorkout.js'
+import { buildDailyPlan, profileOf, todayChoice } from '../lib/planner.js'
+import { resolvePlace } from '../lib/places.js'
+import { sportById } from '../lib/sports.js'
+import usePlanningTime from '../components/training/usePlanningTime.js'
+import { sportScheduleContext } from '../lib/sport-schedule.js'
+import TrainingCard from '../components/TrainingCard.jsx'
+import EventShortcut from '../components/training/EventShortcut.jsx'
+import ExercisePicker from '../components/workout/ExercisePicker.jsx'
+import FormSheet from '../components/workout/FormSheet.jsx'
+import { matchesExercise } from '../lib/exercise-search.js'
+import { shortSessionRequest } from '../lib/flexible-training.js'
 
 // Routines saved before tags existed get one from their exercises.
 function tagOf(routine, custom) {
@@ -25,10 +37,19 @@ function tagOf(routine, custom) {
   return 'Full body'
 }
 
-const ICON_FOR = { Push: 'push', Pull: 'pull', Legs: 'legs', Upper: 'upper', 'Full body': 'full', Conditioning: 'zap' }
+const ICON_FOR = {
+  Push: 'push',
+  Pull: 'pull',
+  Legs: 'legs',
+  Upper: 'upper',
+  'Full body': 'full',
+  Conditioning: 'zap',
+}
 
 export default function Train({ nav }) {
   const { state, today } = useApp()
+  const now = usePlanningTime()
+  const schedule = sportScheduleContext(state.settings.training, { today, now })
   const { routines, workouts, customExercises } = state
   const start = useStartWorkout(nav)
   const [filter, setFilter] = useState('All')
@@ -37,8 +58,10 @@ export default function Train({ nav }) {
   const [preview, setPreview] = useState(null)
   const [editing, setEditing] = useState(undefined) // undefined closed, null new, object edit
 
-  const next = useMemo(() => pickNextRoutine(routines.length ? routines : TEMPLATES, workouts), [routines, workouts])
-  const rested = next ? daysSince(workouts, next.id, today) : null
+  const next = useMemo(
+    () => buildDailyPlan(state, { today, now, ...todayChoice(state, today) }),
+    [state, today, now],
+  )
 
   const all = useMemo(() => {
     const mine = routines.map((r) => ({ ...r, mine: true }))
@@ -50,111 +73,234 @@ export default function Train({ nav }) {
   const shown = all.filter((r) => {
     if (filter !== 'All' && r.tag !== filter) return false
     if (!q) return true
-    return r.name.toLowerCase().includes(q) || r.items.some((i) => findExercise(i.exId, customExercises)?.name.toLowerCase().includes(q))
+    return (
+      r.name.toLowerCase().includes(q) ||
+      r.items.some((i) => findExercise(i.exId, customExercises)?.name.toLowerCase().includes(q))
+    )
   })
   const mine = shown.filter((r) => r.mine)
   const starters = shown.filter((r) => !r.mine)
   const tags = ['All', ...ROUTINE_TAGS.filter((t) => all.some((r) => r.tag === t))]
 
+  const [catalog, setCatalog] = useState(false)
+  const [guide, setGuide] = useState(null)
+  const matches = q ? allExercises(customExercises).filter((e) => matchesExercise(e, q)) : []
+  const warmSport =
+    schedule.next?.sport || state.settings.training.lastSport || state.settings.training.sports[0]
+  const showGuide = (e) => setGuide({ ...e, exId: e.id })
+  const guideWorkout = guide
+    ? {
+        id: `exercise-${guide.exId}`,
+        name: guide.name,
+        items: [
+          { exId: guide.exId, sets: 3, ...(guide.type === 'time' ? { sec: 30 } : { reps: 10 }), restSec: 60 },
+        ],
+      }
+    : null
   return (
     <div className="animate-fade-in">
       <PageTitle
         title="Train"
         right={
-          <button onClick={() => { setSearching((s) => !s); setQuery('') }} className="icon-btn" aria-label="Search routines and exercises">
-            <Icon name={searching ? 'x' : 'search'} size={18} strokeWidth={2} />
-          </button>
+          <div className="flex gap-1">
+            <button onClick={nav.openPersonal} className="icon-btn" aria-label="Preferences">
+              <Icon name="settings" size={20} />
+            </button>
+            <button
+              className="icon-btn"
+              aria-label="Search routines and exercises"
+              aria-expanded={searching}
+              onClick={() => {
+                setSearching((v) => !v)
+                setQuery('')
+              }}
+            >
+              <Icon name={searching ? 'x' : 'search'} size={20} />
+            </button>
+          </div>
         }
       />
-      {searching && (
-        <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search routines or exercises" className="input mt-3" />
-      )}
-
-      {/* Recommended */}
-      {!searching && next && !state.activeWorkout && (
-        <section className="mt-5 rounded-hero bg-paper p-5 text-on-paper">
-          <p className="flex items-center gap-1.5 text-[13px] text-paper-muted">
-            <Icon name="sparkle" size={14} filled strokeWidth={0} className="text-[#2F55D4]" />
-            Recommended today
-          </p>
-          <h2 className="mt-1.5 font-display text-[34px] leading-[1.1]">{next.name}</h2>
-          <p className="mt-1.5 text-[14px] text-paper-muted">
-            {rested == null ? 'You haven’t done this one yet.' : rested === 0 ? 'You did this earlier today.' : `It’s been ${rested} day${rested === 1 ? '' : 's'} since you last did it.`}
-          </p>
-          <div className="mt-3.5 flex gap-1.5">
-            <span className="pill-paper">{next.items.length} exercises</span>
-            <span className="pill-paper">{estimateMinutes(next)} min</span>
+      {searching ? (
+        <input
+          autoFocus
+          aria-label="Search routines or exercises"
+          className="input mt-4"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Exercise, muscle or routine"
+        />
+      ) : (
+        <>
+          {/* While a workout runs, the mini bar above the tabs is its one live entry. */}
+          {!state.activeWorkout && (
+            <div className="mt-4">
+              <TrainingCard
+                compact
+                plan={next}
+                place={resolvePlace(profileOf(state), next.location)}
+                onStart={() => start(next)}
+              />
+            </div>
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <QuickAction
+              icon="sport"
+              title="Sport warmup"
+              detail={warmSport ? sportById(warmSport).name : '5–20 min'}
+              onClick={() => start({ kind: 'sport', sport: warmSport, items: [] })}
+            />
+            <QuickAction
+              icon="clock"
+              title="Keep it short"
+              detail="5–15 min"
+              onClick={() => start(shortSessionRequest())}
+            />
           </div>
-          <div className="mt-4 flex gap-2.5">
-            <button onClick={() => start(next)} className="btn h-12 flex-1 bg-on-paper text-paper">Begin</button>
-            <button onClick={() => setPreview(next)} className="btn h-12 rounded-full border-[1.5px] border-[#C9C5BA] px-5 font-semibold">Preview</button>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <button
+              className="btn-secondary !px-2 text-[14px] whitespace-nowrap"
+              onClick={() => start({ id: 'quick', name: LOGGED_WORKOUT, items: [] })}
+            >
+              <Icon name="plus" size={17} />
+              Log workout
+            </button>
+            <button
+              className="btn-secondary !px-2 text-[14px] whitespace-nowrap"
+              onClick={() => setCatalog(true)}
+            >
+              <Icon name="search" size={17} />
+              Exercises
+            </button>
           </div>
+          <EventShortcut state={state} today={today} now={now} nav={nav} />
+        </>
+      )}
+      {q && (
+        <section className="mt-5">
+          <SectionHead title="Exercises" right={matches.length} />
+          <div className="mt-2 rounded-tuck bg-surface px-4">
+            {matches.slice(0, 20).map((e) => (
+              <button
+                key={e.id}
+                className="list-row border-b border-line last:border-0"
+                onClick={() => showGuide(e)}
+              >
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold">{e.name}</span>
+                  <span className="mt-1 block text-[13px] text-muted">
+                    {e.muscle} · {e.type === 'time' ? 'Timed' : e.weighted ? 'Weighted' : 'Bodyweight'}
+                  </span>
+                </span>
+                <Icon name="chevronRight" size={17} />
+              </button>
+            ))}
+          </div>
+          {!matches.length && <p className="mt-3 text-[14px] text-muted">No matches. Try a muscle name.</p>}
         </section>
       )}
-
-      {/* Filters */}
-      <div className="no-scrollbar -mx-[22px] mt-6 flex gap-2 overflow-x-auto px-[22px]">
-        {tags.map((t) => (
-          <button key={t} onClick={() => setFilter(t)} className={`chip ${filter === t ? 'chip-active' : ''}`}>{t}</button>
-        ))}
-      </div>
-
-      {mine.length > 0 && (
-        <section className="mt-6">
-          <SectionHead title="Your routines" right={mine.length} />
-          <RoutineList list={mine} workouts={workouts} today={today} highlight={next?.id} onOpen={setPreview} />
-        </section>
-      )}
-
-      {starters.length > 0 && (
-        <section className="mt-6">
-          <SectionHead title={routines.length ? 'Starter routines' : 'Routines'} right={starters.length} />
-          <RoutineList list={starters} workouts={workouts} today={today} highlight={next?.id} onOpen={setPreview} />
-        </section>
-      )}
-
-      {shown.length === 0 && <p className="mt-6 rounded-tuck bg-surface p-4 text-[14px] text-muted">Nothing matches that. Try another search or filter.</p>}
-
-      <section className="mt-6 grid grid-cols-2 gap-2.5">
-        <button onClick={() => setEditing(null)} className="rounded-tuck border-[1.5px] border-dashed border-outline p-4 text-left">
-          <span className="dot h-[34px] w-[34px] bg-surface2 text-accent"><Icon name="plus" size={15} strokeWidth={2.4} /></span>
-          <span className="mt-3 block font-display text-[17px]">New routine</span>
-          <span className="mt-0.5 block text-[12px] text-muted">Build your own</span>
-        </button>
-        <button onClick={() => start({ id: 'quick', name: 'Workout', items: [] })} className="rounded-tuck-r bg-surface p-4 text-left">
-          <span className="dot h-[34px] w-[34px] bg-surface2 text-accent"><Icon name="play" size={13} filled strokeWidth={0} /></span>
-          <span className="mt-3 block font-display text-[17px]">Empty workout</span>
-          <span className="mt-0.5 block text-[12px] text-muted">Log as you go</span>
-        </button>
+      <section className="page-section">
+        <SectionHead
+          title="Your routines"
+          right={mine.length ? 'Create' : null}
+          onRight={() => setEditing(null)}
+        />
+        {mine.length ? (
+          <RoutineList list={mine} workouts={workouts} today={today} onOpen={setPreview} />
+        ) : (
+          <div className="mt-3 flex items-center gap-4 rounded-tuck bg-surface p-4">
+            <p className="min-w-0 flex-1 text-[14px] text-muted">Save the workouts you like.</p>
+            <button className="btn-secondary shrink-0 !px-4" onClick={() => setEditing(null)}>
+              <Icon name="plus" size={16} />
+              Build
+            </button>
+          </div>
+        )}
       </section>
-
+      <details className="page-section border-t border-line" open={searching || undefined}>
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between text-[16px] font-semibold">
+          Starter routines <Icon name="chevronDown" size={18} />
+        </summary>
+        <div className="no-scrollbar flex gap-2 overflow-x-auto pb-2">
+          {tags.map((t) => (
+            <button
+              key={t}
+              aria-pressed={filter === t}
+              onClick={() => setFilter(t)}
+              className={`chip ${filter === t ? 'chip-active' : ''}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        {starters.length ? (
+          <RoutineList list={starters} workouts={workouts} today={today} onOpen={setPreview} />
+        ) : (
+          <p className="py-4 text-[14px] text-muted">No routines match this filter.</p>
+        )}
+      </details>
       <RoutinePreview
         routine={preview}
         onClose={() => setPreview(null)}
-        onStart={() => { const r = preview; setPreview(null); start(r) }}
-        onEdit={() => { setEditing(preview); setPreview(null) }}
+        onStart={() => {
+          const r = preview
+          setPreview(null)
+          start(r)
+        }}
+        onEdit={() => {
+          setEditing(preview)
+          setPreview(null)
+        }}
       />
       <RoutineEditor open={editing !== undefined} routine={editing} onClose={() => setEditing(undefined)} />
+      <ExercisePicker open={catalog} browse onClose={() => setCatalog(false)} onPick={showGuide} />
+      <FormSheet
+        open={Boolean(guide)}
+        exercise={guide}
+        onClose={() => setGuide(null)}
+        closeLabel="Back to Train"
+        onStart={() => {
+          setGuide(null)
+          start(guideWorkout)
+        }}
+      />
     </div>
   )
 }
-
-function RoutineList({ list, workouts, today, highlight, onOpen }) {
+function QuickAction({ icon, title, detail, onClick }) {
   return (
-    <div className="mt-2.5 space-y-2.5">
+    <button className="min-h-24 rounded-tuck bg-surface p-3.5 text-left" onClick={onClick}>
+      <Icon name={icon} size={23} className="text-accent" />
+      <span className="mt-3 block text-[15px] font-semibold">{title}</span>
+      <span className="mt-0.5 block truncate text-[13px] text-muted">{detail}</span>
+    </button>
+  )
+}
+
+function RoutineList({ list, workouts, today, onOpen }) {
+  return (
+    <div className="mt-3 rounded-tuck bg-surface px-4">
       {list.map((r, i) => {
         const last = lastDoneDate(workouts, r.id)
-        const hot = r.id === highlight
         return (
-          <button key={r.id} onClick={() => onOpen(r)} className={`flex w-full items-center gap-3.5 bg-surface px-4 py-3.5 text-left ${corner(i)}`}>
-            <span className={`dot h-[46px] w-[46px] rounded-[15px] ${hot ? 'bg-accent/15 text-accent' : 'bg-surface2 text-ink'}`}>
+          <button
+            key={r.id}
+            onClick={() => onOpen(r)}
+            className={`list-row ${i ? 'border-t border-line' : ''}`}
+          >
+            <span className="dot h-[46px] w-[46px] rounded-[15px] bg-surface2 text-ink">
               <Icon name={r.icon || ICON_FOR[r.tag] || 'train'} size={22} strokeWidth={1.8} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate font-display text-[17px] leading-snug">{r.name}</span>
-              <span className="mt-0.5 block text-[13px] text-muted">{r.items.length} exercises · {estimateMinutes(r)} min{r.circuit ? ' · circuit' : ''}</span>
+              <span className="block truncate text-[15px] font-semibold leading-snug">{r.name}</span>
+              <span className="mt-0.5 block text-[13px] text-muted">
+                {count(r.items.length, 'exercise')} · {estimateMinutes(r)} min{r.circuit ? ' · circuit' : ''}
+              </span>
             </span>
-            <span className={`shrink-0 text-right text-[12px] ${hot ? 'text-accent' : 'text-muted'}`}>{last ? relativeDay(last, today) : 'New'}</span>
+            {last ? (
+              <span className="shrink-0 text-right text-[12px] text-muted">{relativeDay(last, today)}</span>
+            ) : (
+              <Icon name="chevronRight" size={16} className="shrink-0 text-faint" />
+            )}
           </button>
         )
       })}
@@ -179,7 +325,9 @@ function RoutinePreview({ routine, onClose, onStart, onEdit }) {
             <Icon name="edit" size={16} />
             {isMine ? 'Edit' : 'Customize'}
           </button>
-          <button onClick={onStart} className="btn-primary h-[50px] flex-[2]">Begin</button>
+          <button onClick={onStart} className="btn-primary h-[50px] flex-[2]">
+            Review session
+          </button>
         </div>
       }
     >
@@ -203,9 +351,8 @@ function RoutinePreview({ routine, onClose, onStart, onEdit }) {
           )
         })}
       </ol>
-      <p className="mt-3 flex gap-2 text-[13px] text-muted">
-        <Icon name="trend" size={16} className="mt-0.5 shrink-0 text-accent" />
-        Targets adjust from last time: hit every rep and the weight, reps or time goes up.
+      <p className="mt-3 border-t border-line pt-3 text-[13px] text-muted">
+        Weights adjust to your last sessions.
       </p>
     </Modal>
   )

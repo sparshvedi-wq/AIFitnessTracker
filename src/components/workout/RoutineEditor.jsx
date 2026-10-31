@@ -1,7 +1,7 @@
 // Create or edit a routine: name, style (straight sets or circuit), and the
 // exercises with sets, reps or seconds, starting weight and rest.
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
 import { findExercise } from '../../lib/exercises.js'
 import { estimateMinutes } from '../../lib/workout.js'
@@ -15,24 +15,24 @@ import { MuscleTag } from './Controls.jsx'
 const blank = () => ({ id: uid(), name: '', circuit: false, items: [] })
 
 // `routine` may be an existing routine, a template to copy, or null for a new one.
-export default function RoutineEditor({ open, routine, onClose }) {
+export default function RoutineEditor(props) {
+  return props.open ? <RoutineDraft key={props.routine?.id || 'new'} {...props} /> : null
+}
+function RoutineDraft({ open, routine, onClose }) {
   const { state, dispatch, toast } = useApp()
-  const [draft, setDraft] = useState(blank)
+  const [draft, setDraft] = useState(() => {
+    if (!routine) return blank()
+    if (state.routines.some((r) => r.id === routine.id)) return structuredClone(routine)
+    const { blurb, level, ...rest } = routine
+    return { ...structuredClone(rest), id: uid(), name: routine.name }
+  })
+  const [initialDraft] = useState(() => JSON.stringify(draft))
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const close = () => (JSON.stringify(draft) !== initialDraft ? setConfirmDiscard(true) : onClose())
   const [picking, setPicking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const unit = state.settings.weightUnit
   const isExisting = Boolean(routine && state.routines.some((r) => r.id === routine.id))
-
-  useEffect(() => {
-    if (!open) return
-    if (!routine) setDraft(blank())
-    else if (isExisting) setDraft(structuredClone(routine))
-    else {
-      // Copy of a starter routine
-      const { blurb, level, ...rest } = routine
-      setDraft({ ...structuredClone(rest), id: uid(), name: routine.name })
-    }
-  }, [open, routine, isExisting])
 
   const setItem = (i, patch) =>
     setDraft((d) => ({ ...d, items: d.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) }))
@@ -47,9 +47,10 @@ export default function RoutineEditor({ open, routine, onClose }) {
   const remove = (i) => setDraft((d) => ({ ...d, items: d.items.filter((_, j) => j !== i) }))
 
   function addExercise(def) {
-    const item = def.type === 'time'
-      ? { exId: def.id, sets: 3, sec: 30, restSec: draft.circuit ? 15 : 45 }
-      : { exId: def.id, sets: 3, reps: 10, restSec: draft.circuit ? 15 : 90 }
+    const item =
+      def.type === 'time'
+        ? { exId: def.id, sets: 3, sec: 30, restSec: draft.circuit ? 15 : 45 }
+        : { exId: def.id, sets: 3, reps: 10, restSec: draft.circuit ? 15 : 90 }
     setDraft((d) => ({ ...d, items: [...d.items, item] }))
   }
 
@@ -66,12 +67,16 @@ export default function RoutineEditor({ open, routine, onClose }) {
     <>
       <Modal
         open={open}
-        onClose={picking || confirmDelete ? () => {} : onClose}
+        onClose={picking || confirmDelete || confirmDiscard ? () => {} : close}
         title={isExisting ? 'Edit routine' : 'New routine'}
         footer={
           <div className="flex gap-2">
             {isExisting && (
-              <button onClick={() => setConfirmDelete(true)} className="btn-danger-ghost px-3" aria-label="Delete routine">
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="btn-danger-ghost px-3"
+                aria-label="Delete routine"
+              >
                 <Icon name="trash" size={18} />
               </button>
             )}
@@ -94,17 +99,23 @@ export default function RoutineEditor({ open, routine, onClose }) {
         <div className="mt-4">
           <span className="field-label">Order</span>
           <div className="segmented">
-            <button onClick={() => setDraft((d) => ({ ...d, circuit: false }))} className={`segment ${!draft.circuit ? 'segment-active' : ''}`}>
+            <button
+              onClick={() => setDraft((d) => ({ ...d, circuit: false }))}
+              className={`segment ${!draft.circuit ? 'segment-active' : ''}`}
+            >
               Straight sets
             </button>
-            <button onClick={() => setDraft((d) => ({ ...d, circuit: true }))} className={`segment ${draft.circuit ? 'segment-active' : ''}`}>
+            <button
+              onClick={() => setDraft((d) => ({ ...d, circuit: true }))}
+              className={`segment ${draft.circuit ? 'segment-active' : ''}`}
+            >
               Circuit
             </button>
           </div>
           <p className="mt-1.5 px-1 text-[13px] text-muted">
             {draft.circuit
-              ? 'One set of each exercise per round, then start the next round.'
-              : 'Finish every set of an exercise before moving to the next.'}
+              ? 'One set of each, round after round.'
+              : 'All sets of one exercise, then the next.'}
           </p>
         </div>
 
@@ -127,34 +138,71 @@ export default function RoutineEditor({ open, routine, onClose }) {
             return (
               <li key={`${item.exId}-${i}`} className="rounded-2xl border border-line bg-surface p-3">
                 <div className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface2 text-[12px] font-bold text-ink2">{i + 1}</span>
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface2 text-[12px] font-bold text-ink2">
+                    {i + 1}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-semibold text-ink">{def.name}</p>
                     <MuscleTag muscle={def.muscle} />
                   </div>
                   <div className="-mr-1 -mt-1 flex">
-                    <button onClick={() => move(i, -1)} disabled={i === 0} className="icon-btn h-8 w-8 disabled:opacity-30" aria-label="Move up">
+                    <button
+                      onClick={() => move(i, -1)}
+                      disabled={i === 0}
+                      className="icon-btn h-8 w-8 disabled:opacity-30"
+                      aria-label="Move up"
+                    >
                       <Icon name="arrowUp" size={16} />
                     </button>
-                    <button onClick={() => move(i, 1)} disabled={i === draft.items.length - 1} className="icon-btn h-8 w-8 disabled:opacity-30" aria-label="Move down">
+                    <button
+                      onClick={() => move(i, 1)}
+                      disabled={i === draft.items.length - 1}
+                      className="icon-btn h-8 w-8 disabled:opacity-30"
+                      aria-label="Move down"
+                    >
                       <Icon name="arrowDown" size={16} />
                     </button>
-                    <button onClick={() => remove(i)} className="icon-btn h-8 w-8 hover:text-danger" aria-label={`Remove ${def.name}`}>
+                    <button
+                      onClick={() => remove(i)}
+                      className="icon-btn h-8 w-8 hover:text-danger"
+                      aria-label={`Remove ${def.name}`}
+                    >
                       <Icon name="x" size={16} />
                     </button>
                   </div>
                 </div>
                 <div className={`mt-3 grid gap-2 ${def.weighted ? 'grid-cols-4' : 'grid-cols-3'}`}>
-                  <MiniField label="Sets" value={item.sets} onChange={(v) => setItem(i, { sets: Math.max(1, v) })} />
+                  <MiniField
+                    label="Sets"
+                    value={item.sets}
+                    onChange={(v) => setItem(i, { sets: Math.max(1, v) })}
+                  />
                   {timed ? (
-                    <MiniField label="Seconds" value={item.sec} onChange={(v) => setItem(i, { sec: Math.max(5, v) })} />
+                    <MiniField
+                      label="Seconds"
+                      value={item.sec}
+                      onChange={(v) => setItem(i, { sec: Math.max(5, v) })}
+                    />
                   ) : (
-                    <MiniField label="Reps" value={item.reps} onChange={(v) => setItem(i, { reps: Math.max(1, v) })} />
+                    <MiniField
+                      label="Reps"
+                      value={item.reps}
+                      onChange={(v) => setItem(i, { reps: Math.max(1, v) })}
+                    />
                   )}
                   {def.weighted && (
-                    <MiniField label={unit} value={item.weight ?? ''} placeholder="—" onChange={(v) => setItem(i, { weight: v || null })} />
+                    <MiniField
+                      label={unit}
+                      value={item.weight ?? ''}
+                      placeholder="—"
+                      onChange={(v) => setItem(i, { weight: v || null })}
+                    />
                   )}
-                  <MiniField label="Rest s" value={item.restSec} onChange={(v) => setItem(i, { restSec: v })} />
+                  <MiniField
+                    label="Rest s"
+                    value={item.restSec}
+                    onChange={(v) => setItem(i, { restSec: v })}
+                  />
                 </div>
               </li>
             )
@@ -167,6 +215,14 @@ export default function RoutineEditor({ open, routine, onClose }) {
         </button>
       </Modal>
 
+      <ConfirmDialog
+        open={confirmDiscard}
+        title="Discard routine changes?"
+        message="Your saved routine stays unchanged."
+        confirmLabel="Discard changes"
+        onConfirm={onClose}
+        onClose={() => setConfirmDiscard(false)}
+      />
       <ExercisePicker open={picking} onClose={() => setPicking(false)} onPick={addExercise} />
       <ConfirmDialog
         open={confirmDelete}
@@ -186,7 +242,9 @@ export default function RoutineEditor({ open, routine, onClose }) {
 function MiniField({ label, value, onChange, placeholder }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1 block truncate text-center text-[11px] font-semibold uppercase tracking-wide text-muted">{label}</span>
+      <span className="mb-1 block truncate text-center text-[11px] font-semibold uppercase tracking-wide text-muted">
+        {label}
+      </span>
       <input
         type="number"
         inputMode="decimal"

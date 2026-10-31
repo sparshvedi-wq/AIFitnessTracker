@@ -9,12 +9,22 @@ import Icon from '../Icon.jsx'
 import Modal from '../Modal.jsx'
 import ConfirmDialog from '../ConfirmDialog.jsx'
 import { EFFORT } from './WorkoutSummary.jsx'
+import { routineFromWorkout } from '../../lib/workout-history.js'
+import EditWorkout from './EditWorkout.jsx'
 
-export default function WorkoutDetail({ workout, onClose, onRepeat }) {
+export default function WorkoutDetail({ workout: initialWorkout, onClose, onRepeat }) {
   const { state, dispatch, toast } = useApp()
   const [confirm, setConfirm] = useState(false)
-  if (!workout) return null
-  const routine = state.routines.find((r) => r.id === workout.routineId) || TEMPLATES.find((t) => t.id === workout.routineId)
+  const [editing, setEditing] = useState(false)
+  const [corrected, setCorrected] = useState(null)
+  if (!initialWorkout) return null
+  const workout =
+    state.workouts.find((w) => w.id === initialWorkout.id) ||
+    (corrected?.id === initialWorkout.id ? corrected : initialWorkout)
+  const routine =
+    state.routines.find((r) => r.id === workout.routineId) ||
+    TEMPLATES.find((t) => t.id === workout.routineId) ||
+    routineFromWorkout(workout, state.settings.weightUnit)
   const effort = EFFORT.find((e) => e.value === workout.effort)
   const d = fromKey(workout.date)
   const t = workout.totals
@@ -27,19 +37,23 @@ export default function WorkoutDetail({ workout, onClose, onRepeat }) {
   return (
     <>
       <Modal
-        open={!confirm}
+        open={!confirm && !editing}
         onClose={onClose}
         title={workout.name}
         subtitle={`${DAYS_LONG[d.getDay()]}, ${MONTHS_LONG[d.getMonth()]} ${d.getDate()}`}
         footer={
           <div className="flex gap-2">
-            <button onClick={() => setConfirm(true)} className="icon-btn h-[50px] w-[50px] bg-surface2 text-danger" aria-label="Delete workout">
+            <button
+              onClick={() => setConfirm(true)}
+              className="icon-btn h-[50px] w-[50px] bg-surface2 text-danger"
+              aria-label="Delete workout"
+            >
               <Icon name="trash" size={18} />
             </button>
             {routine && onRepeat && (
               <button onClick={() => onRepeat(routine)} className="btn-primary h-[50px] flex-1">
                 <Icon name="repeat" size={17} />
-                Do it again
+                Repeat session
               </button>
             )}
           </div>
@@ -71,27 +85,53 @@ export default function WorkoutDetail({ workout, onClose, onRepeat }) {
 
         <ul className="mt-3">
           {workout.exercises.map((e, i) => (
-            <li key={`${e.exId}-${i}`} className={`flex items-center justify-between gap-3 py-3 ${i ? 'border-t border-line' : ''}`}>
+            <li
+              key={`${e.exId}-${i}`}
+              className={`flex items-center justify-between gap-3 py-3 ${i ? 'border-t border-line' : ''}`}
+            >
               <span className="text-[15px] font-medium text-ink">{e.name}</span>
-              <span className="shrink-0 text-[13px] tabular-nums text-muted">{describeSets(e, workout.unit)}</span>
+              <span className="max-w-[55%] text-right text-[13px] tabular-nums text-muted">
+                {describeSets(e, workout.unit)}
+              </span>
             </li>
           ))}
         </ul>
+        <button className="btn-secondary mt-4 min-h-12 w-full" onClick={() => setEditing(true)}>
+          <Icon name="edit" size={17} />
+          Edit sets, date or notes
+        </button>
 
         {(effort || workout.note) && (
           <div className="mt-2 space-y-1 text-[14px] text-ink2">
-            {effort && <p><span className="text-muted">Felt</span> {effort.label.toLowerCase()}</p>}
+            {effort && (
+              <p>
+                <span className="text-muted">Felt</span> {effort.label.toLowerCase()}
+              </p>
+            )}
             {workout.note && <p className="whitespace-pre-wrap">{workout.note}</p>}
           </div>
         )}
       </Modal>
+      {editing && (
+        <EditWorkout
+          workout={workout}
+          onClose={() => setEditing(false)}
+          onSaved={(w) => {
+            setCorrected(w)
+            setEditing(false)
+          }}
+        />
+      )}
       <ConfirmDialog
         open={confirm}
         title="Delete this workout?"
         message="It will be removed from your history and weekly stats."
         onConfirm={() => {
           dispatch({ type: 'DELETE_WORKOUT', id: workout.id })
-          toast('Workout deleted', 'info', { label: 'Undo', onClick: () => dispatch({ type: 'RESTORE_WORKOUT', workout }) })
+          toast('Workout deleted', 'info', {
+            label: 'Undo',
+            onClick: () => dispatch({ type: 'RESTORE_WORKOUT', workout }),
+          })
           onClose()
         }}
         onClose={() => setConfirm(false)}

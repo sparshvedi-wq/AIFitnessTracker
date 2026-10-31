@@ -11,11 +11,11 @@ export default {
     extend: {
       fontFamily: {
         // Body copy
-        sans: ['"Hanken Grotesk"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['"Hanken Grotesk Variable"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         // Headings
-        display: ['"Young Serif"', 'ui-serif', 'Georgia', 'serif'],
+        display: ['"Fraunces Variable"', 'ui-serif', 'Georgia', 'serif'],
         // Numbers: a calmer serif so commas and decimals read cleanly
-        num: ['Fraunces', 'ui-serif', 'Georgia', 'serif'],
+        num: ['"Fraunces Variable"', 'ui-serif', 'Georgia', 'serif'],
       },
       colors: {
         bg: token('bg'),
@@ -42,20 +42,24 @@ export default {
         success: token('accent'),
       },
       borderRadius: {
-        // Three round corners and one tucked one, so cards aren't all plain boxes
-        tuck: '22px 22px 22px 6px',
-        'tuck-r': '22px 22px 6px 22px',
-        'tuck-tr': '22px 6px 22px 22px',
-        'tuck-tl': '6px 22px 22px 22px',
+        // Plain, even corners for cards. The tucked corner is a signature kept
+        // to the hero card and the primary button only.
+        tuck: '22px',
         hero: '28px 28px 28px 8px',
         btn: '999px 999px 999px 10px',
       },
       boxShadow: {
-        float: '0 18px 40px -8px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.25)',
+        float: '0 18px 40px -8px rgb(var(--shadow) / 0.35), 0 2px 6px rgb(var(--shadow) / 0.15)',
       },
       keyframes: {
-        'fade-in': { from: { opacity: 0, transform: 'translateY(4px)' }, to: { opacity: 1, transform: 'none' } },
-        'slide-up': { from: { opacity: 0, transform: 'translateY(16px)' }, to: { opacity: 1, transform: 'none' } },
+        'fade-in': {
+          from: { opacity: 0, transform: 'translateY(4px)' },
+          to: { opacity: 1, transform: 'none' },
+        },
+        'slide-up': {
+          from: { opacity: 0, transform: 'translateY(16px)' },
+          to: { opacity: 1, transform: 'none' },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.15s ease-out',

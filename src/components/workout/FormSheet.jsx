@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
+import ExerciseVisualGuide from './ExerciseVisualGuide.jsx'
 import { formGuide } from '../../lib/form.js'
 import { useApp } from '../../store/AppContext.jsx'
 import { atPlace, exerciseNote, withExerciseNote } from '../../lib/exercise-notes.js'
@@ -72,6 +73,7 @@ function GuideContent({
         ))}
       </div>
 
+      {tab === 0 && <ExerciseVisualGuide key={exercise.exId} exercise={exercise} />}
       <ol className="mt-4 space-y-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-3 rounded-2xl bg-surface2 px-4 py-4">

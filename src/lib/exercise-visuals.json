@@ -1,0 +1,354 @@
+{
+  "seated-knee-extension": {
+    "name": "Seated knee extension",
+    "frames": ["Seated with both feet flat", "Extend one knee without locking"]
+  },
+  "seated-heel-raise": {
+    "name": "Seated heel raise",
+    "frames": ["Seated, heels grounded", "Lift both heels, toes grounded"]
+  },
+  "seated-scapular": {
+    "name": "Seated shoulder-blade squeeze",
+    "frames": ["Sit tall, arms relaxed", "Gently draw shoulder blades together"]
+  },
+  "seated-reach": {
+    "name": "Seated shoulder reach",
+    "frames": ["Sit tall with arms lowered", "Reach arms upward comfortably"]
+  },
+  "seated-brace": {
+    "name": "Seated core brace",
+    "frames": ["Sit tall, feet supported", "Gentle core brace while breathing"]
+  },
+  "standing-brace": {
+    "name": "Standing core brace",
+    "frames": ["Stand tall, knees soft", "Gentle brace, posture unchanged"]
+  },
+  "standing-w": {
+    "name": "Standing W squeeze",
+    "frames": ["Elbows bent in a relaxed W", "Draw shoulder blades together"]
+  },
+  "db-overhead-press": {
+    "name": "Dumbbell overhead press",
+    "frames": ["Dumbbells at shoulder height", "Press overhead, ribs down"]
+  },
+  "db-rdl": {
+    "name": "Dumbbell Romanian deadlift",
+    "frames": ["Stand tall with dumbbells", "Hinge hips back, weights close"]
+  },
+  "quiet-march": {
+    "name": "Quiet march in place",
+    "frames": ["Stand tall, feet grounded", "Lift one foot a little, no jumping"]
+  },
+  "quiet-step": {
+    "name": "Quiet side steps",
+    "frames": ["Feet comfortably together", "Step sideways, one foot grounded"]
+  },
+  "quiet-squat": {
+    "name": "Controlled squat practice",
+    "frames": ["Stand tall, heels grounded", "Lower slowly, no jumping"]
+  },
+  "bodyweight-squat": {
+    "name": "Bodyweight squat",
+    "frames": ["Stand tall, arms forward", "Hips back, heels grounded"]
+  },
+  "split-squat": {
+    "name": "Bodyweight split squat",
+    "frames": ["Set a stable staggered stance", "Lower back knee toward floor"]
+  },
+  "incline-push-up": {
+    "name": "Wall push-up",
+    "frames": ["Straight body, hands on a wall", "Bend elbows toward the wall"]
+  },
+  "prone-w": {
+    "name": "Prone W raise",
+    "frames": ["Lie face down, arms in W", "Lift hands slightly, neck neutral"]
+  },
+  "band-row": {
+    "name": "Seated band row",
+    "frames": ["Sit tall, band secured around feet", "Draw elbows back toward ribs"]
+  },
+  "back-squat": {
+    "name": "Back squat",
+    "frames": ["Bar on upper back, stand tall", "Lower with heels grounded"]
+  },
+  "goblet-squat": {
+    "name": "Goblet squat",
+    "frames": ["Hold one dumbbell at chest", "Lower between heels, chest tall"]
+  },
+  "rdl": {
+    "name": "Romanian deadlift",
+    "frames": ["Stand tall with a barbell", "Hinge back with softly bent knees"]
+  },
+  "deadlift": {
+    "name": "Deadlift",
+    "frames": ["Bar on floor over mid-foot, brace", "Stand tall with bar close to legs"]
+  },
+  "lunge": {
+    "name": "Walking lunge",
+    "frames": ["Take a controlled forward step", "Lower back knee toward floor"]
+  },
+  "leg-press": {
+    "name": "Leg press",
+    "frames": ["Sit supported, knees bent about 90 degrees", "Press platform away, knees remain soft"]
+  },
+  "calf-raise": {
+    "name": "Calf raise",
+    "frames": ["Stand holding dumbbells, heels down", "Raise heels and pause"]
+  },
+  "glute-bridge": {
+    "name": "Glute bridge",
+    "frames": ["Lie on back, knees bent, feet flat", "Lift hips, ribs down"]
+  },
+  "squat-jump": {
+    "name": "Squat jump",
+    "frames": ["Prepare in a shallow squat", "Small jump with relaxed knees"]
+  },
+  "bench-press": {
+    "name": "Bench press",
+    "frames": ["Lie on bench, bar above chest", "Lower bar toward mid-chest"]
+  },
+  "db-bench": {
+    "name": "Dumbbell bench press",
+    "frames": ["Lie on bench, dumbbells above chest", "Lower with elbows about 45 degrees"]
+  },
+  "push-up": {
+    "name": "Push-up",
+    "frames": ["High plank, hands under shoulders", "Lower chest just above floor"]
+  },
+  "ohp": {
+    "name": "Overhead press",
+    "frames": ["Bar at front of shoulders", "Press bar overhead, no back arch"]
+  },
+  "lateral-raise": {
+    "name": "Lateral raise",
+    "frames": ["Dumbbells at sides, elbows soft", "Raise arms to shoulder height"]
+  },
+  "dip": {
+    "name": "Dip",
+    "frames": ["Support on parallel bars, arms long", "Lower until upper arms near horizontal"]
+  },
+  "triceps-pushdown": {
+    "name": "Triceps pushdown",
+    "frames": ["Stand at cable, elbows bent at sides", "Straighten elbows, upper arms still"]
+  },
+  "pull-up": {
+    "name": "Pull-up",
+    "frames": ["Controlled hang from pull-up bar", "Pull chin above bar without swinging"]
+  },
+  "lat-pulldown": {
+    "name": "Lat pulldown",
+    "frames": ["Sit upright, hold overhead bar", "Draw bar to upper chest"]
+  },
+  "barbell-row": {
+    "name": "Bent-over row",
+    "frames": ["Hinge torso forward, bar hanging", "Pull bar toward belly, torso steady"]
+  },
+  "db-row": {
+    "name": "One-arm dumbbell row",
+    "frames": ["Support one hand and knee on bench", "Row the free dumbbell toward your hip"]
+  },
+  "face-pull": {
+    "name": "Face pull",
+    "frames": ["Rope at eye height, arms forward", "Pull toward forehead, elbows outward"]
+  },
+  "biceps-curl": {
+    "name": "Biceps curl",
+    "frames": ["Dumbbells at sides, palms forward", "Curl with elbows by sides"]
+  },
+  "plank": {
+    "name": "Plank",
+    "frames": ["Forearms down, knees on floor", "Lift knees, hold a straight body line"]
+  },
+  "side-plank": {
+    "name": "Side plank",
+    "frames": ["Lie on side, elbow below shoulder", "Lift hips into a straight side line"]
+  },
+  "dead-bug": {
+    "name": "Dead bug",
+    "frames": ["On back, knees over hips, arms up", "Extend opposite arm and leg, low back down"]
+  },
+  "hollow-hold": {
+    "name": "Hollow hold",
+    "frames": ["On back, knees tucked, lower back flat", "Extend legs and arms within controlled range"]
+  },
+  "russian-twist": {
+    "name": "Russian twist",
+    "frames": ["Sit with knees bent, feet grounded", "Turn ribs to one side, long spine"]
+  },
+  "mountain-climber": {
+    "name": "Mountain climbers",
+    "frames": ["High plank, straight arms", "Bring one knee toward chest"]
+  },
+  "jumping-jack": {
+    "name": "Jumping jacks",
+    "frames": ["Stand with arms by sides", "Feet apart and arms overhead"]
+  },
+  "burpee": {
+    "name": "Burpees",
+    "frames": ["High plank, lower chest near floor", "Stand and make a small jump"]
+  },
+  "high-knees": {
+    "name": "High knees",
+    "frames": ["Stand tall, arms ready", "Raise one knee to hip height"]
+  },
+  "skater": {
+    "name": "Skater hops",
+    "frames": ["Balance on one leg, knee soft", "Step or hop sideways onto the other leg"]
+  },
+  "cat-cow": {
+    "name": "Cat-cow",
+    "frames": ["All fours, gentle spine extension", "Round spine upward gently"]
+  },
+  "worlds-greatest": {
+    "name": "World's greatest stretch",
+    "frames": ["Low lunge, one hand on floor", "Rotate upper body and reach one arm up"]
+  },
+  "hip-flexor": {
+    "name": "Hip flexor stretch",
+    "frames": ["Half kneeling, upright torso", "Small forward hip shift, back glute engaged"]
+  },
+  "hamstring-stretch": {
+    "name": "Hamstring stretch",
+    "frames": ["Stand with one heel on a low step", "Hinge forward with a long spine"]
+  },
+  "childs-pose": {
+    "name": "Child's pose",
+    "frames": ["Kneel comfortably, knees apart", "Sit hips back and reach arms forward"]
+  },
+  "wu-racket-still": {
+    "name": "Stationary shadow strokes",
+    "frames": ["Feet planted, relaxed forehand preparation", "Slow backhand pattern, feet stay planted"]
+  },
+  "wu-basketball-still": {
+    "name": "Stationary basketball rehearsal",
+    "frames": ["Feet planted, gentle dribble mime", "Gentle pass mime, no ball and no jump"]
+  },
+  "wu-footwork-still": {
+    "name": "Controlled football foot taps",
+    "frames": ["Stand with feet grounded", "Lightly tap one foot forward"]
+  },
+  "wu-volley-still": {
+    "name": "Standing volleyball rehearsal",
+    "frames": ["Feet planted, hands form passing platform", "Gently reach up, no jumping"]
+  },
+  "wu-skate-still": {
+    "name": "Stationary skating stance",
+    "frames": ["Feet planted, knees slightly bent", "Shift weight sideways without stepping"]
+  },
+  "wu-box-still": {
+    "name": "Stationary boxing rehearsal",
+    "frames": ["Feet planted, hands in relaxed guard", "Short controlled punch, elbow stays soft"]
+  },
+  "wu-jog": {
+    "name": "Easy jog or brisk march",
+    "frames": ["Easy walking stride", "Relaxed brisk march, one knee lifted"]
+  },
+  "wu-ankles": {
+    "name": "Ankle rocks & calf raises",
+    "frames": ["Rock one knee over toes, heel down", "Unweighted calf raise"]
+  },
+  "wu-leg-swings": {
+    "name": "Controlled leg swings",
+    "frames": ["Stand beside a wall for support", "Small controlled forward leg swing"]
+  },
+  "wu-lunge": {
+    "name": "Reverse lunge & reach",
+    "frames": ["Step back into shallow lunge", "Reach upward while maintaining lunge"]
+  },
+  "wu-lateral": {
+    "name": "Lateral weight shifts",
+    "frames": ["Stand wide, feet grounded", "Gently shift hips toward one foot"]
+  },
+  "wu-hips": {
+    "name": "Hip gates",
+    "frames": ["Lift one knee in front", "Open that hip outward gently"]
+  },
+  "wu-arms": {
+    "name": "Arm circles & shoulder sweeps",
+    "frames": ["Arms extended for small circles", "Relaxed arm hug across chest"]
+  },
+  "wu-rotation": {
+    "name": "Standing trunk rotations",
+    "frames": ["Stand tall, arms relaxed forward", "Turn through upper back, allow foot pivot"]
+  },
+  "wu-scapula": {
+    "name": "Wall shoulder slides",
+    "frames": ["Forearms against wall, elbows bent", "Slide forearms upward comfortably"]
+  },
+  "wu-wrists": {
+    "name": "Wrist & forearm circles",
+    "frames": ["Hands in front, fingers open", "Circle wrists gently"]
+  },
+  "wu-balance": {
+    "name": "Single-leg balance & reach",
+    "frames": ["Balance near a wall on one leg", "Reach other foot a short distance forward"]
+  },
+  "wu-march": {
+    "name": "March into easy skips",
+    "frames": ["Stand tall with opposite arm forward", "March with opposite knee raised"]
+  },
+  "wu-shuffle": {
+    "name": "Side shuffle & controlled stop",
+    "frames": ["Balanced athletic stance", "Small lateral step and controlled stop"]
+  },
+  "wu-landing": {
+    "name": "Small jump & quiet landing",
+    "frames": ["Prepare for a small jump", "Soft landing with knees bent"]
+  },
+  "wu-strides": {
+    "name": "Progressive strides",
+    "frames": ["Easy relaxed running stride", "Moderate running stride, no sprint"]
+  },
+  "wu-cut": {
+    "name": "Gentle approach & direction change",
+    "frames": ["Gentle jogging approach", "Slow controlled wide turn"]
+  },
+  "wu-football": {
+    "name": "Ball touches & short passing",
+    "frames": ["Gentle foot touch on a football", "Short controlled pass"]
+  },
+  "wu-basketball": {
+    "name": "Dribble, shuffle & close-range finish",
+    "frames": ["Easy low basketball dribble", "Controlled close-range shooting preparation"]
+  },
+  "wu-racket": {
+    "name": "Split steps & shadow strokes",
+    "frames": ["Small balanced split step", "Slow forehand shadow stroke"]
+  },
+  "wu-volley": {
+    "name": "Approach steps & easy arm swings",
+    "frames": ["Slow volleyball approach step", "Gentle upward arm swing without hard jump"]
+  },
+  "wu-throw": {
+    "name": "Throwing pattern rehearsal",
+    "frames": ["Unloaded throwing preparation", "Slow throwing follow-through"]
+  },
+  "wu-swim": {
+    "name": "Easy stroke rehearsal",
+    "frames": ["Stand with one arm ready overhead", "Smooth alternating stroke rehearsal on land"]
+  },
+  "wu-cycle": {
+    "name": "Easy spin progression",
+    "frames": ["Sit on stationary bike, relaxed posture", "Easy pedaling, posture unchanged"]
+  },
+  "wu-golf": {
+    "name": "Hip turns & half swings",
+    "frames": ["Prepare a short practice swing", "Controlled half-swing follow-through"]
+  },
+  "wu-combat": {
+    "name": "Footwork & light shadowboxing",
+    "frames": ["Relaxed guard in a stable stance", "Slow short punch with gentle step"]
+  },
+  "wu-skate": {
+    "name": "Skating stance & lateral steps",
+    "frames": ["Shallow skating stance on dry floor", "Controlled sideways step, no skates"]
+  },
+  "wu-cricket": {
+    "name": "Batting footwork & easy bowling rehearsal",
+    "frames": ["Controlled batting footwork preparation", "Easy unloaded bowling arm rehearsal"]
+  },
+  "wu-hinge": {
+    "name": "Standing hip hinge",
+    "frames": ["Stand tall, knees soft", "Move hips back with a long spine"]
+  }
+}

@@ -102,7 +102,7 @@ export default function PersonalSettings({ onClose, onEvents, onSetup }) {
             title="Movement comfort"
             detail={
               training.avoidMuscles.length
-                ? `${training.avoidMuscles.length} areas to avoid loading`
+                ? `${count(training.avoidMuscles.length, 'area')} to avoid`
                 : 'Nothing flagged'
             }
           >

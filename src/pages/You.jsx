@@ -97,7 +97,7 @@ export default function You({ nav }) {
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[18px] font-semibold">{settings.name || 'Add your name'}</span>
           <span className="mt-0.5 block text-[13px] text-muted">
-            Training since {MONTHS_LONG[sinceDate.getMonth()]}
+            {workouts.length ? 'Training since' : 'Joined'} {MONTHS_LONG[sinceDate.getMonth()]}
             {sinceDate.getFullYear() !== fromKey(today).getFullYear() ? ` ${sinceDate.getFullYear()}` : ''}
           </span>
         </span>
@@ -116,7 +116,20 @@ export default function You({ nav }) {
           ))}
         </div>
       ) : (
-        <p className="mt-5 text-[14px] text-muted">Totals start with your first session.</p>
+        <button
+          className="mt-5 flex min-h-14 w-full items-center gap-3 rounded-tuck bg-surface px-4 text-left"
+          onClick={nav.openProfile}
+        >
+          <span aria-hidden="true" className="text-[23px]">
+            {settings.training.goal === 'Build muscle'
+              ? '💪'
+              : settings.training.goal === 'Get stronger'
+                ? '🏋️'
+                : '🌿'}
+          </span>
+          <span className="flex-1 text-[14px] font-semibold">{settings.training.goal}</span>
+          <Icon name="edit" size={16} className="text-muted" />
+        </button>
       )}
 
       <button className="list-row mt-4 rounded-tuck bg-surface px-4" onClick={() => nav.openCheckins()}>

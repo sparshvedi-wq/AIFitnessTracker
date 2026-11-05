@@ -3,6 +3,7 @@ import Icon from './Icon.jsx'
 import TrainingPhoto from './TrainingPhoto.jsx'
 import { findExercise } from '../lib/exercises.js'
 import { planSummary } from '../lib/presentation.js'
+import { PlanRibbon } from './training/SetupVisuals.jsx'
 
 export default function TrainingCard({
   plan,
@@ -11,6 +12,7 @@ export default function TrainingCard({
   rotate = false,
   compact = false,
   customExercises = [],
+  showContext = true,
 }) {
   const [expanded, setExpanded] = useState(false)
   const sets = plan.items.reduce((n, it) => n + it.sets, 0)
@@ -23,21 +25,27 @@ export default function TrainingCard({
             {plan.name}
           </h2>
           <button
-            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full border border-paper-muted/40"
+            className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-paper-muted/40 px-3 text-[12px] font-semibold"
             onClick={() => setExpanded((v) => !v)}
             aria-label={expanded ? 'Hide workout details' : 'View workout details'}
             aria-expanded={expanded}
           >
-            <Icon name={expanded ? 'x' : 'list'} size={19} />
+            <Icon name={expanded ? 'x' : 'list'} size={16} />
+            {expanded ? 'Hide' : 'Details'}
           </button>
         </div>
         <p className="mt-2 text-[14px] leading-relaxed text-paper-muted">{planSummary(plan)}</p>
+        <PlanRibbon items={plan.items} customExercises={customExercises} findExercise={findExercise} />
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-paper-muted">
-          <span className="inline-flex items-center gap-1.5">
-            <Icon name="clock" size={15} />
-            {plan.requestedMinutes} min
-          </span>
-          <span className="max-w-[45%] truncate">{plan.placeName || place?.name}</span>
+          {showContext && (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="clock" size={15} />
+                {plan.requestedMinutes} min
+              </span>
+              <span className="max-w-[45%] truncate">{plan.placeName || place?.name}</span>
+            </>
+          )}
           <span>
             {plan.items.length} {plan.items.length === 1 ? 'exercise' : 'exercises'} · {sets}{' '}
             {sets === 1 ? 'set' : 'sets'}
@@ -51,6 +59,7 @@ export default function TrainingCard({
                 className="flex items-center justify-between gap-3 border-b border-paper-muted/25 py-3 last:border-0"
               >
                 <span className="text-[14px] font-medium">
+                  <span className="mr-2 text-[12px] text-paper-muted">{String(i + 1).padStart(2, '0')}</span>
                   {findExercise(it.exId, customExercises)?.name}
                 </span>
                 <span className="shrink-0 text-[13px] text-paper-muted">

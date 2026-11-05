@@ -53,7 +53,7 @@ export default function BodyAreaPicker({ value, onChange, label = 'Sore or tired
   return (
     <div className="mt-4">
       <p id={helpId} className="text-[14px] leading-relaxed text-muted">
-        Tap any areas that need a break.
+        Tap an area to select both sides.
       </p>
       <div className="mt-4 rounded-tuck bg-bg/60 p-3">
         <div className="segmented mx-auto max-w-[240px]" role="group" aria-label="Body view">
@@ -142,11 +142,8 @@ export default function BodyAreaPicker({ value, onChange, label = 'Sore or tired
             aria-hidden="true"
           />
         </svg>
-        <p className="text-center text-[12px] text-muted">
-          {view === 'front' ? 'Front' : 'Back'} · blue areas are selected
-        </p>
+        <p className="text-center text-[12px] text-muted">{view === 'front' ? 'Front' : 'Back'} view</p>
       </div>
-      <p className="mt-3 text-[12px] leading-relaxed text-muted">Either side selects the whole group.</p>
       <div aria-live="polite" className="mt-3">
         {value.length ? (
           <div className="flex flex-wrap gap-2">
@@ -165,7 +162,7 @@ export default function BodyAreaPicker({ value, onChange, label = 'Sore or tired
             ))}
           </div>
         ) : (
-          <p className="text-[13px] text-muted">No areas selected</p>
+          <span className="sr-only">No areas selected</span>
         )}
       </div>
       {locked.length > 0 && (

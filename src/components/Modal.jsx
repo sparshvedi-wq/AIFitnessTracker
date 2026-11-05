@@ -19,6 +19,7 @@ export default function Modal({
 }) {
   const dialog = useRef(null)
   const titleId = useId()
+  const subtitleId = useId()
   useDialogAccessibility(dialog, open, dismissible ? onClose : null)
 
   if (!open) return null
@@ -36,6 +37,7 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={subtitle ? subtitleId : undefined}
         className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float animate-slide-up`}
       >
         {/* Grab handle (phones) */}
@@ -47,7 +49,11 @@ export default function Modal({
             <h2 id={titleId} className="font-display text-[26px] leading-tight text-ink">
               {title}
             </h2>
-            {subtitle && <p className="mt-1 text-[13px] text-muted">{subtitle}</p>}
+            {subtitle && (
+              <p id={subtitleId} className="mt-1 text-[13px] text-muted">
+                {subtitle}
+              </p>
+            )}
           </div>
           {headerAction}
           {dismissible && (

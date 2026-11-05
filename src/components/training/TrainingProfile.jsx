@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
 import { useApp } from '../../store/AppContext.jsx'
-import { GOALS, profileOf, buildDailyPlan } from '../../lib/planner.js'
+import { profileOf, buildDailyPlan } from '../../lib/planner.js'
 import { SPORTS } from '../../lib/sports.js'
-import { MUSCLES, findExercise } from '../../lib/exercises.js'
+import { findExercise } from '../../lib/exercises.js'
 import {
   ONBOARDING_VERSION,
   onboardingStage,
@@ -18,7 +18,8 @@ import {
   manualEntryOf,
   readManualBaseline,
 } from '../../lib/starting-profile.js'
-import { TallyLogo } from '../Ink.jsx'
+import { ChoiceArt, SetupProgress, SetupWelcome, SPORT_EMOJI, PlanRibbon } from './SetupVisuals.jsx'
+import BodyAreaPicker from './BodyAreaPicker.jsx'
 import EnvironmentFields from './EnvironmentFields.jsx'
 import { placeSummary, placesOf, resolvePlace, updatePlace } from '../../lib/places.js'
 import MovementFields from './MovementFields.jsx'
@@ -29,7 +30,7 @@ import { hasTrainingTarget } from '../../lib/preferences.js'
 export { Choice, Field } from './Fields.jsx'
 
 const TITLES = {
-  welcome: 'Training, built around you.',
+  welcome: 'Welcome to Tally',
   goal: 'What’s your main goal?',
   experience: 'How much have you trained?',
   about: 'A little about you',
@@ -41,11 +42,22 @@ const TITLES = {
   equipment: 'What equipment do you have?',
   movement: 'What works in your space?',
   time: 'How long is a usual session?',
-  rhythm: 'Target or no target?',
+  rhythm: 'What keeps you going?',
   comfort: 'Any areas to avoid?',
   photos: 'Your starting photos',
   manual: 'Your starting profile',
-  review: 'Here’s your starting plan',
+  review: 'Your first session',
+}
+const HINTS = {
+  goal: 'Pick what matters most right now.',
+  experience: 'Choose the closest fit. Your training can change with you.',
+  about: 'A few details for your starting profile.',
+  'sport-choice': 'Choose any you play. You can add events later.',
+  priority: 'This changes how much your sport shapes your sessions.',
+  equipment: 'Select what you can use at home.',
+  time: 'A starting point, not a time limit.',
+  rhythm: 'Either way, you choose the days.',
+  comfort: 'These areas stay out of your suggested workouts.',
 }
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
@@ -221,7 +233,7 @@ export default function TrainingProfile({ onClose }) {
       dismissible={returning}
       headerAction={testExit}
       onClose={close}
-      title={TITLES[step]}
+      title={returning && step === 'review' ? 'Your training setup' : TITLES[step]}
       subtitle={
         returning ? 'Changes save when you finish' : `${stage.label} · ${stage.index + 1} of ${stage.total}`
       }
@@ -249,62 +261,34 @@ export default function TrainingProfile({ onClose }) {
                   ? 'Finish starting profile'
                   : returning
                     ? 'Save changes'
-                    : 'Go to my plan'
+                    : 'Open my dashboard'
                 : 'Continue'}
           </button>
         </div>
       }
     >
-      {!returning && (
-        <div
-          className="mt-3 h-1 rounded-full bg-line"
-          aria-label={`Setup ${Math.round(((stage.index + 1) / stage.total) * 100)} percent complete`}
-        >
-          <div
-            className="h-full rounded-full bg-accent transition-all duration-300"
-            style={{ width: `${((stage.index + 1) / stage.total) * 100}%` }}
-          />
-        </div>
-      )}
+      {!returning && <SetupProgress stage={stage} />}
       <div className="onboarding-question animate-fade-in">
-        {step === 'welcome' && (
-          <>
-            <div className="mt-5 flex items-center gap-2 text-[14px] font-semibold">
-              <TallyLogo width={26} />
-              Tally
-            </div>
-            <p className="mt-7 text-[19px] leading-relaxed text-ink2">
-              Photos set your start. Your day shapes each workout.
-            </p>
-            <div className="mt-8 space-y-3">
-              {[
-                ['camera', 'Start with your photos', 'Front, side and back'],
-                ['train', 'Get your next workout', 'Exercises, sets and guidance'],
-                ['sport', 'Warm up or keep it short', 'For your sport or a busy day'],
-              ].map(([icon, title, detail], i) => (
-                <div key={title} className="setup-feature">
-                  <span className="icon-tile !h-14 !w-14 text-accent">
-                    <Icon name={icon} size={25} />
-                  </span>
-                  <span>
-                    <span className="block text-[17px] font-semibold">{title}</span>
-                    <span className="mt-1 block text-[14px] text-muted">{detail}</span>
-                  </span>
-                  <span className="num ml-auto text-[22px] text-faint">0{i + 1}</span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
+        {step === 'welcome' && <SetupWelcome />}
         {step === 'goal' && (
-          <Cards values={GOALS.map((g) => [g, g])} value={p.goal} onChange={(goal) => set({ goal })} />
+          <Cards
+            values={[
+              ['Build muscle', 'Build muscle', 'Steady volume, room to grow.', '💪'],
+              ['Get stronger', 'Get stronger', 'Build up your main lifts.', '🏋️'],
+              ['General fitness', 'Feel fitter', 'A little strength, a little conditioning.', '🌿'],
+            ]}
+            value={p.goal}
+            onChange={(goal) => set({ goal })}
+          />
         )}
         {step === 'experience' && (
           <Cards
+            kind="experience"
             values={[
-              ['Starting out', 'New or returning'],
-              ['Some experience', 'I’ve trained before'],
-              ['Experienced', 'I train regularly'],
+              ['Starting out', 'New or returning', 'Simple moves. Guidance included.'],
+              ['Some experience', 'I know the basics', 'Build on what you’ve done.'],
+              ['Experienced', 'I train regularly', 'Progress from your logged sets.'],
             ]}
             value={p.experience}
             onChange={(experience) => set({ experience })}
@@ -346,8 +330,8 @@ export default function TrainingProfile({ onClose }) {
         {step === 'sports' && (
           <Cards
             values={[
-              [true, 'Yes'],
-              [false, 'No sport right now'],
+              [true, 'Yes, I play', 'Warmups and training for my sport.', '🎾'],
+              [false, 'No sport right now', 'That’s fine. We’ll focus on your goal.', '🌿'],
             ]}
             value={Boolean(p.wantsSport || p.sports.length)}
             onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
@@ -362,7 +346,10 @@ export default function TrainingProfile({ onClose }) {
                 selected={p.sports.includes(s.id)}
                 onClick={() => toggle('sports', s.id)}
               >
-                {s.name}
+                <span className="mb-2 block text-[25px]" aria-hidden="true">
+                  {SPORT_EMOJI[s.id] || '🏅'}
+                </span>
+                <span className="block font-semibold">{s.name}</span>
               </Choice>
             ))}
           </div>
@@ -370,11 +357,13 @@ export default function TrainingProfile({ onClose }) {
         {step === 'priority' && (
           <Cards
             values={[
-              ['goal', p.goal],
-              ['balanced', 'A balance of both'],
+              ['goal', p.goal, 'Sport fits around your main goal.', '🎯'],
+              ['balanced', 'A balance of both', 'Give each a place in your training.', '⚖️'],
               [
                 'sport',
                 p.sports.map((id) => SPORTS.find((s) => s.id === id)?.name).join(' / ') || 'My sport',
+                'Keep training lighter around games.',
+                '🏅',
               ],
             ]}
             value={p.sportPriority}
@@ -383,6 +372,7 @@ export default function TrainingProfile({ onClose }) {
         )}
         {step === 'location' && (
           <Cards
+            kind="location"
             values={placesOf(p).map((place) => [
               place.id,
               place.name,
@@ -396,8 +386,8 @@ export default function TrainingProfile({ onClose }) {
         {step === 'home' && (
           <Cards
             values={[
-              [true, 'Yes, sometimes'],
-              [false, 'No'],
+              [true, 'Yes, sometimes', 'Save my home equipment too.', '🏠'],
+              [false, 'Not for now', 'Add a home setup whenever you like.', '↗'],
             ]}
             value={Boolean(p.hasHomeSetup)}
             onChange={(hasHomeSetup) => set({ hasHomeSetup })}
@@ -415,32 +405,39 @@ export default function TrainingProfile({ onClose }) {
         {step === 'movement' && <MovementFields value={p.onTheGo} onChange={(onTheGo) => set({ onTheGo })} />}
         {step === 'time' && (
           <Cards
+            kind="time"
             values={[
-              [15, '15 minutes'],
-              [30, '30 minutes'],
-              [45, '45 minutes'],
-              [20, 'It changes', 'Ask me before each session'],
+              [15, 'Keep it short'],
+              [30, 'Half an hour'],
+              [45, 'A little longer'],
+              ...(![15, 30, 45].includes(p.minutes) && !p.flexibleTime
+                ? [[p.minutes, 'My usual session']]
+                : []),
+              ['flexible', 'It changes', 'Ask me before each session', '↔'],
             ]}
-            value={p.flexibleTime ? 20 : p.minutes}
-            onChange={(minutes) => set({ minutes, flexibleTime: minutes === 20 })}
+            value={p.flexibleTime ? 'flexible' : p.minutes}
+            onChange={(minutes) =>
+              set(minutes === 'flexible' ? { flexibleTime: true } : { minutes, flexibleTime: false })
+            }
           />
         )}
         {step === 'rhythm' && (
           <>
             <Cards
+              kind="rhythm"
               values={[
-                ['flexible', 'No weekly target'],
-                ['target', 'Use a rough target'],
+                ['flexible', 'Take it as it comes', 'No weekly target. Just your next session.'],
+                ['target', 'A little structure', 'A rough target, without fixed days.'],
               ]}
               value={goalMode}
               onChange={setGoalMode}
             />
             {goalMode === 'target' && (
-              <Field label="Days in any seven">
+              <Field label="Training days in any seven days">
                 <div className="flex flex-wrap gap-2">
                   {[1, 2, 3, 4, 5, 6, 7].map((n) => (
                     <Choice key={n} value={n} selected={weeklyGoal === n} onClick={setWeeklyGoal}>
-                      {n} days
+                      {count(n, 'day')}
                     </Choice>
                   ))}
                 </div>
@@ -449,21 +446,11 @@ export default function TrainingProfile({ onClose }) {
           </>
         )}
         {step === 'comfort' && (
-          <>
-            <div className="mt-6 grid grid-cols-2 gap-2">
-              {MUSCLES.filter((m) => !['Cardio', 'Mobility'].includes(m)).map((m) => (
-                <Choice
-                  key={m}
-                  value={m}
-                  selected={p.avoidMuscles.includes(m)}
-                  onClick={() => toggle('avoidMuscles', m)}
-                />
-              ))}
-            </div>
-            <button className="btn-ghost mt-4 w-full" onClick={() => set({ avoidMuscles: [] })}>
-              Nothing to avoid
-            </button>
-          </>
+          <BodyAreaPicker
+            value={p.avoidMuscles}
+            onChange={(avoidMuscles) => set({ avoidMuscles })}
+            label="Areas to avoid"
+          />
         )}
         {step === 'manual' && (
           <>
@@ -480,6 +467,14 @@ export default function TrainingProfile({ onClose }) {
         {step === 'review' && (
           <>
             <div className="mt-5 rounded-tuck bg-bg/70 p-5">
+              <div className="mb-4 flex items-center gap-2 text-[13px] text-muted">
+                <Icon name="check" size={16} className="text-accent" />
+                {returning
+                  ? 'Current plan preview'
+                  : name.trim()
+                    ? `${name.trim().split(' ')[0]}’s starting plan`
+                    : 'Built from your answers'}
+              </div>
               <div className="flex items-center justify-between">
                 <h3 className="text-[16px] font-semibold">
                   {plan.name}{' '}
@@ -487,6 +482,7 @@ export default function TrainingProfile({ onClose }) {
                 </h3>
                 <Icon name="train" size={22} className="text-accent" />
               </div>
+              <PlanRibbon items={plan.items} findExercise={findExercise} />
               <div className="mt-4 divide-y divide-line">
                 {plan.items.map((it) => (
                   <div key={it.exId} className="flex items-center justify-between gap-3 py-3">
@@ -508,7 +504,7 @@ export default function TrainingProfile({ onClose }) {
                 ['goal', p.goal],
                 [
                   'time',
-                  `${p.minutes} min · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
+                  `${p.flexibleTime ? 'Time varies' : `${p.minutes} min`} · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
                 ],
                 ['location', p.location === 'home' ? 'Home setup' : resolvePlace(p, p.location).name],
                 [
@@ -559,20 +555,22 @@ export default function TrainingProfile({ onClose }) {
     </Modal>
   )
 }
-function Cards({ values, value, onChange }) {
+function Cards({ values, value, onChange, kind }) {
   return (
-    <div className="mt-7 space-y-3">
-      {values.map(([id, title, detail]) => (
+    <div className="mt-5 space-y-3">
+      {values.map(([id, title, detail, emoji]) => (
         <button
           key={String(id)}
           type="button"
+          aria-label={kind === 'time' && !emoji ? `${title}, ${id} minutes` : undefined}
           aria-pressed={value === id}
           onClick={() => onChange(id)}
           className={`onboarding-choice ${value === id ? 'border-accent bg-accent/10' : 'border-line bg-surface2'}`}
         >
+          <ChoiceArt kind={kind === 'time' && emoji ? undefined : kind} value={id} emoji={emoji} />
           <span className="min-w-0 flex-1">
-            <span className="block text-[20px] font-semibold">{title}</span>
-            {detail && <span className="mt-1.5 block text-[14px] text-muted">{detail}</span>}
+            <span className="block text-[18px] font-semibold leading-snug">{title}</span>
+            {detail && <span className="mt-1 block text-[14px] leading-snug text-muted">{detail}</span>}
           </span>
           <span
             className={`dot h-7 w-7 shrink-0 border ${value === id ? 'border-accent text-accent' : 'border-outline text-transparent'}`}

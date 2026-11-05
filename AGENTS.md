@@ -1,6 +1,7 @@
 # Active application
 
 The user selected this repository's `claude/ink-design` version as the main app on October 25, 2026.
+On November 3, 2026, the user compared the separate FRAME app and explicitly selected Tally Ink again. This is the main project for both coding assistants; do not switch to `AIFitnessTracker/mobile`.
 
 - Make future design and feature edits here: `N:\Workspaces\AIFitnessTracker-ink-design`.
 - `src/` contains the actual Tally Ink app shared by browser and Expo Go. Preserve the selected Ink design unless the user requests a change.

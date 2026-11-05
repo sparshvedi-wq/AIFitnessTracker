@@ -66,9 +66,17 @@ export default function History({ nav }) {
       <div className="animate-fade-in">
         <PageTitle title="History" />
         <div className="empty-state mt-6">
-          <Icon name="history" size={28} />
-          <p className="text-[15px] text-ink">Your history starts with your first session.</p>
-          <p>Workouts, warm-ups and check-ins land here.</p>
+          <div className="history-illustration" aria-hidden="true">
+            {['train', 'sport', 'camera'].map((icon) => (
+              <span key={icon}>
+                <Icon name={icon} size={19} />
+                <i />
+                <i />
+              </span>
+            ))}
+          </div>
+          <h2 className="font-display text-[25px] text-ink">Your first session goes here.</h2>
+          <p>Sessions, warmups and check-ins. All in one place.</p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">
             <button className="btn-primary" onClick={() => nav.go('train')}>
               Find a session

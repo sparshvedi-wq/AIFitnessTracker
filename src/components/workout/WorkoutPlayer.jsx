@@ -440,8 +440,8 @@ function Countdown({ title, sub, ms, total, onSkip, skipLabel, children, calm = 
       </p>
       <div className="mx-auto mt-6 h-1.5 max-w-[280px] overflow-hidden rounded-full bg-line">
         <div
-          className="h-full rounded-full bg-accent transition-[width] duration-200 ease-linear"
-          style={{ width: `${p * 100}%` }}
+          className="h-full origin-left rounded-full bg-accent transition-transform duration-100 ease-linear motion-reduce:transition-none"
+          style={{ transform: `scaleX(${p})` }}
         />
       </div>
       {children}

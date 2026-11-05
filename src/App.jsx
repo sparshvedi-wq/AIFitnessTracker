@@ -62,6 +62,12 @@ export default function App() {
   const [photoId, setPhotoId] = useState(null)
   const [personalOpen, setPersonalOpen] = useState(false)
   const display = displayOf(state)
+  // Sheets rendered through a portal must inherit the same access preferences.
+  useEffect(() => {
+    document.documentElement.classList.toggle('tally-large-text', display.largeText)
+    document.documentElement.classList.toggle('tally-reduce-motion', display.reducedMotion)
+    return () => document.documentElement.classList.remove('tally-large-text', 'tally-reduce-motion')
+  }, [display.largeText, display.reducedMotion])
   // Reopen the player after a reload if a workout was in progress.
   const [playerOpen, setPlayerOpen] = useState(() => Boolean(state.activeWorkout))
 

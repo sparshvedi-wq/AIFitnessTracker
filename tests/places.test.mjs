@@ -128,6 +128,27 @@ test('place names are required, short and unique, and the list has a limit', () 
   assert.equal(many.places.length, MAX_PLACES)
 })
 
+test('home planning uses the usual place when today has no location choice', () => {
+  const state = withPlaces({ location: 'home', equipment: ['Resistance bands'] })
+  for (const readiness of [
+    null,
+    { date: today, todayMinutes: 15 },
+    { date: '2026-10-30', todayLocation: 'gym' },
+    { date: today, todayLocation: null },
+    { date: today, todayLocation: '' },
+  ]) {
+    state.readiness = readiness
+    const before = structuredClone(state)
+    const choice = todayChoice(state, today)
+    assert.equal(choice.location, undefined)
+    assert.equal(choice.minutes, readiness?.date === today ? readiness.todayMinutes : undefined)
+    const plan = buildDailyPlan(state, { today, ...choice })
+    assert.equal(plan.location, 'home')
+    assert.ok(plan.items.length > 0)
+    assert.deepEqual(state, before)
+  }
+})
+
 test('a today-only place that was deleted falls back to the usual place', () => {
   const state = withPlaces({ places: [hotel] })
   state.readiness = { date: today, todayLocation: 'place-hotel' }

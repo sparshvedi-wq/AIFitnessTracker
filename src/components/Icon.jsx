@@ -1,7 +1,11 @@
 // Single stroke-icon set (Lucide-style paths) so every screen uses the same
-// visual language instead of mixing emoji and ad-hoc SVGs.
+// visual language for controls. Onboarding uses decorative emoji separately.
 
 const PATHS = {
+  band: ['M5 8a3 3 0 0 1 5-2l9 9a3 3 0 0 1-5 5L5 11a3 3 0 0 1 0-3Z', 'M8 5 19 16', 'M5 8 16 19'],
+  bench: ['M3 11h18v4H3z', 'M6 15v5', 'M18 15v5', 'M4 20h4', 'M16 20h4'],
+  pullup: ['M3 20V5h18v15', 'M2 5h20', 'M8 5v4', 'M16 5v4'],
+  kettlebell: ['M7 9V6a5 5 0 0 1 10 0v3', 'M5 16a7 7 0 1 1 14 0 7 7 0 0 1-14 0Z'],
   image: [
     'M4 3h16a1 1 0 011 1v16a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z',
     'M3 16l6-6 5 5 3-3 4 4',

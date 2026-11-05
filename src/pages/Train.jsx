@@ -23,6 +23,7 @@ import ExercisePicker from '../components/workout/ExercisePicker.jsx'
 import FormSheet from '../components/workout/FormSheet.jsx'
 import { matchesExercise } from '../lib/exercise-search.js'
 import { shortSessionRequest } from '../lib/flexible-training.js'
+import { SPORT_EMOJI } from '../components/training/SetupVisuals.jsx'
 
 // Routines saved before tags existed get one from their exercises.
 function tagOf(routine, custom) {
@@ -103,12 +104,9 @@ export default function Train({ nav }) {
         title="Train"
         right={
           <div className="flex gap-1">
-            <button onClick={nav.openPersonal} className="icon-btn" aria-label="Preferences">
-              <Icon name="settings" size={20} />
-            </button>
             <button
               className="icon-btn"
-              aria-label="Search routines and exercises"
+              aria-label={searching ? 'Close search' : 'Search routines and exercises'}
               aria-expanded={searching}
               onClick={() => {
                 setSearching((v) => !v)
@@ -145,6 +143,7 @@ export default function Train({ nav }) {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <QuickAction
               icon="sport"
+              emoji={SPORT_EMOJI[warmSport] || '🏅'}
               title="Sport warmup"
               detail={warmSport ? sportById(warmSport).name : '5–20 min'}
               onClick={() => start({ kind: 'sport', sport: warmSport, items: [] })}
@@ -211,7 +210,7 @@ export default function Train({ nav }) {
             <p className="min-w-0 flex-1 text-[14px] text-muted">Save the workouts you like.</p>
             <button className="btn-secondary shrink-0 !px-4" onClick={() => setEditing(null)}>
               <Icon name="plus" size={16} />
-              Build
+              Create
             </button>
           </div>
         )}
@@ -266,10 +265,15 @@ export default function Train({ nav }) {
     </div>
   )
 }
-function QuickAction({ icon, title, detail, onClick }) {
+function QuickAction({ icon, emoji, title, detail, onClick }) {
   return (
     <button className="min-h-24 rounded-tuck bg-surface p-3.5 text-left" onClick={onClick}>
-      <Icon name={icon} size={23} className="text-accent" />
+      <span className="flex items-center justify-between gap-2">
+        <span className="quick-action-art" aria-hidden="true">
+          {emoji || <Icon name={icon} size={24} />}
+        </span>
+        <Icon name="chevronRight" size={16} className="text-faint" />
+      </span>
       <span className="mt-3 block text-[15px] font-semibold">{title}</span>
       <span className="mt-0.5 block truncate text-[13px] text-muted">{detail}</span>
     </button>

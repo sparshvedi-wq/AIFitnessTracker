@@ -1,7 +1,7 @@
 // Create or edit a routine: name, style (straight sets or circuit), and the
 // exercises with sets, reps or seconds, starting weight and rest.
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
 import { findExercise } from '../../lib/exercises.js'
 import { estimateMinutes } from '../../lib/workout.js'
@@ -11,6 +11,7 @@ import Icon from '../Icon.jsx'
 import ConfirmDialog from '../ConfirmDialog.jsx'
 import ExercisePicker from './ExercisePicker.jsx'
 import { MuscleTag } from './Controls.jsx'
+import { DUMBBELL_MOVES } from '../../lib/preferences.js'
 
 const blank = () => ({ id: uid(), name: '', circuit: false, items: [] })
 
@@ -31,6 +32,15 @@ function RoutineDraft({ open, routine, onClose }) {
   const close = () => (JSON.stringify(draft) !== initialDraft ? setConfirmDiscard(true) : onClose())
   const [picking, setPicking] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [itemActions, setItemActions] = useState(null)
+  const itemButtons = useRef(new Map())
+  const addButton = useRef(null)
+  const closeItemActions = (index = itemActions) => {
+    setItemActions(null)
+    requestAnimationFrame(() =>
+      (itemButtons.current.get(index) || addButton.current)?.focus({ preventScroll: true }),
+    )
+  }
   const unit = state.settings.weightUnit
   const isExisting = Boolean(routine && state.routines.some((r) => r.id === routine.id))
 
@@ -67,7 +77,7 @@ function RoutineDraft({ open, routine, onClose }) {
     <>
       <Modal
         open={open}
-        onClose={picking || confirmDelete || confirmDiscard ? () => {} : close}
+        onClose={picking || confirmDelete || confirmDiscard || itemActions !== null ? () => {} : close}
         title={isExisting ? 'Edit routine' : 'New routine'}
         footer={
           <div className="flex gap-2">
@@ -142,36 +152,25 @@ function RoutineDraft({ open, routine, onClose }) {
                     {i + 1}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-semibold text-ink">{def.name}</p>
+                    <p className="text-[15px] font-semibold leading-snug text-ink">{def.name}</p>
                     <MuscleTag muscle={def.muscle} />
                   </div>
-                  <div className="-mr-1 -mt-1 flex">
-                    <button
-                      onClick={() => move(i, -1)}
-                      disabled={i === 0}
-                      className="icon-btn h-8 w-8 disabled:opacity-30"
-                      aria-label="Move up"
-                    >
-                      <Icon name="arrowUp" size={16} />
-                    </button>
-                    <button
-                      onClick={() => move(i, 1)}
-                      disabled={i === draft.items.length - 1}
-                      className="icon-btn h-8 w-8 disabled:opacity-30"
-                      aria-label="Move down"
-                    >
-                      <Icon name="arrowDown" size={16} />
-                    </button>
-                    <button
-                      onClick={() => remove(i)}
-                      className="icon-btn h-8 w-8 hover:text-danger"
-                      aria-label={`Remove ${def.name}`}
-                    >
-                      <Icon name="x" size={16} />
-                    </button>
-                  </div>
+                  <button
+                    ref={(node) => {
+                      if (node) itemButtons.current.set(i, node)
+                      else itemButtons.current.delete(i)
+                    }}
+                    onClick={() => setItemActions(i)}
+                    className="icon-btn -mr-1 -mt-1"
+                    aria-label={`Options for ${def.name}`}
+                  >
+                    <Icon name="more" size={20} />
+                  </button>
                 </div>
-                <div className={`mt-3 grid gap-2 ${def.weighted ? 'grid-cols-4' : 'grid-cols-3'}`}>
+                <fieldset
+                  className={`mt-3 grid gap-2 ${def.weighted ? 'grid-cols-2 min-[380px]:grid-cols-4' : 'grid-cols-3'}`}
+                >
+                  <legend className="sr-only">Targets for {def.name}</legend>
                   <MiniField
                     label="Sets"
                     value={item.sets}
@@ -192,28 +191,68 @@ function RoutineDraft({ open, routine, onClose }) {
                   )}
                   {def.weighted && (
                     <MiniField
-                      label={unit}
+                      label={DUMBBELL_MOVES.includes(def.id) ? `${unit} each` : `Weight · ${unit}`}
+                      decimals
                       value={item.weight ?? ''}
                       placeholder="—"
                       onChange={(v) => setItem(i, { weight: v || null })}
                     />
                   )}
                   <MiniField
-                    label="Rest s"
+                    label="Rest (s)"
                     value={item.restSec}
                     onChange={(v) => setItem(i, { restSec: v })}
                   />
-                </div>
+                </fieldset>
               </li>
             )
           })}
         </ul>
 
-        <button onClick={() => setPicking(true)} className="btn-secondary mt-3 w-full">
+        <button ref={addButton} onClick={() => setPicking(true)} className="btn-secondary mt-3 w-full">
           <Icon name="plus" size={18} strokeWidth={2.5} />
           Add exercise
         </button>
       </Modal>
+
+      {itemActions !== null && (
+        <Modal
+          open
+          title="Exercise options"
+          subtitle={findExercise(draft.items[itemActions]?.exId, state.customExercises)?.name}
+          onClose={() => closeItemActions()}
+        >
+          <div className="mt-2 divide-y divide-line">
+            {[
+              [-1, 'Move earlier', 'arrowUp'],
+              [1, 'Move later', 'arrowDown'],
+            ].map(([direction, label, icon]) => (
+              <button
+                key={label}
+                disabled={itemActions + direction < 0 || itemActions + direction >= draft.items.length}
+                className="list-row disabled:opacity-35"
+                onClick={() => {
+                  move(itemActions, direction)
+                  closeItemActions(itemActions + direction)
+                }}
+              >
+                <Icon name={icon} size={20} />
+                <span className="font-semibold">{label}</span>
+              </button>
+            ))}
+            <button
+              className="list-row text-danger"
+              onClick={() => {
+                remove(itemActions)
+                closeItemActions(Math.min(itemActions, draft.items.length - 2))
+              }}
+            >
+              <Icon name="trash" size={20} />
+              <span className="font-semibold">Remove from routine</span>
+            </button>
+          </div>
+        </Modal>
+      )}
 
       <ConfirmDialog
         open={confirmDiscard}
@@ -223,7 +262,14 @@ function RoutineDraft({ open, routine, onClose }) {
         onConfirm={onClose}
         onClose={() => setConfirmDiscard(false)}
       />
-      <ExercisePicker open={picking} onClose={() => setPicking(false)} onPick={addExercise} />
+      <ExercisePicker
+        open={picking}
+        onClose={() => {
+          setPicking(false)
+          requestAnimationFrame(() => addButton.current?.focus({ preventScroll: true }))
+        }}
+        onPick={addExercise}
+      />
       <ConfirmDialog
         open={confirmDelete}
         title="Delete routine?"
@@ -239,19 +285,23 @@ function RoutineDraft({ open, routine, onClose }) {
   )
 }
 
-function MiniField({ label, value, onChange, placeholder }) {
+function MiniField({ label, value, onChange, placeholder, decimals = false }) {
   return (
     <label className="block min-w-0">
-      <span className="mb-1 block truncate text-center text-[11px] font-semibold uppercase tracking-wide text-muted">
-        {label}
-      </span>
+      <span className="mb-1 block text-center text-[12px] font-medium text-muted">{label}</span>
       <input
         type="number"
-        inputMode="decimal"
+        inputMode={decimals ? 'decimal' : 'numeric'}
+        step={decimals ? 'any' : '1'}
         min="0"
         value={value}
         placeholder={placeholder}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          const parsed = Number(e.target.value)
+          const n = Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+          onChange(decimals ? n : Math.round(n))
+        }}
         className="input px-2 py-2 text-center tabular-nums"
       />
     </label>

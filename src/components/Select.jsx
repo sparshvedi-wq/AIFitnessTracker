@@ -21,6 +21,7 @@ export default function Select({
       <button
         type="button"
         aria-haspopup="dialog"
+        aria-expanded={open}
         aria-label={`${label}: ${current ? current[1] : placeholder}`}
         className={`${variant === 'chip' ? 'chip' : 'input justify-between'} flex items-center gap-2 text-left ${className}`}
         onClick={() => setOpen(true)}
@@ -36,7 +37,7 @@ export default function Select({
             <div className="mt-2 divide-y divide-line" role="radiogroup" aria-label={label}>
               {options.map(([v, text, detail]) => (
                 <button
-                  key={v}
+                  key={String(v)}
                   type="button"
                   role="radio"
                   aria-checked={v === value}
@@ -52,7 +53,11 @@ export default function Select({
                     </span>
                     {detail && <span className="mt-0.5 block text-[13px] text-muted">{detail}</span>}
                   </span>
-                  {v === value && <Icon name="check" size={18} className="shrink-0 text-accent" />}
+                  <span
+                    className={`dot h-6 w-6 shrink-0 border ${v === value ? 'border-accent bg-accent/10 text-accent' : 'border-outline text-transparent'}`}
+                  >
+                    <Icon name="check" size={14} />
+                  </span>
                 </button>
               ))}
             </div>

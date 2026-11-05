@@ -124,7 +124,7 @@ export function todayChoice(state, date = todayKey()) {
   const place = r.todayLocation && resolvePlace(profileOf(state), r.todayLocation)
   return {
     minutes: r.todayMinutes || undefined,
-    location: place?.id === r.todayLocation ? place.id : undefined,
+    location: place && place.id === r.todayLocation ? place.id : undefined,
   }
 }
 export function planSeconds(items) {

@@ -1,28 +1,49 @@
 // Equipment for one place (see lib/places.js): what's there, which dumbbell
 // sizes, and whether training there should be quiet.
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { HOME_EQUIPMENT } from '../../lib/planner.js'
 import { parseLoads } from '../../lib/preferences.js'
 import { Choice, Field } from './Fields.jsx'
 import { Toggle } from '../Ink.jsx'
+import { EQUIPMENT_ICON } from './SetupVisuals.jsx'
+import Icon from '../Icon.jsx'
 
 export default function EnvironmentFields({ place, onChange, unit, onValidityChange, compact = false }) {
   const [error, setError] = useState('')
-  useEffect(() => {
-    onValidityChange?.(!error)
-  }, [error, onValidityChange])
-  const [text, setText] = useState(() => place.dumbbells.map((v) => Math.round(v * 10) / 10).join(', '))
+  const [text, setText] = useState('')
+  const errorId = useId()
   const equipped = place.type === 'equipment'
+  const showLoads = place.type === 'gym' || place.equipment.includes('Dumbbells')
+  useEffect(() => {
+    onValidityChange?.(!showLoads || (!error && !text.trim()))
+  }, [error, text, showLoads, onValidityChange])
+  const presets = unit === 'kg' ? [2.5, 5, 7.5, 10, 12.5, 15] : [5, 10, 15, 20, 25, 30]
+  const sizes = [...new Set([...presets, ...place.dumbbells])].sort((a, b) => a - b)
+  const toggleSize = (size) =>
+    onChange({
+      dumbbells: place.dumbbells.includes(size)
+        ? place.dumbbells.filter((v) => v !== size)
+        : [...place.dumbbells, size].sort((a, b) => a - b),
+    })
+  const addSizes = () => {
+    if (!text.trim()) return
+    try {
+      onChange({ dumbbells: [...new Set([...place.dumbbells, ...parseLoads(text)])].sort((a, b) => a - b) })
+      setText('')
+      setError('')
+    } catch (err) {
+      setError(err.message)
+    }
+  }
   return (
     <>
       {equipped && (
         <Field
           label={
             compact
-              ? 'Leave blank for bodyweight'
+              ? 'Your home equipment'
               : `Equipment at ${place.name.toLowerCase() === 'home' ? 'home' : place.name}`
           }
-          hint={compact ? null : 'Choose none for bodyweight.'}
         >
           <div className="grid grid-cols-2 gap-2">
             {HOME_EQUIPMENT.map((value) => (
@@ -37,37 +58,76 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
                       : [...place.equipment, value],
                   })
                 }
-              />
+              >
+                <span className="flex items-center gap-2.5">
+                  <Icon name={EQUIPMENT_ICON[value]} size={22} className="shrink-0" />
+                  <span>{value}</span>
+                </span>
+              </Choice>
             ))}
           </div>
+          {!place.equipment.length && (
+            <p className="mt-3 text-[13px] text-muted">Nothing selected? We’ll use bodyweight.</p>
+          )}
         </Field>
       )}
-      {(place.type === 'gym' || place.equipment.includes('Dumbbells')) && (
+      {showLoads && (
         <Field
-          label={`Dumbbell sizes (${unit}, per hand)`}
-          hint={compact ? null : 'Optional. Suggestions never go above what you list.'}
+          label="Which dumbbells can you use?"
+          hint={
+            place.dumbbells.length
+              ? `${place.dumbbells.length} sizes saved · weight per hand`
+              : 'Optional. Leave empty if you’re not sure.'
+          }
         >
-          <input
-            aria-label={`Dumbbell sizes at ${place.name} in ${unit}`}
-            className="input"
-            inputMode="text"
-            value={text}
-            placeholder="5, 10, 15, 20"
-            onChange={(e) => {
-              const value = e.target.value
-              setText(value)
-              try {
-                onChange({ dumbbells: parseLoads(value) })
+          <div
+            className="mb-3 grid grid-cols-3 gap-2"
+            role="group"
+            aria-label={`Available dumbbells in ${unit}, per hand`}
+          >
+            {sizes.map((size) => (
+              <Choice key={size} value={size} selected={place.dumbbells.includes(size)} onClick={toggleSize}>
+                <span className="font-semibold">{Math.round(size * 10) / 10}</span>
+                <span className="ml-1 text-[12px]">{unit}</span>
+              </Choice>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              aria-label={`Dumbbell sizes at ${place.name} in ${unit}`}
+              className="input"
+              inputMode="decimal"
+              value={text}
+              placeholder={`Other size in ${unit}`}
+              onChange={(e) => {
+                setText(e.target.value)
                 setError('')
-              } catch (err) {
-                setError(err.message)
-              }
-            }}
-            aria-invalid={Boolean(error)}
-          />
-          {error && (
-            <p role="alert" className="mt-2 text-[13px] text-danger">
-              {error}
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  addSizes()
+                }
+              }}
+              aria-describedby={error || text.trim() ? errorId : undefined}
+              aria-invalid={Boolean(error)}
+            />
+            <button
+              type="button"
+              className="btn-secondary shrink-0 !px-4"
+              disabled={!text.trim()}
+              onClick={addSizes}
+            >
+              Add
+            </button>
+          </div>
+          {(error || text.trim()) && (
+            <p
+              id={errorId}
+              role={error ? 'alert' : 'status'}
+              className={`mt-2 text-[13px] ${error ? 'text-danger' : 'text-muted'}`}
+            >
+              {error || 'Tap Add to save this size. You can also paste a list.'}
             </p>
           )}
         </Field>
@@ -77,7 +137,7 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
           <span className="min-w-0 flex-1 text-[14px] font-semibold">
             Keep it quiet
             <span className="mt-1 block text-[13px] font-normal leading-relaxed text-muted">
-              No jumping. Good for apartments and hotels.
+              Skip jumping and noisy moves.
             </span>
           </span>
           <Toggle checked={place.quiet} onChange={(quiet) => onChange({ quiet })} label="Keep it quiet" />

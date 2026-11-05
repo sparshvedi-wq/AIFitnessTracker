@@ -99,6 +99,7 @@ export default function Home({ nav }) {
               place={resolvePlace(profileOf(state), next.location)}
               customExercises={state.customExercises}
               rotate
+              showContext={false}
               onStart={() => start(next)}
             />
             <div className="mt-3">

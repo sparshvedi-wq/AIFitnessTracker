@@ -37,7 +37,8 @@ export default function useDialogAccessibility(dialog, open, onClose) {
     if (count++ === 0) previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     isolateTopDialog()
-    if (topDialog() === node) node.querySelector('button')?.focus({ preventScroll: true })
+    // Respect deliberate input autofocus; otherwise announce the dialog's title.
+    if (topDialog() === node && !node.contains(document.activeElement)) node.focus({ preventScroll: true })
     const onKey = (event) => {
       if (topDialog() !== node) return
       if (event.key === 'Escape') {

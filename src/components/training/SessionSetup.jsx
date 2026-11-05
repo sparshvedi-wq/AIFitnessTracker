@@ -28,6 +28,7 @@ import { planSummary, count } from '../../lib/presentation.js'
 import EnvironmentFields from './EnvironmentFields.jsx'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
 import { SHORT_DURATIONS } from '../../lib/flexible-training.js'
+import { PlanRibbon } from './SetupVisuals.jsx'
 
 const PLACE_ICON = { gym: 'train', equipment: 'dumbbell', space: 'minimize' }
 const placeIcon = (place) => (place.id === 'home' ? 'home' : PLACE_ICON[place.type])
@@ -498,10 +499,10 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   [
                     2,
                     'Feel',
-                    readiness.sore.length || readiness.pain.length
-                      ? 'Areas avoided'
-                      : readiness.energy === 'low'
-                        ? 'Low energy'
+                    readiness.energy === 'low'
+                      ? 'Low energy'
+                      : readiness.sore.length || readiness.pain.length
+                        ? 'Areas avoided'
                         : readiness.energy === 'high'
                           ? 'High energy'
                           : 'Usual',
@@ -516,13 +517,21 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     }}
                   >
                     <span className="block text-[12px] text-muted">{label}</span>
-                    <span className="mt-1 block text-[14px] font-semibold">{detail}</span>
+                    <span className="mt-1 flex items-center justify-between gap-1 text-[14px] font-semibold">
+                      <span>{detail}</span>
+                      <Icon name="edit" size={12} className="shrink-0 text-muted" />
+                    </span>
                   </button>
                 ))}
               </div>
               <p className="mt-6 text-[18px] leading-relaxed text-ink2" aria-live="polite">
                 {kind === 'adaptive' ? planSummary(plan) : plan.focus}
               </p>
+              <PlanRibbon
+                items={plan.items}
+                customExercises={state.customExercises}
+                findExercise={findExercise}
+              />
               <p className="mt-4 text-[14px] text-muted">
                 {plan.items.length} {kind === 'sport' ? 'drills' : 'exercises'} ·{' '}
                 {count(

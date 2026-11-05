@@ -47,7 +47,7 @@ export default function TrainingPhoto({ location = 'gym', sport = false, rotate 
       aria-hidden="true"
       width="1080"
       height="360"
-      loading="lazy"
+      loading={rotate ? 'eager' : 'lazy'}
       decoding="async"
       data-scene={rotate ? key : undefined}
       className={`block aspect-[3/1] w-full bg-surface2 object-cover ${className}`}

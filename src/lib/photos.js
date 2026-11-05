@@ -1,6 +1,17 @@
 import { isNativeApp, nativeRequest } from './native.js'
 
 export const PHOTO_ANGLES = ['front', 'side', 'back']
+// Three base64 views plus JSON must fit under the hosting function's body limit.
+export const MAX_PHOTO_DATA_URL = 1_200_000
+export function encodeUploadPhoto(render) {
+  for (const size of [1536, 1280, 1024]) {
+    for (const quality of [0.82, 0.72, 0.62]) {
+      const data = render(size, quality)
+      if (data.length <= MAX_PHOTO_DATA_URL) return data
+    }
+  }
+  throw new Error('This photo is too large. Choose a simpler, smaller photo.')
+}
 export async function preparePhoto(source) {
   if (source instanceof Blob && source.size > 30 * 1024 * 1024)
     throw new Error('Choose a photo smaller than 30 MB.')
@@ -23,8 +34,7 @@ export async function preparePhoto(source) {
       context.drawImage(image, 0, 0, canvas.width, canvas.height)
       return canvas.toDataURL('image/jpeg', quality)
     }
-    const data = render(1536, 0.82)
-    if (data.length > 4 * 1024 * 1024) throw new Error('Choose a smaller photo.')
+    const data = encodeUploadPhoto(render)
     return { base64: data.split(',')[1], preview: render(480, 0.72) }
   } finally {
     if (objectUrl) URL.revokeObjectURL(objectUrl)
@@ -36,6 +46,11 @@ export async function pickDevicePhoto(camera = false) {
   return source ? preparePhoto(source) : null
 }
 export async function photoRequest(path, body, signal) {
+  const payload = JSON.stringify(body)
+  if (new TextEncoder().encode(payload).length > 4_000_000)
+    throw new Error(
+      'This saved photoset is too large to upload. Replace its photos to prepare smaller copies.',
+    )
   const controller = new AbortController()
   const cancel = () => controller.abort()
   signal?.addEventListener('abort', cancel, { once: true })
@@ -51,7 +66,7 @@ export async function photoRequest(path, body, signal) {
       response = await fetch(path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: payload,
         signal: controller.signal,
       })
     } catch (e) {
@@ -60,7 +75,9 @@ export async function photoRequest(path, body, signal) {
         throw e
       }
       throw new Error(
-        'Cannot reach photo analysis. Keep the computer and Tally photo service running on the same Wi-Fi.',
+        import.meta.env?.DEV
+          ? 'Cannot reach photo analysis. Keep the computer and Tally photo service running on the same Wi-Fi.'
+          : 'Cannot reach photo analysis. Check your internet connection and try again.',
       )
     }
     let result
@@ -71,7 +88,11 @@ export async function photoRequest(path, body, signal) {
         if (timedOut) throw new Error('The review took too long. Your photos are kept here; try again.')
         throw new DOMException('Cancelled', 'AbortError')
       }
-      throw new Error('The photo service is unavailable. Start it with npm run dev:photos.')
+      throw new Error(
+        import.meta.env?.DEV
+          ? 'The photo service is unavailable. Start it with npm run dev:photos.'
+          : 'Photo analysis is temporarily unavailable. Please try again shortly.',
+      )
     }
     if (!response.ok) throw new Error(result.error || 'Photo review could not finish. Try again.')
     return result

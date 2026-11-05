@@ -159,14 +159,14 @@ function InkApp() {
   const problem = address.error || connectionError
   return <SafeAreaView style={[styles.safe, ground]} edges={['top', 'bottom']}>
     {saveFailed && <View style={styles.saveWarning} accessibilityLiveRegion="polite"><Text style={styles.saveText}>Changes haven’t saved on this device yet.</Text><Pressable accessibilityRole="button" disabled={retrying} onPress={() => void retrySave()}><Text style={styles.link}>{retrying ? 'Saving…' : 'Retry save'}</Text></Pressable></View>}
-    {problem ? <View style={styles.center}><Text style={styles.heading}>Open your Ink app</Text><Text style={styles.text}>{problem}</Text><Text style={styles.text}>Keep your computer running and connect to the same Wi-Fi. Your saved training stays on this device.</Text>{!!address.url && <Text style={styles.url}>{address.url}</Text>}<Pressable accessibilityRole="button" style={styles.button} onPress={() => { setConnectionError(null); setReload(n => n + 1) }}><Text style={styles.buttonText}>Try again</Text></Pressable></View> : <WebView<object>
+    {problem ? <View style={styles.center}><Text style={styles.heading}>Open Tally</Text><Text style={styles.text}>{problem}</Text><Text style={styles.text}>{process.env.EXPO_PUBLIC_INK_URL ? 'Check your internet connection and try again. Your saved training stays on this device.' : 'Keep your computer running and connect to the same Wi-Fi. Your saved training stays on this device.'}</Text>{!!address.url && <Text style={styles.url}>{address.url}</Text>}<Pressable accessibilityRole="button" style={styles.button} onPress={() => { setConnectionError(null); setReload(n => n + 1) }}><Text style={styles.buttonText}>Try again</Text></Pressable></View> : <WebView<object>
       key={reload}
       ref={web}
       source={{ uri: address.url }}
       originWhitelist={[origin]}
       onShouldStartLoadWithRequest={request => request.url === 'about:blank' || isAppOrigin(request.url, origin)}
       onMessage={event => void onMessage(event)}
-      onError={() => setConnectionError('We couldn’t reach the Ink development server.')}
+      onError={() => setConnectionError('We couldn’t reach Tally. Please try again.')}
       onHttpError={event => { if (event.nativeEvent.url === address.url && event.nativeEvent.statusCode >= 400) setConnectionError(`The Ink server returned HTTP ${event.nativeEvent.statusCode}.`) }}
       onContentProcessDidTerminate={() => web.current?.reload()}
       startInLoadingState

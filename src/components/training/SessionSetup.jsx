@@ -29,6 +29,8 @@ import EnvironmentFields from './EnvironmentFields.jsx'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
 import { SHORT_DURATIONS } from '../../lib/flexible-training.js'
 import { PlanRibbon } from './SetupVisuals.jsx'
+import WorkoutSwitchDialog from '../workout/WorkoutSwitchDialog.jsx'
+import { endForSwitch } from '../../lib/workout-switch.js'
 
 const PLACE_ICON = { gym: 'train', equipment: 'dumbbell', space: 'minimize' }
 const placeIcon = (place) => (place.id === 'home' ? 'home' : PLACE_ICON[place.type])
@@ -173,12 +175,19 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     focusAreas,
     shortSession,
   ])
-  const start = () => {
+  const start = (confirmed = false) => {
     if (!plan.items.length && !(kind === 'routine' && !routine.items.length)) return
-    if (state.activeWorkout && !replace) {
+    if (state.activeWorkout && !confirmed) {
       setReplace(true)
       return
     }
+    if (state.activeWorkout) {
+      const record = endForSwitch(state.activeWorkout, state.workouts)
+      dispatch(
+        record ? { type: 'FINISH_WORKOUT', workout: record } : { type: 'SET_ACTIVE_WORKOUT', session: null },
+      )
+    }
+    setReplace(false)
     dispatch({
       type: 'SET_READINESS',
       readiness: {
@@ -276,11 +285,6 @@ export default function SessionSetup({ routine, onClose, onStart }) {
           </button>
         ) : (
           <div>
-            {replace && (
-              <p role="alert" className="mb-3 text-[13px] text-muted">
-                This replaces your unsaved workout.
-              </p>
-            )}
             <div className="flex gap-2">
               {(returnToPlan || (step > 0 && !(lastStep && p.completed && !p.flexibleTime))) && (
                 <button onClick={back} className="btn-secondary h-12 px-5">
@@ -303,13 +307,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                 }
                 className="btn-primary h-12 flex-1"
               >
-                {lastStep
-                  ? replace
-                    ? 'Replace unsaved workout'
-                    : 'Start workout'
-                  : returnToPlan
-                    ? 'Update workout'
-                    : 'Continue'}
+                {lastStep ? 'Start workout' : returnToPlan ? 'Update workout' : 'Continue'}
               </button>
             </div>
           </div>
@@ -750,6 +748,16 @@ export default function SessionSetup({ routine, onClose, onStart }) {
             if (id) setLocation(id)
             setAddingPlace(false)
           }}
+        />
+      )}
+      {replace && state.activeWorkout && (
+        <WorkoutSwitchDialog
+          session={state.activeWorkout}
+          onKeep={() => {
+            setReplace(false)
+            onStart()
+          }}
+          onEnd={() => start(true)}
         />
       )}
     </Modal>

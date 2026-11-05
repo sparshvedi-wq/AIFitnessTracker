@@ -6,7 +6,7 @@ import { unlockAudio } from '../../lib/coach.js'
 import { resolvePlace } from '../../lib/places.js'
 
 export default function useStartWorkout(nav) {
-  const { state, dispatch, toast } = useApp()
+  const { state, dispatch } = useApp()
 
   function begin(routine) {
     unlockAudio()
@@ -20,12 +20,7 @@ export default function useStartWorkout(nav) {
     nav.openPlayer()
   }
 
-  return function start(routine) {
-    if (state.activeWorkout) {
-      nav.openPlayer()
-      toast('Resume or finish your current workout first', 'info')
-      return
-    }
+  function launch(routine) {
     if (routine.id === 'quick') {
       const session = buildSession(
         {
@@ -45,6 +40,14 @@ export default function useStartWorkout(nav) {
       return
     }
     begin(routine)
+  }
+
+  return function start(routine) {
+    if (state.activeWorkout && routine.id === 'quick') {
+      nav.confirmWorkoutChange(() => launch(routine))
+      return
+    }
+    launch(routine)
   }
 }
 

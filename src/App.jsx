@@ -19,6 +19,8 @@ import TrainingEvents from './components/training/TrainingEvents.jsx'
 import { ONBOARDING_VERSION } from './lib/onboarding.js'
 import { shortSessionRequest } from './lib/flexible-training.js'
 import { photoDraft } from './lib/photo-draft.js'
+import WorkoutSwitchDialog from './components/workout/WorkoutSwitchDialog.jsx'
+import { endForSwitch } from './lib/workout-switch.js'
 
 // Follows the Appearance setting; "system" tracks the device and updates live.
 function useTheme(preference = 'system') {
@@ -53,6 +55,7 @@ export default function App() {
   const { state, dispatch, toast } = useApp()
   const [tab, setTab] = useState('home')
   const [setup, setSetup] = useState(null)
+  const [pendingWorkout, setPendingWorkout] = useState(null)
   const [profileOpen, setProfileOpen] = useState(
     !state.settings.training.completed ||
       (state.settings.training.onboardingVersion || 0) < ONBOARDING_VERSION,
@@ -94,6 +97,7 @@ export default function App() {
     void photoDraft('clear').catch(() => {})
     dispatch({ type: 'RESET_TESTING', stage })
     setSetup(null)
+    setPendingWorkout(null)
     setPlayerOpen(false)
     setPhotosOpen(false)
     setProfileOpen(stage === 'onboarding')
@@ -108,7 +112,15 @@ export default function App() {
   const nav = {
     go,
     openPlayer: () => setPlayerOpen(true),
-    prepareWorkout: setSetup,
+    confirmWorkoutChange: (continueWith) => {
+      if (state.activeWorkout) setPendingWorkout({ continueWith, sessionId: state.activeWorkout.id })
+      else continueWith()
+    },
+    prepareWorkout: (routine) => {
+      if (state.activeWorkout)
+        setPendingWorkout({ continueWith: () => setSetup(routine), sessionId: state.activeWorkout.id })
+      else setSetup(routine)
+    },
     openProfile: () => setProfileOpen(true),
     openCheckins: (id) => {
       setPhotoId(typeof id === 'string' ? id : null)
@@ -201,6 +213,27 @@ export default function App() {
               setEventsOpen('list')
             }}
             onClose={() => setPersonalOpen(false)}
+          />
+        )}
+        {pendingWorkout && state.activeWorkout?.id === pendingWorkout.sessionId && (
+          <WorkoutSwitchDialog
+            session={state.activeWorkout}
+            onKeep={() => {
+              setPendingWorkout(null)
+              setPlayerOpen(true)
+            }}
+            onEnd={() => {
+              const record = endForSwitch(state.activeWorkout, state.workouts)
+              dispatch(
+                record
+                  ? { type: 'FINISH_WORKOUT', workout: record }
+                  : { type: 'SET_ACTIVE_WORKOUT', session: null },
+              )
+              setPlayerOpen(false)
+              const continueWith = pendingWorkout.continueWith
+              setPendingWorkout(null)
+              continueWith()
+            }}
           />
         )}
         <ToastHost />

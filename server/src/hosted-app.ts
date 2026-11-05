@@ -10,7 +10,7 @@ export async function createHostedApp(directory: string) {
   await app.register(fastifyStatic, { root, wildcard: false })
   app.setNotFoundHandler((request, reply) => {
     const path = request.url.split('?')[0]
-    if (path === '/api' || path.startsWith('/api/') || path.startsWith('/assets/') || !['GET', 'HEAD'].includes(request.method)) {
+    if (path === '/api' || path.startsWith('/api/') || path.startsWith('/assets/') || path.startsWith('/exercise-guides/') || !['GET', 'HEAD'].includes(request.method)) {
       return reply.code(404).send({ error: 'Not found.' })
     }
     return reply.type('text/html').sendFile('index.html')

@@ -4,6 +4,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY index.html vite.config.js tailwind.config.js postcss.config.js ./
 COPY src ./src
+COPY public ./public
 COPY expo/src/protocol.js ./expo/src/protocol.js
 RUN npm run build
 

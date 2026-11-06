@@ -1,5 +1,6 @@
 import { convertWeight } from './units.js'
 import { findRecords, totals } from './workout.js'
+import { correctedOutcome } from './engine/ledger.js'
 
 // A daily recommendation is ephemeral. Repeat the actual logged session instead.
 export function routineFromWorkout(workout, unit = workout.unit) {
@@ -55,11 +56,19 @@ export function correctWorkout(workout, { date, note, exercises }, today) {
       }
     }),
   }))
+  const outcome = correctedOutcome(workout, cleaned)
+  const unfinished = outcome.exercises.filter((e) => e.status !== 'complete' && e.planned > e.doneWork).map((e) => ({
+    ...(workout.unfinished || []).find((u) => u.exId === e.exId),
+    exId: e.exId,
+    reason: e.reason || 'unknown',
+  }))
   return {
     ...workout,
     date,
     note: note.trim(),
     exercises: cleaned,
+    outcome,
+    unfinished,
     totals: totals(cleaned),
     editedAt: Date.now(),
   }

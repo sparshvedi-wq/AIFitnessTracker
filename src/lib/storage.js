@@ -3,6 +3,9 @@ import { isNativeApp, persistNativeState, readNativeState } from './native.js'
 import { DEFAULT_PROFILE } from './planner.js'
 import { DEFAULT_DISPLAY } from './preferences.js'
 import { LEGACY_STORAGE_KEY, STORAGE_KEY, validateSnapshot } from '../../expo/src/protocol.js'
+import { EXERCISES, ORIGINAL_IDS } from './exercises.js'
+import { migrateExerciseIds, ID_MIGRATION_VERSION } from './catalog/migrations.js'
+import { normalizeLearning } from './engine/learning.js'
 
 export { STORAGE_KEY }
 
@@ -23,6 +26,8 @@ export function defaultState() {
     // workouts: finished guided sessions, oldest first
     workouts: [],
     checkins: [],
+    // learning: explicit exercise feedback, question history and resets (engine/learning.js)
+    learning: normalizeLearning(null),
     readiness: null,
     // activeWorkout: the session in progress, so a reload picks up where you left off
     activeWorkout: null,
@@ -45,7 +50,13 @@ export function defaultState() {
       },
     },
     createdAt: todayKey(),
+    catalogVersion: ID_MIGRATION_VERSION,
   }
+}
+
+const CATALOG = {
+  builtIn: new Map(EXERCISES.map((e) => [e.id, e.name])),
+  original: new Set(ORIGINAL_IDS),
 }
 
 function readBrowserSave() {
@@ -74,7 +85,7 @@ export function normalizeState(parsed) {
   for (const key of RETIRED_KEYS) delete state[key]
   const settings = { ...base.settings, ...(parsed.settings || {}) }
   for (const key of RETIRED_SETTINGS) delete settings[key]
-  return {
+  const normalized = {
     ...state,
     version: base.version,
     settings: {
@@ -90,7 +101,10 @@ export function normalizeState(parsed) {
     workouts: [...(parsed.workouts || [])].sort(byDate),
     checkins: parsed.checkins || [],
     activeWorkout: parsed.activeWorkout || null,
+    learning: normalizeLearning(parsed.learning),
   }
+  // Idempotent: a save that was already migrated comes back unchanged.
+  return migrateExerciseIds(normalized, CATALOG).state
 }
 
 export function saveState(state) {

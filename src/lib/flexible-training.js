@@ -10,6 +10,11 @@ export function nextVisitInvitation(workout) {
       text: 'Rest up. Next time, tell us what to avoid first.',
       action: 'Explore short options',
     }
+  if (workout.finishReason === 'unwell')
+    return {
+      text: 'Feel better soon. When you’re ready, gentle movement or rest are both fine.',
+      action: 'Explore short options',
+    }
   if (workout.effort >= 4 || workout.finishReason === 'soreness')
     return {
       text: 'Take the time you need. A short, easy session is there when you want it.',

@@ -2,6 +2,7 @@
 // sizes, and whether training there should be quiet.
 import { useEffect, useId, useState } from 'react'
 import { HOME_EQUIPMENT } from '../../lib/planner.js'
+import { GYM_EXTRAS, MORE_EQUIPMENT } from '../../lib/catalog/vocabulary.js'
 import { parseLoads } from '../../lib/preferences.js'
 import { Choice, Field } from './Fields.jsx'
 import { Toggle } from '../Ink.jsx'
@@ -69,7 +70,22 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
           {!place.equipment.length && (
             <p className="mt-3 text-[13px] text-muted">Nothing selected? We’ll use bodyweight.</p>
           )}
+          <ExtraEquipment
+            label="More equipment"
+            options={MORE_EQUIPMENT}
+            selected={place.equipment}
+            onChange={(equipment) => onChange({ equipment })}
+          />
         </Field>
+      )}
+      {place.type === 'gym' && (
+        <ExtraEquipment
+          label="Also at this gym"
+          hint="A full gym is assumed. Add anything more specialised."
+          options={GYM_EXTRAS}
+          selected={place.equipment}
+          onChange={(equipment) => onChange({ equipment })}
+        />
       )}
       {showLoads && (
         <Field
@@ -144,5 +160,33 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
         </div>
       )}
     </>
+  )
+}
+
+// Less common equipment stays folded away until it's needed.
+function ExtraEquipment({ label, hint, options, selected, onChange }) {
+  const count = options.filter((o) => selected.includes(o)).length
+  return (
+    <details className="mt-4 border-t border-line" open={count > 0}>
+      <summary className="min-h-12 cursor-pointer py-3 text-[14px] font-semibold">
+        {label}
+        {count > 0 ? ` · ${count}` : ''}
+      </summary>
+      {hint && <p className="mb-3 text-[13px] text-muted">{hint}</p>}
+      <div className="grid grid-cols-2 gap-2 pb-2">
+        {options.map((value) => (
+          <Choice
+            key={value}
+            value={value}
+            selected={selected.includes(value)}
+            onClick={() =>
+              onChange(selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value])
+            }
+          >
+            {value}
+          </Choice>
+        ))}
+      </div>
+    </details>
   )
 }

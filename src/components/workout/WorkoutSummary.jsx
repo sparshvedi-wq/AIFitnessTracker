@@ -264,6 +264,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
               {[
                 ['other', 'No reason needed'],
                 ['time', 'Time was short'],
+                ['unwell', 'Not feeling well'],
                 ['soreness', 'Soreness / too much today'],
                 ['pain', 'Pain or discomfort'],
                 ['dislike', 'Prefer different exercises'],

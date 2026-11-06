@@ -11,10 +11,21 @@ import { MAX_PLACES, placeSummary, placesOf } from '../../lib/places.js'
 import { Choice, Field } from './Fields.jsx'
 import { MUSCLES, findExercise } from '../../lib/exercises.js'
 import { count } from '../../lib/presentation.js'
+import { exerciseSignals, learnedSummary, resetEvent } from '../../lib/engine/learning.js'
+
+const VARIETY = [
+  ['familiar', 'Mostly familiar', 'Keeps to exercises you know'],
+  ['balanced', 'Balanced', 'Now and then, one new option'],
+  ['more', 'More variety', 'Tries new options more often'],
+]
 
 export default function PersonalSettings({ onClose, onEvents, onSetup }) {
-  const { state, dispatch, toast } = useApp()
+  const { state, dispatch, toast, today } = useApp()
   const [display, setDisplay] = useState(() => displayOf(state))
+  const learned = [...exerciseSignals(state, { now: Date.now(), today }).values()]
+    .map((signal) => ({ signal, lines: learnedSummary(signal) }))
+    .filter((l) => l.lines.length)
+    .sort((a, b) => (findExercise(a.signal.exId)?.name || '').localeCompare(findExercise(b.signal.exId)?.name || ''))
   const [training, setTraining] = useState(() => profileOf(state))
   const [editingPlace, setEditingPlace] = useState(null)
   const places = placesOf(training)
@@ -132,6 +143,67 @@ export default function PersonalSettings({ onClose, onEvents, onSetup }) {
               checked={Boolean(training.quiet)}
               onChange={(quiet) => setTraining((p) => ({ ...p, quiet }))}
             />
+          </Panel>
+          <Panel
+            icon="repeat"
+            title="Variety & what Tally has learned"
+            detail={`${VARIETY.find((v) => v[0] === (training.variety || 'balanced'))[1]}${learned.length ? ` · ${count(learned.length, 'exercise')} learned` : ''}`}
+          >
+            <Field label="How often to try new exercises">
+              <div className="space-y-2">
+                {VARIETY.map(([value, label, hint]) => (
+                  <div key={value}>
+                    <Choice
+                      value={value}
+                      selected={(training.variety || 'balanced') === value}
+                      onClick={() => setTraining((p) => ({ ...p, variety: value }))}
+                    >
+                      <span className="block font-semibold">{label}</span>
+                      <span className="block text-[12px] font-normal text-muted">{hint}</span>
+                    </Choice>
+                  </div>
+                ))}
+              </div>
+            </Field>
+            {learned.length > 0 ? (
+              <>
+                <p className="mt-4 text-[13px] text-muted">
+                  From your answers and the swaps and skips you made. Reset any of it.
+                </p>
+                <div className="mt-2 divide-y divide-line rounded-2xl bg-surface2 px-3">
+                  {learned.map(({ signal, lines }) => (
+                    <div key={signal.exId} className="flex min-h-14 items-start gap-3 py-3">
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-semibold">
+                          {findExercise(signal.exId, state.customExercises)?.name || signal.exId}
+                        </span>
+                        <span className="mt-0.5 block text-[12px] text-muted">{lines[0].text}</span>
+                      </span>
+                      <button
+                        className="text-link shrink-0"
+                        onClick={() => {
+                          dispatch({ type: 'LEARNING_EVENT', event: resetEvent({ exId: signal.exId, at: Date.now() }) })
+                          toast('Reset', 'info')
+                        }}
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  className="btn-ghost mt-2 w-full"
+                  onClick={() => {
+                    dispatch({ type: 'LEARNING_EVENT', event: resetEvent({ exId: '*', at: Date.now() }) })
+                    toast('Learned exercise preferences reset', 'info')
+                  }}
+                >
+                  Reset everything learned
+                </button>
+              </>
+            ) : (
+              <p className="mt-4 text-[13px] text-muted">Nothing learned yet. Answers and swaps show up here.</p>
+            )}
           </Panel>
           <Panel icon="monitor" title="Display" detail="Text, motion & metrics">
             <Option

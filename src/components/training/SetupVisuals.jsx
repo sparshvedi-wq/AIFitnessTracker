@@ -107,7 +107,6 @@ export function SetupWelcome() {
             Your training.
           </span>
         </div>
-        <span className="setup-welcome-label">Time · place · energy</span>
       </div>
       <p className="mt-6 font-display text-[28px] leading-tight">
         A plan for the day

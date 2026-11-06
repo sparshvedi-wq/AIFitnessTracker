@@ -9,6 +9,7 @@ import { convertStateUnits } from '../lib/units.js'
 import { saveTrainingEvent } from '../lib/training-events.js'
 import { rebuildRecords } from '../lib/workout-history.js'
 import { deletePreviews, keptPreviewIds, savePreviews } from '../lib/photo-store.js'
+import { withLearningEvent } from '../lib/engine/learning.js'
 
 function reducer(state, action) {
   switch (action.type) {
@@ -46,6 +47,10 @@ function reducer(state, action) {
 
     case 'SET_READINESS':
       return { ...state, readiness: action.readiness }
+
+    // Explicit exercise feedback, retries, resets and dismissed questions.
+    case 'LEARNING_EVENT':
+      return { ...state, learning: withLearningEvent(state.learning, action.event) }
     case 'SAVE_TRAINING_EVENT':
       return {
         ...state,

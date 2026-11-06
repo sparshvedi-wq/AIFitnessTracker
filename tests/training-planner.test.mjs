@@ -201,7 +201,7 @@ test('only confirmed, current adult photo focus affects training, and extra side
   const expired = buildDailyPlan(state, { today: '2026-12-24' })
   assert.ok(!expired.reasons.some((r) => r.includes('confirmed photo')))
 })
-test('carry-over is time-only, expires, resolves once and adds priority without debt sets', () => {
+test('time carry-over expires and permits only two saved offers without adding debt sets', () => {
   const state = makeState({ experience: 'Experienced' })
   state.workouts = [
     history({
@@ -213,7 +213,9 @@ test('carry-over is time-only, expires, resolves once and adds priority without 
     }),
   ]
   assert.equal(carryCandidates(state.workouts, today).length, 1)
-  state.workouts.push(history({ id: 'w2', planning: { carriedFrom: ['w1:biceps-curl'] } }))
+  state.workouts.push(history({ id: 'w2', startedAt: new Date('2026-10-23T16:00:00').getTime(), planning: { carriedFrom: ['w1:biceps-curl'] } }))
+  assert.equal(carryCandidates(state.workouts, today).length, 1, 'offering is not completing')
+  state.workouts.push(history({ id: 'w3', startedAt: new Date('2026-10-23T18:00:00').getTime(), planning: { carriedFrom: ['w1:biceps-curl'] } }))
   assert.equal(carryCandidates(state.workouts, today).length, 0)
   assert.equal(carryCandidates(state.workouts, '2026-12-01').length, 0)
 })

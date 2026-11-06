@@ -10,6 +10,11 @@ import { uid } from './id.js'
 import { addDays, fromKey, todayKey, toKey } from './date.js'
 import { DUMBBELL_MOVES, fitAvailableLoad } from './preferences.js'
 import { trainingTitle } from './training-copy.js'
+import { metaOf } from './catalog/index.js'
+import { outcomeFromSession } from './engine/ledger.js'
+
+// Assisted machines log assistance: less is harder, and it is not lifted load.
+const assisted = (exId) => metaOf(exId)?.load === 'assist'
 
 export const WEIGHT_STEP = { lb: 5, kg: 2.5 }
 
@@ -479,7 +484,9 @@ export function totals(exercises) {
       if (e.type === 'time') seconds += s.sec || 0
       else {
         reps += s.reps || 0
-        if (e.weighted) volume += (s.reps || 0) * (s.weight || 0)
+        // Logged load as recorded: one dumbbell's weight for per-hand moves,
+        // never doubled; assistance is not lifted weight.
+        if (e.weighted && !assisted(e.exId)) volume += (s.reps || 0) * (s.weight || 0)
       }
     }
   }
@@ -494,20 +501,26 @@ export function bestLifts(workouts, exId) {
   let e1rm = 0
   let reps = 0
   let sec = 0
+  // For assisted moves the best is the least assistance used for a working set.
+  let assistance = null
   for (const w of workouts) {
     if (w.sample || ['sport', 'pump', 'recovery'].includes(w.kind)) continue
     for (const e of w.exercises) {
       if (e.exId !== exId) continue
       for (const s of e.sets) {
         if (s.kind === 'warmup') continue
-        weight = Math.max(weight, s.weight || 0)
-        e1rm = Math.max(e1rm, oneRepMax(s.weight || 0, s.reps || 0))
+        if (assisted(exId)) {
+          if ((s.reps || 0) > 0) assistance = Math.min(assistance ?? Infinity, s.weight || 0)
+        } else {
+          weight = Math.max(weight, s.weight || 0)
+          e1rm = Math.max(e1rm, oneRepMax(s.weight || 0, s.reps || 0))
+        }
         reps = Math.max(reps, s.reps || 0)
         sec = Math.max(sec, s.sec || 0)
       }
     }
   }
-  return { weight, e1rm, reps, sec }
+  return { weight, e1rm, reps, sec, assistance }
 }
 
 // New personal records in this session compared with all earlier workouts.
@@ -528,6 +541,10 @@ export function findRecords(session, workouts) {
     if (e.type === 'time') {
       const sec = Math.max(...done.map((s) => s.sec || 0))
       if (sec > best.sec) out.push({ exId: e.exId, name: e.name, label: `${sec}s hold` })
+    } else if (e.weighted && assisted(e.exId)) {
+      const least = Math.min(...done.filter((s) => (s.reps || 0) > 0).map((s) => s.weight || 0))
+      if (best.assistance != null && least < best.assistance)
+        out.push({ exId: e.exId, name: e.name, label: `Least assistance: ${fmtNum(least)} ${unit}` })
     } else if (e.weighted) {
       const weight = Math.max(...done.map((s) => s.weight || 0))
       const e1rm = Math.max(...done.map((s) => oneRepMax(s.weight || 0, s.reps || 0)))
@@ -556,6 +573,7 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
       muscle: e.muscle,
       type: e.type,
       weighted: e.weighted,
+      ...(e.swappedFrom ? { swappedFrom: e.swappedFrom } : {}),
       sets: e.sets
         .filter((s) => s.status === 'done')
         .map((s) => ({
@@ -587,6 +605,8 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
     planning: session.planning,
     focus: session.focus,
     finishReason: session.finishReason || 'other',
+    // Completed, partial, unreached and skipped work with stated reasons (engine/ledger.js).
+    outcome: outcomeFromSession(session),
     unfinished:
       session.kind === 'manual'
         ? []
@@ -755,6 +775,10 @@ export function personalBests(workouts) {
         }
         if (e.type === 'time') {
           if ((s.sec || 0) > cur.sec) Object.assign(cur, { sec: s.sec, date: w.date })
+        } else if (e.weighted && assisted(e.exId)) {
+          // Least assistance is best; it is not ranked with lifted loads.
+          if ((s.reps || 0) > 0 && (cur.assistance == null || (s.weight || 0) < cur.assistance))
+            Object.assign(cur, { assistance: s.weight || 0, reps: s.reps, date: w.date, unit: w.unit })
         } else if (e.weighted) {
           if ((s.weight || 0) > cur.weight || ((s.weight || 0) === cur.weight && (s.reps || 0) > cur.reps)) {
             Object.assign(cur, { weight: s.weight || 0, reps: s.reps || 0, date: w.date, unit: w.unit })

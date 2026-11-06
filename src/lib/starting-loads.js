@@ -2,9 +2,7 @@
 // "+" five times. They are conservative starting points, not estimates of
 // strength; the person still chooses.
 import { DUMBBELL_MOVES } from './preferences.js'
-
-const BARBELL = ['back-squat', 'rdl', 'deadlift', 'bench-press', 'ohp', 'barbell-row']
-const MACHINE = ['leg-press', 'triceps-pushdown', 'lat-pulldown', 'face-pull', 'calf-raise']
+import { metaOf } from './catalog/index.js'
 
 const DEFAULTS = {
   // Barbell choices start at an empty bar.
@@ -14,10 +12,12 @@ const DEFAULTS = {
   other: { lb: [10, 20, 30, 40], kg: [5, 10, 15, 20] },
 }
 
+// From the exercise's logging convention (catalog metadata).
 export function loadKind(exId) {
-  if (BARBELL.includes(exId)) return 'barbell'
+  const load = metaOf(exId)?.load
+  if (load === 'bar') return 'barbell'
   if (DUMBBELL_MOVES.includes(exId)) return 'dumbbell'
-  if (MACHINE.includes(exId)) return 'machine'
+  if (['stack', 'plate', 'assist'].includes(load)) return 'machine'
   return 'other'
 }
 

@@ -16,6 +16,7 @@ import Icon from '../components/Icon.jsx'
 import Select from '../components/Select.jsx'
 import { LineChart, PageTitle, SectionHead } from '../components/Ink.jsx'
 import TrainingCard from '../components/TrainingCard.jsx'
+import AskAdjust from '../components/AskAdjust.jsx'
 import ActiveSessionCard from '../components/ActiveSessionCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
 import WeeklyRecap from '../components/WeeklyRecap.jsx'
@@ -29,6 +30,7 @@ const ENERGY = [
   ['low', 'Low energy'],
   ['normal', 'Usual energy'],
   ['high', 'High energy'],
+  ['unwell', 'Not feeling well'],
 ]
 const strength = (w) =>
   !['sport', 'recovery', 'pump'].includes(w.kind) &&
@@ -48,6 +50,8 @@ export default function Home({ nav }) {
     () => buildDailyPlan(state, { today, now, ...todayChoice(state, today) }),
     [state, today, now],
   )
+  // Choosing rest is respected for the day; nothing is owed afterwards.
+  const resting = readiness.rest === true
   // Today-only answers live with today's check-in; the usual setup is untouched.
   const setToday = (patch) =>
     dispatch({ type: 'SET_READINESS', readiness: { ...readinessOf(state, today), ...patch, date: today } })
@@ -94,14 +98,49 @@ export default function Home({ nav }) {
           <ActiveSessionCard session={active} onOpen={nav.openPlayer} />
         ) : (
           <>
-            <TrainingCard
-              plan={next}
-              place={resolvePlace(profileOf(state), next.location)}
-              customExercises={state.customExercises}
-              rotate
-              showContext={false}
-              onStart={() => start(next)}
-            />
+            {resting ? (
+              <section className="rounded-hero bg-surface p-5">
+                <h2 className="font-display text-[26px] leading-tight">Rest day</h2>
+                <p className="mt-2 text-[14px] leading-relaxed text-ink2">
+                  Resting today is a good choice. Nothing carries over.
+                </p>
+                <button className="text-link mt-3" onClick={() => setToday({ rest: false })}>
+                  Plan a session anyway
+                  <Icon name="arrowRight" size={15} className="ml-1" />
+                </button>
+              </section>
+            ) : (
+              <TrainingCard
+                plan={next}
+                place={resolvePlace(profileOf(state), next.location)}
+                customExercises={state.customExercises}
+                rotate
+                showContext={false}
+                onStart={() => start(next)}
+              />
+            )}
+            {!resting && next.alternatives?.length > 0 && (
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]" role="group" aria-label="Other options today">
+                <span className="text-muted">Or</span>
+                {next.alternatives.map((alt) =>
+                  alt.kind === 'movement' && next.kind !== 'recovery' ? (
+                    <button
+                      key={alt.kind}
+                      className="text-link min-h-11"
+                      onClick={() =>
+                        start(buildDailyPlan(state, { today, now, ...todayChoice(state, today), mode: 'movement' }))
+                      }
+                    >
+                      {alt.label}
+                    </button>
+                  ) : alt.kind === 'rest' ? (
+                    <button key={alt.kind} className="text-link min-h-11" onClick={() => setToday({ rest: true })}>
+                      {alt.label}
+                    </button>
+                  ) : null,
+                )}
+              </div>
+            )}
             <div className="mt-3">
               <p className="mb-2 text-[13px] text-muted">Today I have</p>
               <div className="flex flex-wrap gap-2">
@@ -122,8 +161,14 @@ export default function Home({ nav }) {
                 <Select
                   variant="chip"
                   label="Energy today"
-                  value={readiness.energy}
-                  onChange={(energy) => setToday({ energy })}
+                  value={readiness.unwell ? 'unwell' : readiness.energy}
+                  onChange={(value) =>
+                    setToday(
+                      value === 'unwell'
+                        ? { energy: 'low', unwell: true }
+                        : { energy: value, unwell: false },
+                    )
+                  }
                   options={ENERGY}
                 />
               </div>
@@ -131,6 +176,8 @@ export default function Home({ nav }) {
           </>
         )}
       </div>
+
+      <AskAdjust nav={nav} plan={next} />
 
       {settings.training.onboardingVersion !== ONBOARDING_VERSION && (
         <button className="list-row mt-3" onClick={nav.openProfile}>

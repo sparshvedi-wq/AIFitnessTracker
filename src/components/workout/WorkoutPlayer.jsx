@@ -46,6 +46,7 @@ import ExercisePicker from './ExercisePicker.jsx'
 import FormSheet from './FormSheet.jsx'
 import WorkoutSummary from './WorkoutSummary.jsx'
 import WorkoutAdjustments from './WorkoutAdjustments.jsx'
+import { metaOf } from '../../lib/catalog/index.js'
 import { DUMBBELL_MOVES, availableLoads, fitAvailableLoad } from '../../lib/preferences.js'
 import useDialogAccessibility from '../useDialogAccessibility.js'
 import { movementAllowed } from '../../lib/movement-preferences.js'
@@ -82,7 +83,7 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
       if (def.type === 'time') item.sec = 20
       else item.reps = 8
     }
-    item.unilateral = ['split-squat', 'seated-knee-extension'].includes(def.id)
+    item.unilateral = Boolean(metaOf(def.id)?.perSide && def.type === 'reps')
     const last = lastPerformance(state.workouts, def.id, session.unit)
     const { target, note, up } = session.schedule?.lighter
       ? {
@@ -268,6 +269,10 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
         onShorten={() => {
           setMenuOpen(false)
           setAdjustment('shorten')
+        }}
+        onPlace={() => {
+          setMenuOpen(false)
+          setAdjustment('place')
         }}
         onLog={() => {
           setMenuOpen(false)
@@ -591,8 +596,10 @@ function Work({ session, now, update, onForm, onEdit }) {
                   </span>
                   <span className="mt-4 block text-[16px] text-muted">
                     {set.weight
-                      ? `${unit}${DUMBBELL_MOVES.includes(ex.exId) ? ' / hand' : ''}`
-                      : 'choose weight'}
+                      ? `${unit}${metaOf(ex.exId)?.load === 'assist' ? ' assistance' : metaOf(ex.exId)?.load === 'hand' ? ' / hand' : ''}`
+                      : metaOf(ex.exId)?.load === 'assist'
+                        ? 'choose assistance'
+                        : 'choose weight'}
                   </span>
                   {set.weight > 0 && loadKind(ex.exId) === 'barbell' && (
                     <PlateLine weight={set.weight} unit={unit} className="mt-1 !text-[12px]" />
@@ -755,6 +762,7 @@ function More({
   onAdd,
   onReplace,
   onShorten,
+  onPlace,
   onLog,
   onFinish,
   onDiscard,
@@ -866,6 +874,13 @@ function More({
                 label="I have less time"
                 detail="Shorten only the work that is left"
                 onClick={onShorten}
+              />
+            )}
+            {!['sport', 'manual'].includes(session.kind) && (
+              <MenuRow
+                label="Training somewhere else"
+                detail="Change the place; logged sets stay"
+                onClick={onPlace}
               />
             )}
             {ex && session.phase !== 'prepared' && (
@@ -1085,7 +1100,13 @@ function EditSet({ exercise, set, unit, loads = [], onSave, onClose }) {
               <>
                 <span className="w-px bg-line" />
                 <BigStepper
-                  label={dumbbell ? `${unit} each` : unit}
+                  label={
+                    metaOf(exercise.exId)?.load === 'assist'
+                      ? `${unit} assistance`
+                      : metaOf(exercise.exId)?.load === 'hand'
+                        ? `${unit} each`
+                        : unit
+                  }
                   value={weight}
                   step={WEIGHT_STEP[unit] || 5}
                   decimals

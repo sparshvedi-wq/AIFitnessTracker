@@ -31,7 +31,8 @@ function builtIn(profile, id) {
       id,
       name: 'Gym',
       type: 'gym',
-      equipment: [],
+      // Specialty extras beyond the assumed full set (catalog/vocabulary.js GYM_EXTRAS).
+      equipment: profile.gymExtras || [],
       dumbbells: profile.gymDumbbells || [],
       quiet: false,
     }
@@ -95,10 +96,12 @@ export function recordPlaceLabel(workout) {
 
 /** A short line describing what a place offers. */
 export function placeSummary(place) {
-  if (place.type === 'gym')
-    return place.dumbbells.length
+  if (place.type === 'gym') {
+    const base = place.dumbbells.length
       ? `Full gym · dumbbells to ${Math.max(...place.dumbbells)}`
       : 'Full gym equipment'
+    return place.equipment.length ? `${base} · ${place.equipment.length} extra` : base
+  }
   if (place.type === 'space') {
     const m = place.movement || {}
     const fit =
@@ -144,7 +147,12 @@ export function newPlace(type = 'equipment') {
  * their original fields; saved places are replaced in `places`.
  */
 export function updatePlace(profile, id, patch) {
-  if (id === 'gym') return 'dumbbells' in patch ? { ...profile, gymDumbbells: patch.dumbbells } : profile
+  if (id === 'gym')
+    return {
+      ...profile,
+      ...('dumbbells' in patch ? { gymDumbbells: patch.dumbbells } : {}),
+      ...('equipment' in patch ? { gymExtras: patch.equipment } : {}),
+    }
   if (id === 'home')
     return {
       ...profile,
@@ -159,7 +167,7 @@ export function updatePlace(profile, id, patch) {
     id: p.id,
     name: p.name.trim().slice(0, MAX_PLACE_NAME),
     type: p.type,
-    equipment: p.type === 'equipment' ? p.equipment || [] : [],
+    equipment: p.type === 'equipment' || p.type === 'gym' ? p.equipment || [] : [],
     dumbbells: p.type === 'space' ? [] : p.dumbbells || [],
     ...(p.type === 'space' ? { movement: p.movement } : {}),
     quiet: p.type === 'gym' ? false : Boolean(p.quiet),

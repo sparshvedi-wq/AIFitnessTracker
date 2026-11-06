@@ -462,13 +462,6 @@ body {
   left: 10%;
   animation-delay: -3s;
 }
-.setup-welcome-label {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  color: rgb(var(--muted));
-  font-size: 11px;
-}
 .setup-welcome-steps {
   display: flex;
   gap: 12px;
@@ -907,4 +900,30 @@ input[type='checkbox'] {
   height: 20px;
   flex-shrink: 0;
   accent-color: rgb(var(--accent));
+}
+
+/* Ask or adjust: an understated entry, expanding in place. */
+.ask-entry {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  border-radius: 999px;
+  padding: 0 14px 0 2px;
+  color: rgb(var(--muted));
+  font-size: 14px;
+}
+.ask-entry:hover,
+.ask-entry:focus-visible {
+  color: rgb(var(--ink));
+}
+.ask-panel {
+  margin-top: 12px;
+  border-radius: 22px;
+  background: rgb(var(--surface));
+  padding: 12px;
+}
+.tally-reduce-motion .ask-panel {
+  animation: none;
 }

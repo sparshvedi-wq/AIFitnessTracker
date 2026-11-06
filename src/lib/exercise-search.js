@@ -19,6 +19,7 @@ export function matchesExercise(exercise, query) {
       exercise.name,
       exercise.id,
       exercise.muscle,
+      ...(exercise.aliases || []),
       exercise.type === 'time' ? 'timed' : exercise.weighted ? 'weighted' : 'bodyweight',
       ...(exercise.uses || []),
     ].join(' '),

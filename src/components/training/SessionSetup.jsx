@@ -137,7 +137,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       ...routine,
       name: routine.name,
       items,
-      kind: 'routine',
+      // A gentle movement session stays a movement session, not strength history.
+      kind: routine.kind === 'recovery' ? 'recovery' : 'routine',
       location,
       readiness,
       movement: adapted.movement,
@@ -151,7 +152,9 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       requestedMinutes: minutes,
       focus: adapted.changes.length
         ? 'Your routine, adjusted for this place.'
-        : routine.blurb || 'Your routine, adjusted to the time you have.',
+        : routine.kind === 'recovery'
+          ? routine.focus
+          : routine.blurb || 'Your routine, adjusted to the time you have.',
       reasons: [
         ...adapted.changes,
         'Your saved routine isn’t changed.',
@@ -474,6 +477,11 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   </button>
                 ))}
               </div>
+              <SwitchRow
+                label="Not feeling well today"
+                checked={Boolean(readiness.unwell)}
+                onChange={(unwell) => setReadiness((r) => ({ ...r, unwell }))}
+              />
               <div className="mt-7 divide-y divide-line rounded-tuck bg-bg/60 px-4">
                 <OptionRow
                   label="Sore or tired muscles"
@@ -497,7 +505,9 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   [
                     2,
                     'Feel',
-                    readiness.energy === 'low'
+                    readiness.unwell
+                      ? 'Not feeling well'
+                      : readiness.energy === 'low'
                       ? 'Low energy'
                       : readiness.sore.length || readiness.pain.length
                         ? 'Areas avoided'

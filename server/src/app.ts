@@ -15,9 +15,16 @@ import {
 } from './photo/analyze.js'
 import { preparePhotos, PhotoInputError } from './photo/images.js'
 import { activityRequest, activityImpact, createActivityAnalyzer, type ActivityAnalyzer } from './activity.js'
+import { assistRequest, createAssistService, createInterpreter } from './assistant.js'
 
 export function buildApp(
-  options: { analyze?: Analyzer; quality?: QualityAnalyzer; activity?: ActivityAnalyzer; allowSynthetic?: boolean } = {},
+  options: {
+    analyze?: Analyzer
+    quality?: QualityAnalyzer
+    activity?: ActivityAnalyzer
+    assist?: ReturnType<typeof createAssistService> | null
+    allowSynthetic?: boolean
+  } = {},
 ) {
   // No request logger: images, goals, provider errors and credentials must never be logged.
   const app = Fastify({ logger: false })
@@ -25,6 +32,13 @@ export function buildApp(
   const analyze = options.analyze ?? createAnalyzer()
   const quality = options.quality ?? createQualityAnalyzer()
   const activity = options.activity ?? createActivityAnalyzer()
+  // Language help is off unless explicitly enabled and configured.
+  const assist =
+    options.assist !== undefined
+      ? options.assist
+      : process.env.ASSIST_AI_ENABLED === 'true' && process.env.OPENAI_API_KEY?.trim()
+        ? createAssistService(createInterpreter())
+        : null
   let active = 0
   app.setErrorHandler((error, _req, reply) =>
     reply
@@ -70,6 +84,29 @@ export function buildApp(
     catch { return reply.code(502).send({error:'AI could not interpret this activity. Try again or choose the involved areas yourself.'}) }
     finally { active-- }
   })
+  app.post(
+    '/api/assistant/interpret',
+    { bodyLimit: 4096, config: { rateLimit: { max: 20, timeWindow: '10 minutes' } } },
+    async (request, reply) => {
+      if (!assist) return reply.code(503).send({ code: 'disabled', error: 'Language help is off. Common requests still work.' })
+      const parsed = assistRequest.safeParse(request.body)
+      if (!parsed.success) return reply.code(400).send({ code: 'invalid', error: 'That request could not be read.' })
+      const controller = new AbortController()
+      request.raw.on('close', () => {
+        if (!reply.sent) controller.abort()
+      })
+      const result = await assist.interpret(parsed.data, controller.signal)
+      if (result.status === 'ok') return { ...result.output, cached: result.cached, schemaVersion: 1 }
+      const status = { budget: 429, timeout: 504, cancelled: 499, error: 502 }[result.status]
+      return reply.code(status).send({
+        code: result.status,
+        error:
+          result.status === 'budget'
+            ? 'That’s enough language help for today. Common requests still work.'
+            : 'Language help didn’t answer. Common requests still work.',
+      })
+    },
+  )
   app.post(
     '/api/photo-quality',
     {

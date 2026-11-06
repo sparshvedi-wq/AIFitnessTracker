@@ -7,6 +7,8 @@ import ExerciseVisualGuide from './ExerciseVisualGuide.jsx'
 import { formGuide } from '../../lib/form.js'
 import { useApp } from '../../store/AppContext.jsx'
 import { atPlace, exerciseNote, withExerciseNote } from '../../lib/exercise-notes.js'
+import { metaOf } from '../../lib/catalog/index.js'
+import { exerciseSignals, learnedSummary, resetEvent, retryEvent } from '../../lib/engine/learning.js'
 
 const TABS = ['Technique', 'Muscles', 'Mistakes']
 
@@ -22,8 +24,11 @@ function GuideContent({
   closeLabel = 'Back to workout',
   onStart,
 }) {
-  const { state, dispatch, toast } = useApp()
+  const { state, dispatch, toast, today } = useApp()
   const [tab, setTab] = useState(0)
+  const meta = metaOf(exercise?.exId)
+  const signal = exerciseSignals(state, { now: Date.now(), today, place: location || null }).get(exercise?.exId)
+  const learned = learnedSummary(signal)
   const [note, setNote] = useState(() => exerciseNote(state.settings.exerciseNotes, exercise.exId, location))
   if (!exercise) return null
   const guide = formGuide(exercise.exId, exercise.muscle)
@@ -74,6 +79,11 @@ function GuideContent({
       </div>
 
       {tab === 0 && <ExerciseVisualGuide key={exercise.exId} exercise={exercise} />}
+      {tab === 0 && meta && !meta.image && (
+        <p className="mt-4 rounded-2xl bg-surface2 px-4 py-3 text-[13px] text-muted">
+          Written guide. There’s no illustration for this exercise yet.
+        </p>
+      )}
       <ol className="mt-4 space-y-2">
         {items.map((it, i) => (
           <li key={i} className="flex items-start gap-3 rounded-2xl bg-surface2 px-4 py-4">
@@ -100,6 +110,38 @@ function GuideContent({
           <summary className="min-h-11 cursor-pointer py-3">Why this exercise</summary>
           <p className="pb-3 leading-relaxed">{exercise.note}</p>
         </details>
+      )}
+      {learned.length > 0 && (
+        <section className="mt-4 border-t border-line pt-3" aria-label="What Tally has learned">
+          <h3 className="text-[14px] font-semibold">What Tally has learned</h3>
+          <ul className="mt-2 space-y-1 text-[13px] text-ink2">
+            {learned.map((l) => (
+              <li key={l.code}>{l.text}</li>
+            ))}
+          </ul>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(signal?.comfort.restricted || signal?.explicitDislike) && (
+              <button
+                className="chip bg-surface2"
+                onClick={() => {
+                  dispatch({ type: 'LEARNING_EVENT', event: retryEvent({ exId: exercise.exId, at: Date.now() }) })
+                  toast(`${exercise.name} can be suggested again. We’ll check how it feels.`, 'info')
+                }}
+              >
+                Try it again
+              </button>
+            )}
+            <button
+              className="chip bg-surface2"
+              onClick={() => {
+                dispatch({ type: 'LEARNING_EVENT', event: resetEvent({ exId: exercise.exId, at: Date.now() }) })
+                toast('What Tally learned about this exercise was reset', 'info')
+              }}
+            >
+              Reset
+            </button>
+          </div>
+        </section>
       )}
       <details className="mt-4 border-t border-line">
         <summary className="min-h-12 cursor-pointer py-3 text-[14px] font-semibold">

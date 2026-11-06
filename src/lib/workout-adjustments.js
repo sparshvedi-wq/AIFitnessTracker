@@ -1,125 +1,120 @@
 import { findExercise } from './exercises.js'
-import { MOVEMENTS, availableMovement, profileOf, readinessOf } from './planner.js'
+import { profileOf, readinessOf } from './planner.js'
 import { availableLoads, fitAvailableLoad, DUMBBELL_MOVES } from './preferences.js'
 import { currentSet, lastPerformance, makeSessionExercise, enterWork, finish } from './workout.js'
 import { movementAllowed, movementPreferences, movementSummary } from './movement-preferences.js'
 import { sportScheduleContext } from './sport-schedule.js'
 import { todayKey } from './date.js'
 import { quietAt, resolvePlace } from './places.js'
+import { metaOf } from './catalog/index.js'
+import { eligibilityContext, planningContext } from './engine/recommend.js'
+import { ineligibility } from './engine/eligibility.js'
+import { rankSubstitutes } from './engine/substitute.js'
+import { extraSetSeconds, itemSeconds } from './engine/session-time.js'
 
-export function replacementOptions(state, session) {
+/** Planning context for adjustments to an existing session or routine. */
+function adjustmentContext(state, { location, readiness, profile, movement, today, now, liveSession }) {
+  const p = { ...profileOf(state), ...profile }
+  const r = { ...readinessOf(state, today), ...readiness }
+  r.pain = [...new Set([...(p.avoidMuscles || []), ...(r.pain || [])])]
+  r.sore = r.sore || []
+  return planningContext(state, {
+    today,
+    now,
+    profile: p,
+    readiness: r,
+    location: location || p.location,
+    movement,
+    liveSession,
+  })
+}
+
+export function replacementOptions(state, session, { now = Date.now(), today = todayKey() } = {}) {
   const current = currentSet(session)?.ex
   if (!current || ['sport', 'pump'].includes(session.kind)) return []
-  const p = { ...profileOf(state), ...session.equipmentProfile }
-  const location = session.location || p.location
-  const readiness = session.readiness || readinessOf(state)
-  const movement = session.movement || movementPreferences(p, location)
-  const place = resolvePlace(p, location)
-  const meta = MOVEMENTS.find((m) => m.id === current.exId)
-  const related = {
-    squat: ['squat', 'single leg'],
-    'single leg': ['single leg', 'squat'],
-    hinge: ['hinge'],
-    pull: ['pull', 'upper-back control'],
-    'upper-back control': ['pull', 'upper-back control'],
-    'shoulder accessory': ['shoulder accessory', 'overhead'],
-  }
-  const patterns = meta ? related[meta.pattern] || [meta.pattern] : null
-  return MOVEMENTS.filter(
-    (m) =>
-      m.id !== current.exId &&
-      (!patterns || patterns.includes(m.pattern)) &&
-      (m.muscle === current.muscle || (meta?.pattern === 'hinge' && m.pattern === 'hinge')),
-  )
-    .filter(
-      (m) =>
-        p.experience !== 'Starting out' ||
-        !['back-squat', 'rdl', 'db-rdl', 'pull-up', 'ohp', 'db-overhead-press'].includes(m.id),
-    )
-    .filter((m) => availableMovement(m, place.base, place.equipment))
-    .filter((m) => !(p.excludedExercises || []).includes(m.id))
-    .filter(
-      (m) =>
-        movementAllowed(m.id, movement) && (!m.id.startsWith('seated-') || movement?.position === 'seated'),
-    )
-    .filter(
-      (m) =>
-        !m.uses.some(
-          (part) =>
-            p.avoidMuscles?.includes(part) ||
-            readiness.pain?.includes(part) ||
-            readiness.sore?.includes(part),
-        ),
-    )
-    .sort((a, b) => Number(b.pattern === meta?.pattern) - Number(a.pattern === meta?.pattern))
-    .map((m) => findExercise(m.id))
-    .filter(Boolean)
-    .slice(0, 3)
+  const ctx = adjustmentContext(state, {
+    location: session.location,
+    readiness: session.readiness || undefined,
+    profile: session.equipmentProfile || undefined,
+    // The movement limits saved with the session, not today's defaults.
+    movement: session.movement || undefined,
+    today,
+    now,
+    liveSession: session,
+  })
+  const elig = eligibilityContext(ctx, null)
+  // Never offer something already in this session.
+  const exclude = new Set(session.exercises.map((e) => e.exId))
+  return rankSubstitutes(current.exId, elig, {
+    signals: ctx.signals,
+    exclude,
+    limit: 4,
+    currentDef: findExercise(current.exId, state.customExercises) || current,
+  }).map((r) => r.def)
+}
+
+const QUIET_ALTERNATIVES = {
+  'jumping-jack': 'quiet-step',
+  'squat-jump': 'quiet-squat',
+  burpee: 'quiet-march',
+  'high-knees': 'quiet-march',
+  skater: 'quiet-step',
+  'mountain-climber': 'quiet-march',
 }
 
 export function adaptRoutineItems(state, items, location, readiness, options = {}) {
+  const today = options.today || todayKey()
+  const now = options.now ?? Date.now()
   const p = profileOf(state)
   const movement = movementPreferences(p, location, options.movement)
-  const schedule = sportScheduleContext(p, {
-    today: options.today || todayKey(),
-    now: options.now ?? Date.now(),
-    minutes: options.minutes || p.minutes,
-  })
+  const schedule = sportScheduleContext(p, { today, now, minutes: options.minutes || p.minutes })
   const place = resolvePlace(p, location)
-  const equipment = place.equipment
   const quiet = quietAt(p, location)
+  const ctx = adjustmentContext(state, { location, readiness, movement: options.movement, today, now })
+  const elig = eligibilityContext(ctx, null)
+  // Area avoidance is reported separately for routines ("omitted for today's readiness").
+  const eligNoAreas = { ...elig, blockedAreas: new Set() }
+  const avoids = new Set([...(p.avoidMuscles || []), ...(readiness.pain || []), ...(readiness.sore || [])])
   const excluded = new Set(p.excludedExercises || [])
   const used = new Set()
   const adapted = []
   const changes = []
   if (movement) changes.push(movementSummary(movement))
   if (schedule.note) changes.push(schedule.note)
-  const quietAlternatives = {
-    'jumping-jack': 'quiet-step',
-    'squat-jump': 'quiet-squat',
-    burpee: 'quiet-march',
-    'high-knees': 'quiet-march',
-    skater: 'quiet-step',
-    'mountain-climber': 'quiet-march',
-  }
   for (const source of items) {
     let def = findExercise(source.exId, state.customExercises)
     if (!def) continue
     let item = { ...source }
-    const meta = MOVEMENTS.find((m) => m.id === def.id)
-    const avoids = [...(p.avoidMuscles || []), ...(readiness.pain || []), ...(readiness.sore || [])]
-    const unavailable =
-      excluded.has(def.id) ||
-      !movementAllowed(def.id, movement) ||
-      (meta
-        ? !availableMovement(meta, place.base, equipment)
-        : place.base !== 'gym' && (def.weighted || ['pull-up', 'dip'].includes(def.id)))
-    if ((meta ? meta.uses : [def.muscle]).some((part) => avoids.includes(part))) {
+    const meta = metaOf(def.id)
+    const areas = meta ? meta.areas : [def.muscle]
+    if (areas.some((part) => avoids.has(part))) {
       changes.push(def.name + ' omitted for today’s readiness.')
       continue
     }
-    if (quiet && quietAlternatives[def.id] && movementAllowed(quietAlternatives[def.id], movement)) {
+    // Custom exercises have no metadata: away from a gym, anything weighted or bar-based is unavailable.
+    const code = meta ? ineligibility(meta, eligNoAreas) : null
+    const unavailable = meta
+      ? Boolean(code) && code !== 'experience'
+      : place.base !== 'gym' && def.weighted
+    const quietSwap = quiet && QUIET_ALTERNATIVES[def.id]
+    if (quietSwap && movementAllowed(QUIET_ALTERNATIVES[def.id], movement)) {
       const old = def.name
-      def = findExercise(quietAlternatives[def.id])
-      if (avoids.includes('Legs')) {
+      def = findExercise(QUIET_ALTERNATIVES[def.id])
+      if (avoids.has('Legs')) {
         changes.push(old + ' omitted for today’s readiness.')
         continue
       }
       item = { ...item, exId: def.id, sec: source.sec || 40, reps: undefined, weight: undefined }
       changes.push(old + ' replaced with ' + def.name + '.')
     } else if (unavailable) {
-      const alternative = MOVEMENTS.find(
-        (m) =>
-          m.muscle === def.muscle &&
-          !used.has(m.id) &&
-          availableMovement(m, place.base, equipment) &&
-          !excluded.has(m.id) &&
-          movementAllowed(m.id, movement) &&
-          (!m.id.startsWith('seated-') || movement?.position === 'seated') &&
-          !m.uses.some((v) => avoids.includes(v)),
-      )
-      const excludedSource = excluded.has(def.id)
-      if (!alternative) {
+      const [best] = rankSubstitutes(def.id, elig, {
+        signals: ctx.signals,
+        exclude: new Set([...used, ...items.map((i) => i.exId)]),
+        limit: 1,
+        currentDef: def,
+      })
+      const excludedSource = excluded.has(def.id) || ['explicit-dislike', 'reported-discomfort'].includes(code)
+      if (!best) {
         changes.push(
           excludedSource
             ? `${def.name} left out because you asked not to have it suggested.`
@@ -128,7 +123,7 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
         continue
       }
       const old = def.name
-      def = findExercise(alternative.id)
+      def = best.def
       item = {
         ...item,
         exId: def.id,
@@ -144,7 +139,8 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
       changes.push(def.name + ' kept once to avoid duplicate work.')
       continue
     }
-    item.unilateral = ['db-row', 'split-squat', 'biceps-curl', 'seated-knee-extension'].includes(def.id)
+    const finalMeta = metaOf(def.id)
+    item.unilateral = Boolean(finalMeta?.perSide && def.type === 'reps')
     if (schedule.lighter) {
       item.sets = Math.min(item.sets || 1, schedule.muscles.includes(def.muscle) ? 1 : 2)
       if (def.type === 'reps') item.reps = Math.min(item.reps || 8, 8)
@@ -155,8 +151,7 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
         item.weight = baseline > 0 ? Math.floor(baseline * 0.85 * 2) / 2 || null : null
       }
     }
-    if (DUMBBELL_MOVES.includes(def.id))
-      item.weight = fitAvailableLoad(item.weight, availableLoads(p, location))
+    if (DUMBBELL_MOVES.includes(def.id)) item.weight = fitAvailableLoad(item.weight, availableLoads(p, location))
     used.add(def.id)
     adapted.push(item)
   }
@@ -165,8 +160,8 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
 
 export function replaceCurrentExercise(session, def, state, now = Date.now()) {
   const cur = currentSet(session)
-  if (!cur || !replacementOptions(state, session).some((d) => d.id === def.id)) return session
-  const pending = cur.ex.sets.filter((s) => s.status === 'todo')
+  if (!cur || !replacementOptions(state, session, { now }).some((d) => d.id === def.id)) return session
+  const pending = cur.ex.sets.filter((s) => s.status === 'todo' && s.kind !== 'warmup')
   if (!pending.length) return session
   const last = lastPerformance(
     state.workouts.filter((w) => w.unit === session.unit),
@@ -194,7 +189,9 @@ export function replaceCurrentExercise(session, def, state, now = Date.now()) {
     { reps: item.reps, sec: item.sec, weight },
     { last, note: 'Swapped for today. Pick a comfortable weight.' },
   )
-  replacement.unilateral = ['db-row', 'split-squat', 'biceps-curl', 'seated-knee-extension'].includes(def.id)
+  replacement.unilateral = Boolean(metaOf(def.id)?.perSide && def.type === 'reps')
+  // Recorded so future plans can learn which substitutes are accepted, and where.
+  replacement.swappedFrom = cur.ex.exId
   const completed = cur.ex.sets.filter((s) => s.status === 'done')
   const exercises = [...session.exercises]
   const index = session.cursor.ex
@@ -218,15 +215,19 @@ export function shortenSession(session, minutes, now = Date.now()) {
   let budget = minutes * 60
   let keptPending = 0
   const exercises = session.exercises.map((e) => {
-    const cost = (set) =>
-      (e.type === 'time' ? set.sec || 30 : (set.reps || 10) * (e.unilateral ? 6 : 3) + 10) +
-      (e.restSec || 0) +
-      20
+    const item = { exId: e.exId, reps: e.sets[0]?.reps, sec: e.type === 'time' ? e.sets[0]?.sec || 30 : null, restSec: e.restSec, unilateral: e.unilateral }
+    // The first pending set of an exercise also pays its setup and transition.
+    const setup = itemSeconds({ ...item, sets: 1 }) - extraSetSeconds(item)
+    let firstPending = !e.sets.some((s) => s.status === 'done')
     const sets = e.sets.map((s) => {
       if (s.status !== 'todo') return s
-      if (budget >= cost(s)) {
-        budget -= cost(s)
+      const cost =
+        extraSetSeconds({ ...item, reps: s.reps ?? item.reps, sec: e.type === 'time' ? s.sec || 30 : null }) +
+        (firstPending ? setup : 0)
+      if (budget >= cost) {
+        budget -= cost
         keptPending++
+        firstPending = false
         return s
       }
       return { ...s, status: 'skipped' }

@@ -1,4 +1,5 @@
 import { resolvePlace } from './places.js'
+import { metaOf } from './catalog/index.js'
 export const DEFAULT_ON_THE_GO = {
   space: 'open',
   position: 'any',
@@ -85,140 +86,6 @@ export const SEATED_EXERCISES = [
     ],
   },
 ]
-const seated = new Set(SEATED_EXERCISES.filter((e) => e.id.startsWith('seated-')).map((e) => e.id))
-const floor = new Set([
-  'glute-bridge',
-  'prone-w',
-  'push-up',
-  'dead-bug',
-  'side-plank',
-  'plank',
-  'hollow-hold',
-  'russian-twist',
-  'mountain-climber',
-  'burpee',
-  'cat-cow',
-  'worlds-greatest',
-  'hip-flexor',
-  'childs-pose',
-  'band-row',
-])
-const notStanding = new Set([
-  ...floor,
-  ...seated,
-  'bench-press',
-  'db-bench',
-  'db-row',
-  'lat-pulldown',
-  'leg-press',
-])
-const travel = new Set([
-  'lunge',
-  'wu-jog',
-  'wu-shuffle',
-  'wu-strides',
-  'wu-cut',
-  'wu-football',
-  'wu-basketball',
-  'wu-volley',
-  'wu-skate',
-  'wu-cricket',
-  'wu-cycle',
-  'quiet-step',
-  'skater',
-  'back-squat',
-  'bench-press',
-  'rdl',
-  'deadlift',
-  'barbell-row',
-])
-const impact = new Set([
-  'jumping-jack',
-  'squat-jump',
-  'burpee',
-  'high-knees',
-  'skater',
-  'wu-jog',
-  'wu-march',
-  'wu-landing',
-  'wu-strides',
-  'wu-cut',
-  'wu-racket',
-  'wu-basketball',
-  'wu-volley',
-  'wu-combat',
-])
-const equipmentOnly = new Set([
-  'back-squat',
-  'goblet-squat',
-  'rdl',
-  'db-rdl',
-  'bench-press',
-  'db-bench',
-  'db-row',
-  'band-row',
-  'lat-pulldown',
-  'pull-up',
-  'ohp',
-  'db-overhead-press',
-  'lateral-raise',
-  'biceps-curl',
-  'triceps-pushdown',
-  'calf-raise',
-  'deadlift',
-  'barbell-row',
-  'leg-press',
-  'face-pull',
-  'dip',
-  'wu-cycle',
-])
-const known = new Set([
-  ...floor,
-  ...notStanding,
-  ...travel,
-  ...impact,
-  ...SEATED_EXERCISES.map((e) => e.id),
-  'goblet-squat',
-  'bodyweight-squat',
-  'split-squat',
-  'db-rdl',
-  'incline-push-up',
-  'pull-up',
-  'ohp',
-  'db-overhead-press',
-  'lateral-raise',
-  'biceps-curl',
-  'triceps-pushdown',
-  'calf-raise',
-  'dip',
-  'face-pull',
-  'quiet-march',
-  'quiet-squat',
-  'hamstring-stretch',
-  'wu-ankles',
-  'wu-leg-swings',
-  'wu-lunge',
-  'wu-lateral',
-  'wu-hips',
-  'wu-arms',
-  'wu-rotation',
-  'wu-scapula',
-  'wu-wrists',
-  'wu-balance',
-  'wu-throw',
-  'wu-swim',
-  'wu-golf',
-  'wu-hinge',
-])
-for (const id of [
-  'wu-racket-still',
-  'wu-basketball-still',
-  'wu-footwork-still',
-  'wu-volley-still',
-  'wu-skate-still',
-  'wu-box-still',
-])
-  known.add(id)
 // Space and position limits apply at places without equipment (On the go, or a
 // saved place like an office). Each such place has its own saved preferences.
 export function movementPreferences(profile, location, override) {
@@ -227,15 +94,21 @@ export function movementPreferences(profile, location, override) {
 }
 export function movementAllowed(id, preferences) {
   if (!preferences) return true
-  if (equipmentOnly.has(id)) return false
-  if (!known.has(id)) return false // Unknown custom moves need explicit setup outside automatic recommendations.
-  if (preferences.position === 'seated') return seated.has(id)
-  if (preferences.position === 'standing' && notStanding.has(id)) return false
-  if (preferences.noFloor && floor.has(id)) return false
-  if (preferences.space === 'small' && travel.has(id)) return false
-  if (preferences.noJumping && impact.has(id)) return false
-  if (!preferences.wall && ['incline-push-up', 'wu-scapula'].includes(id)) return false
-  return !seated.has(id) // Chair work is offered through the explicit seated preference.
+  const meta = metaOf(id)
+  // Unknown or unreviewed moves (including custom ones) need explicit setup
+  // before automatic recommendations can use them.
+  if (!meta || !meta.reviewed) return false
+  // Places with space preferences have no equipment.
+  if (meta.equipment.length) return false
+  if (preferences.position === 'seated') return meta.position === 'seat'
+  // Chair work is offered through the explicit seated preference.
+  if (meta.position === 'seat') return false
+  if (preferences.position === 'standing' && meta.position !== 'stand') return false
+  if (preferences.noFloor && ['floor', 'kneel'].includes(meta.position)) return false
+  if (preferences.space === 'small' && meta.space === 'open') return false
+  if (preferences.noJumping && meta.impact >= 2) return false
+  if (!preferences.wall && meta.support.includes('wall')) return false
+  return true
 }
 export function movementSummary(p) {
   if (!p) return ''

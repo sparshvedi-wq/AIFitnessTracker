@@ -1,6 +1,8 @@
 // Extra form-guide content: which muscles a move works and the mistakes to
-// watch for. Exercises without an entry fall back to their muscle group.
-// Videos are placeholders until real clips are added (see FormSheet).
+// watch for. Exercises without their own entry use their catalog metadata and
+// the common mistakes for their movement family.
+import { metaOf } from './catalog/index.js'
+import { MUSCLE_LABEL } from './catalog/vocabulary.js'
 
 const MUSCLES = {
   Legs: { primary: 'Quads, glutes and hamstrings', secondary: 'Core and lower back keep you braced' },
@@ -150,6 +152,49 @@ const BY_EXERCISE = {
   },
 }
 
+// Common mistakes for each substitution family (catalog metadata).
+const FAMILY_MISTAKES = {
+  'horizontal-press': ['Flaring elbows straight out to the sides', 'Bouncing at the bottom', 'Letting your hips sag or lift'],
+  'incline-press': ['Setting the incline steeper than you need', 'Flaring elbows straight out', 'Bouncing at the bottom'],
+  'vertical-press': ['Arching your lower back to finish the press', 'Pressing forward instead of up', 'Rushing the lowering phase'],
+  'chest-fly': ['Locking the elbows straight', 'Going deeper than your shoulders like', 'Using more weight than you can control'],
+  'horizontal-row': ['Jerking the weight with your torso', 'Shrugging toward your ears', 'Cutting the stretch short'],
+  'vertical-pull': ['Swinging or leaning far back', 'Stopping short of the stretch at the top', 'Shrugging instead of drawing elbows down'],
+  'straight-arm-pull': ['Bending the elbows into a row', 'Arching the lower back', 'Rushing the return'],
+  'rear-delt': ['Shrugging the shoulders', 'Swinging the weight', 'Using a load heavy enough to change your form'],
+  'lateral-raise': ['Swinging the weight up', 'Lifting well above shoulder height', 'Shrugging as you raise'],
+  'front-raise': ['Leaning back to lift', 'Swinging the weight', 'Raising well above shoulder height'],
+  shrug: ['Rolling the shoulders', 'Bending the elbows', 'Rushing without a pause at the top'],
+  curl: ['Swinging your torso', 'Letting the elbows drift forward', 'Dropping the weight quickly'],
+  'triceps-extension': ['Letting the elbows flare wide', 'Moving the shoulders instead of the elbows', 'Rushing the lowering phase'],
+  dip: ['Lowering deeper than your shoulders allow', 'Shrugging at the bottom', 'Bouncing out of the bottom'],
+  squat: ['Knees caving inward', 'Heels lifting off the floor', 'Rounding forward as you stand'],
+  lunge: ['Front knee caving inward', 'A stance too short or narrow for balance', 'Pushing off the back foot instead of the front'],
+  hinge: ['Rounding your back to reach lower', 'Turning it into a squat', 'Leaning back at the top'],
+  'single-leg-hinge': ['Letting the hips twist open', 'Rounding your back to reach lower', 'Rushing the balance'],
+  'hip-thrust': ['Arching the lower back at the top', 'Pushing through the toes', 'Skipping the pause at the top'],
+  calf: ['Bouncing at the bottom', 'Cutting the range short', 'Rushing the lowering'],
+  'knee-flexion': ['Lifting the hips', 'Using momentum', 'Rushing the return'],
+  'knee-extension': ['Snapping into locked knees', 'Using momentum', 'Lifting off the seat'],
+  'hip-abduction': ['Leaning your torso to move further', 'Using momentum', 'Rushing the return'],
+  'hip-adduction': ['Using momentum', 'Starting wider than is comfortable', 'Rushing the return'],
+  'glute-kickback': ['Arching the lower back', 'Swinging the leg', 'Rushing the return'],
+  'core-anti-extension': ['Letting the lower back arch', 'Holding your breath', 'Moving faster than you can control'],
+  'core-anti-rotation': ['Letting your torso turn', 'Holding your breath', 'Shrugging the shoulders'],
+  'core-flexion': ['Pulling on your neck', 'Swinging the legs', 'Holding your breath'],
+  'core-rotation': ['Twisting with the arms only', 'Rushing the turn', 'Holding your breath'],
+  'core-lateral': ['Letting your hips drop or lean', 'Holding your breath', 'Shrugging the shoulders'],
+  'back-extension': ['Forcing a big arch in the lower back', 'Jerking upward', 'Holding your breath'],
+  'scapular-control': ['Shrugging toward your ears', 'Arching the lower back', 'Forcing the range'],
+  'rotator-cuff': ['Letting the elbow drift away from your side', 'Using a band that is too strong', 'Rushing the return'],
+  'shoulder-mobility': ['Forcing overhead range', 'Leaning to reach further', 'Holding your breath'],
+}
+const label = (list) => {
+  const words = list.map((m) => MUSCLE_LABEL[m] || m)
+  if (words.length <= 1) return words[0] || ''
+  return `${words.slice(0, -1).join(', ')} and ${words.at(-1).toLowerCase()}`
+}
+
 const GENERIC_MISTAKES = [
   'Rushing the lowering half of each rep',
   'Losing your brace as you tire',
@@ -170,8 +215,13 @@ export function formGuide(exId, muscle) {
       ],
     }
   const own = BY_EXERCISE[exId] || {}
+  const meta = metaOf(exId)
+  const fromMeta =
+    meta && !own.muscles && meta.primary.length
+      ? { primary: label(meta.primary), secondary: label(meta.secondary) }
+      : null
   return {
-    muscles: own.muscles || MUSCLES[muscle] || { primary: muscle, secondary: '' },
-    mistakes: own.mistakes || GENERIC_MISTAKES,
+    muscles: own.muscles || fromMeta || MUSCLES[muscle] || { primary: muscle, secondary: '' },
+    mistakes: own.mistakes || (meta && FAMILY_MISTAKES[meta.family]) || GENERIC_MISTAKES,
   }
 }

@@ -1,12 +1,14 @@
 // Built-in exercise catalog and starter routines.
 //
-// Exercise: { id, name, muscle, type: 'reps' | 'time', weighted, cues[] }
+// Exercise: { id, name, muscle, type: 'reps' | 'time', weighted, cues[], aliases[] }
 // Routine item: { exId, sets, reps | sec, restSec }
+// Planning metadata for every built-in lives in catalog/ (see metaOf).
 
 import { SPORT_DRILLS } from './sports.js'
 import { SEATED_EXERCISES } from './movement-preferences.js'
+import { IMPORTED_EXERCISES, aliasesOf } from './catalog/index.js'
 
-export const EXERCISES = [
+const ORIGINAL = [
   ...SEATED_EXERCISES,
   {
     id: 'db-overhead-press',
@@ -443,6 +445,14 @@ export const EXERCISES = [
   ...SPORT_DRILLS,
 ]
 
+export const EXERCISES = [...ORIGINAL, ...IMPORTED_EXERCISES].map((e) => ({
+  ...e,
+  aliases: aliasesOf(e.id, e.name),
+}))
+// The 88 exercises that shipped before the catalog import; their IDs, names
+// and illustrated guides never change.
+export const ORIGINAL_IDS = ORIGINAL.map((e) => e.id)
+
 export const MUSCLES = [
   'Legs',
   'Glutes',
@@ -458,13 +468,17 @@ export const MUSCLES = [
 
 const BY_ID = Object.fromEntries(EXERCISES.map((e) => [e.id, e]))
 
-// Custom exercises (state.customExercises) override and extend the catalog.
+export const isBuiltInExercise = (id) => Boolean(BY_ID[id])
+
+// Custom exercises (state.customExercises) extend the catalog. A built-in ID
+// always resolves to the built-in, so a custom entry can never silently replace
+// one (colliding saves are renamed by catalog/migrations.js when opened).
 export function findExercise(id, custom = []) {
-  return custom.find((e) => e.id === id) || BY_ID[id] || null
+  return BY_ID[id] || custom.find((e) => e.id === id) || null
 }
 
 export function allExercises(custom = []) {
-  return [...EXERCISES, ...custom]
+  return [...EXERCISES, ...custom.filter((e) => !BY_ID[e.id])]
 }
 
 const r = (exId, sets, reps, restSec) => ({ exId, sets, reps, restSec })

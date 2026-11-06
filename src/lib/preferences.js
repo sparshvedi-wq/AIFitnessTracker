@@ -1,16 +1,13 @@
 import { addDays, todayKey } from './date.js'
 import { resolvePlace } from './places.js'
+import { allMeta } from './catalog/index.js'
 
 export const DEFAULT_DISPLAY = { metricLight: false, largeText: false, reducedMotion: false }
-export const DUMBBELL_MOVES = [
-  'goblet-squat',
-  'db-bench',
-  'db-row',
-  'lateral-raise',
-  'biceps-curl',
-  'db-overhead-press',
-  'db-rdl',
-]
+// Exercises logged with a dumbbell's weight (per hand, or the one held), so
+// suggested loads must match the dumbbell sizes a place actually has.
+export const DUMBBELL_MOVES = allMeta()
+  .filter((m) => ['hand', 'one'].includes(m.load) && m.equipment.flat().includes('db'))
+  .map((m) => m.id)
 export function displayOf(state) {
   return { ...DEFAULT_DISPLAY, ...state.settings?.display }
 }

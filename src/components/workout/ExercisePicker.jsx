@@ -10,6 +10,7 @@ import Select from '../Select.jsx'
 import { MuscleTag, Toggle } from './Controls.jsx'
 import { matchesExercise } from '../../lib/exercise-search.js'
 import { MOVEMENTS, availableMovement } from '../../lib/planner.js'
+import { metaOf } from '../../lib/catalog/index.js'
 import { count } from '../../lib/presentation.js'
 
 const MUSCLE_ICONS = {
@@ -58,7 +59,7 @@ export default function ExercisePicker({ open, onClose, onPick, filterExercise, 
             (scope === 'home' &&
               (meta
                 ? availableMovement(meta, 'home', state.settings.training.equipment)
-                : !e.weighted && !['pull-up', 'dip'].includes(e.id))))
+                : !e.weighted && !metaOf(e.id))))
         )
       })
       .sort(

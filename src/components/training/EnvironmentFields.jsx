@@ -16,6 +16,7 @@ export default function EnvironmentFields({
   onValidityChange,
   compact = false,
   section = 'all',
+  variant = 'list',
 }) {
   const [error, setError] = useState('')
   const [text, setText] = useState('')
@@ -55,27 +56,60 @@ export default function EnvironmentFields({
               : `Equipment at ${place.name.toLowerCase() === 'home' ? 'home' : place.name}`
           }
         >
-          <div className="equipment-options grid grid-cols-2 gap-2">
-            {HOME_EQUIPMENT.map((value) => (
-              <Choice
-                key={value}
-                value={value}
-                selected={place.equipment.includes(value)}
-                onClick={() =>
-                  onChange({
-                    equipment: place.equipment.includes(value)
-                      ? place.equipment.filter((v) => v !== value)
-                      : [...place.equipment, value],
-                  })
-                }
-              >
-                <span className="flex items-center gap-2.5">
-                  <Icon name={EQUIPMENT_ICON[value]} size={22} className="shrink-0" />
-                  <span className="equipment-name">{value}</span>
-                </span>
-              </Choice>
-            ))}
-          </div>
+          {variant === 'icons' ? (
+            <div className="equipment-icons" role="group" aria-label="Home equipment">
+              {HOME_EQUIPMENT.map((value) => {
+                const on = place.equipment.includes(value)
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={on}
+                    className={`equipment-icon ${on ? 'is-on' : ''}`}
+                    onClick={() =>
+                      onChange({
+                        equipment: on
+                          ? place.equipment.filter((v) => v !== value)
+                          : [...place.equipment, value],
+                      })
+                    }
+                  >
+                    <span className="equipment-icon-disc" aria-hidden="true">
+                      <Icon name={EQUIPMENT_ICON[value]} size={28} strokeWidth={1.9} />
+                      {on && (
+                        <span className="equipment-icon-check">
+                          <Icon name="check" size={12} strokeWidth={3.4} />
+                        </span>
+                      )}
+                    </span>
+                    <span className="equipment-icon-label">{value}</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="equipment-options grid grid-cols-2 gap-2">
+              {HOME_EQUIPMENT.map((value) => (
+                <Choice
+                  key={value}
+                  value={value}
+                  selected={place.equipment.includes(value)}
+                  onClick={() =>
+                    onChange({
+                      equipment: place.equipment.includes(value)
+                        ? place.equipment.filter((v) => v !== value)
+                        : [...place.equipment, value],
+                    })
+                  }
+                >
+                  <span className="flex items-center gap-2.5">
+                    <Icon name={EQUIPMENT_ICON[value]} size={22} className="shrink-0" />
+                    <span className="equipment-name">{value}</span>
+                  </span>
+                </Choice>
+              ))}
+            </div>
+          )}
           <p className="equipment-status mt-3 text-[13px] text-muted">
             {!place.equipment.length
               ? 'Nothing selected? We’ll use bodyweight.'

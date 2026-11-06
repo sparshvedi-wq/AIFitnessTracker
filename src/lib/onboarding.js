@@ -98,12 +98,12 @@ export function onboardingResponse(step, p) {
     welcome: ['Built around your day', 'Each session fits the time, place and energy you have.'],
     goal: [
       p.goal === 'Build muscle'
-        ? 'Build muscle.'
+        ? 'Let’s build muscle.'
         : p.goal === 'Get stronger'
-          ? 'Get stronger.'
+          ? 'Let’s get stronger.'
           : p.goal === 'Lose weight'
-            ? 'Make movement a habit.'
-            : 'Feel fitter.',
+            ? 'Let’s make movement a habit.'
+            : 'Let’s feel fitter.',
       p.goal === 'Build muscle'
         ? 'Your working sets will be balanced across your sessions.'
         : p.goal === 'Get stronger'

@@ -23,7 +23,6 @@ import ExercisePicker from '../components/workout/ExercisePicker.jsx'
 import FormSheet from '../components/workout/FormSheet.jsx'
 import { matchesExercise } from '../lib/exercise-search.js'
 import { shortSessionRequest } from '../lib/flexible-training.js'
-import { SPORT_EMOJI } from '../components/training/SetupVisuals.jsx'
 
 // Routines saved before tags existed get one from their exercises.
 function tagOf(routine, custom) {
@@ -143,7 +142,6 @@ export default function Train({ nav }) {
           <div className="mt-3 grid grid-cols-2 gap-3">
             <QuickAction
               icon="sport"
-              emoji={SPORT_EMOJI[warmSport] || '🏅'}
               title="Sport warmup"
               detail={warmSport ? sportById(warmSport).name : '5–20 min'}
               onClick={() => start({ kind: 'sport', sport: warmSport, items: [] })}
@@ -265,12 +263,12 @@ export default function Train({ nav }) {
     </div>
   )
 }
-function QuickAction({ icon, emoji, title, detail, onClick }) {
+function QuickAction({ icon, title, detail, onClick }) {
   return (
-    <button className="min-h-24 rounded-tuck bg-surface p-3.5 text-left" onClick={onClick}>
+    <button className="tile min-h-24 p-3.5 text-left" onClick={onClick}>
       <span className="flex items-center justify-between gap-2">
         <span className="quick-action-art" aria-hidden="true">
-          {emoji || <Icon name={icon} size={24} />}
+          <Icon name={icon} size={22} strokeWidth={2} />
         </span>
         <Icon name="chevronRight" size={16} className="text-faint" />
       </span>

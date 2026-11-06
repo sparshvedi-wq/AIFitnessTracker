@@ -47,7 +47,7 @@ test('home equipment and weight sizes are separate, including editing a setup fr
 test('responses use actual choices and restored replies cannot point to a different or unavailable question', () => {
   const p = { ...defaultState().settings.training, minutes: 45, goal: 'Get stronger' }
   assert.equal(onboardingResponse('time', p)[0], '45 minutes.')
-  assert.equal(onboardingResponse('goal', p)[0], 'Get stronger.')
+  assert.equal(onboardingResponse('goal', p)[0], 'Let’s get stronger.')
   assert.equal(shouldShowOnboardingResponse('about', p), false)
   assert.equal(shouldShowOnboardingResponse('sports', p), true)
   assert.equal(shouldShowOnboardingResponse('sports', { ...p, wantsSport: true }), false)

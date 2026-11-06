@@ -1,12 +1,13 @@
-.setup-dialog {
+/* Silhouette setup: M1 asks, options wait as ghosts, the choice is lit. */
+.setup-dialog.setup-dialog {
   background: rgb(var(--bg));
 }
 .setup-header {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 12px;
-  padding: max(env(safe-area-inset-top), 16px) 22px 18px;
+  gap: 14px;
+  padding: max(env(safe-area-inset-top), 14px) 16px 8px;
 }
 .setup-brand {
   justify-self: center;
@@ -15,7 +16,7 @@
   gap: 9px;
   color: rgb(var(--ink));
   font-family: 'Fraunces Variable', Georgia, serif;
-  font-size: 27px;
+  font-size: 26px;
   line-height: 1;
   letter-spacing: -0.04em;
 }
@@ -32,198 +33,578 @@
   height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgb(var(--line));
+  border: 2px solid rgb(var(--line));
   border-radius: 50%;
   color: rgb(var(--ink-2));
 }
 .setup-body {
   display: flex;
   flex-direction: column;
-  padding-top: 0;
-  scrollbar-gutter: stable;
+  padding: 0 16px 8px !important;
+  overflow-x: hidden;
 }
 .setup-page {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  min-height: 100%;
+  padding-top: 8px;
 }
-.setup-question-title {
-  margin: 8px 0 0;
+.setup-footer {
+  border-top-color: transparent !important;
+  padding-inline: 16px !important;
+}
+
+/* M1 speaks the question. */
+.guide-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.guide-avatar {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  background: rgb(var(--lit));
+  box-shadow: inset 0 0 0 1.5px rgb(var(--accent) / 0.35);
+}
+.guide-avatar img {
+  position: absolute;
+  left: -100%;
+  top: 3%;
+  width: 300%;
+  max-width: none;
+  height: auto;
+}
+.guide-bubble {
+  min-width: 0;
+  border: 1.5px solid rgb(var(--outline) / 0.55);
+  border-radius: 20px 20px 20px 6px;
+  background: rgb(var(--surface));
+  padding: 11px 16px 12px;
+  animation: guide-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.guide-question {
+  margin: 0;
+  text-wrap: balance;
   color: rgb(var(--ink));
   font-family: 'Fraunces Variable', Georgia, serif;
-  font-size: clamp(29px, 7.8vw, 34px);
-  font-weight: 540;
-  line-height: 1.14;
-  letter-spacing: -0.018em;
+  font-size: 23px;
+  font-weight: 520;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
   font-variation-settings:
     'SOFT' 100,
     'WONK' 0;
 }
-.setup-question-title:focus,
-.setup-welcome-title:focus {
+.guide-question:focus,
+.setup-welcome-title:focus,
+.setup-response-title:focus {
   outline: none;
 }
+.guide-note {
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgb(var(--muted));
+}
+.setup-hint {
+  margin: 16px 2px 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgb(var(--muted));
+}
+
+/* One lit scene on its floor glow. */
 .setup-scene {
-  display: flex;
   position: relative;
+  display: flex;
   flex: 0 0 auto;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  height: clamp(220px, 34dvh, 340px);
-  margin: 8px -8px 12px;
-  overflow: hidden;
+  height: clamp(170px, 27dvh, 270px);
+  margin: 24px 0 0;
 }
 .setup-scene img {
-  position: absolute;
+  position: relative;
   display: block;
-  width: auto;
   height: 100%;
-  max-width: none;
+  width: auto;
+  max-width: 100%;
   object-fit: contain;
+  object-position: bottom;
 }
-.setup-scene .scene-current {
-  opacity: 0;
+.setup-scene-glow {
+  left: 50%;
+  bottom: -2%;
+  width: min(70%, 260px);
+  height: 16%;
+  transform: translateX(-50%);
 }
-.setup-scene .scene-current.is-loaded {
-  opacity: 1;
-  animation: mannequin-arrive 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+.setup-scene .scene-current.is-entering {
+  animation: mannequin-arrive 260ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
-.setup-scene--welcome {
-  height: clamp(270px, 43dvh, 365px);
-  margin: 0 -12px 22px;
-}
-.setup-scene--welcome img,
-.setup-scene--response img,
-.setup-page--location .setup-scene img {
-  max-width: 100%;
-}
-.setup-scene--sports img {
-  width: 100%;
-  max-width: 100%;
-}
-.setup-scene--compact {
-  height: 130px;
-  margin: 8px 0 0;
+.setup-scene--sports {
+  height: clamp(120px, 18dvh, 170px);
+  margin-top: 16px;
 }
 .setup-scene--response {
-  height: clamp(280px, 45dvh, 410px);
-  margin: 0 -12px 24px;
+  height: clamp(220px, 38dvh, 340px);
+  margin: 0;
 }
-.setup-page--response {
+
+/* Options with their own artwork. */
+.image-choices {
+  margin-top: 24px;
+}
+.image-choices--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.image-choices--rows {
   display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.image-choice {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  text-align: center;
+}
+.image-choices--grid .image-choice {
+  height: clamp(150px, 30dvh, 258px);
+}
+.image-choice-art img.is-wide {
+  object-fit: cover;
+}
+.image-choices--grid .image-choice:last-child:nth-child(odd) {
+  grid-column: span 2;
+}
+.image-choices--rows .image-choice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54%;
+  height: clamp(100px, 16dvh, 136px);
+  text-align: left;
+}
+.image-choices--rows:has(> .image-choice:nth-child(2):last-child) .image-choice {
+  height: clamp(130px, 25dvh, 210px);
+}
+.image-choice-art {
+  position: relative;
+  display: block;
+  min-height: 0;
+  flex: 1;
+}
+.image-choices--rows .image-choice-art {
+  order: 2;
+}
+.image-choice-art img {
+  position: absolute;
+  inset: 10px 10px 0;
+  width: calc(100% - 20px);
+  height: calc(100% - 10px);
+  max-width: none;
+  object-fit: contain;
+  object-position: center bottom;
+}
+.image-choice-glow {
+  left: 50%;
+  bottom: 0;
+  width: 78%;
+  height: 16%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+.image-choice-glow.is-on {
+  opacity: 1;
+}
+.image-choice-label {
+  display: block;
+  padding: 8px 12px 13px;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.image-choices--rows .image-choice-label {
+  order: 1;
+  align-self: center;
+  padding: 0 4px 0 18px;
+  font-size: 18px;
+}
+.image-choice-detail {
+  display: block;
+  margin-top: 4px;
+  color: rgb(var(--muted));
+  font-size: 14px;
+  font-weight: 600;
+}
+.lit-figure {
+  filter: brightness(1) invert(0);
+  opacity: 1;
+}
+
+/* Text-only choices. */
+.setup-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 24px;
+}
+.setup-options--grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.onboarding-choice {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  text-align: left;
+}
+.setup-options--grid .onboarding-choice {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    'art . ring'
+    'label label label';
+  align-items: start;
+  row-gap: 10px;
+  min-height: 112px;
+  padding: 12px 14px 14px;
+}
+.setup-options--grid .onboarding-choice > .setup-art {
+  grid-area: art;
+}
+.setup-options--grid .onboarding-choice > .choice-ring {
+  grid-area: ring;
+}
+.setup-options--grid .onboarding-choice > span:not(.setup-art):not(.choice-ring) {
+  grid-area: label;
+  font-size: 16px;
+}
+.onboarding-choice .setup-art {
+  background: rgb(var(--surface-2));
+}
+.onboarding-choice[aria-pressed='true'] .setup-art {
+  background: rgb(var(--accent) / 0.16);
+  color: rgb(var(--accent-ink));
+}
+.choice-ring {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgb(var(--outline));
+  border-radius: 50%;
+  transition:
+    background-color 180ms,
+    border-color 180ms;
+}
+.choice-ring.is-on {
+  border-color: rgb(var(--accent));
+  background: rgb(var(--accent));
+  color: rgb(var(--bg));
+}
+
+/* Home equipment as round icons. */
+.equipment-icons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 8px;
+  margin-top: 8px;
+}
+.equipment-icon {
+  display: flex;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: rgb(var(--ink-2));
+}
+.equipment-icon-disc {
+  position: relative;
+  display: flex;
+  width: 66px;
+  height: 66px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgb(var(--surface));
+  box-shadow:
+    inset 0 0 0 2px rgb(var(--line)),
+    0 4px 0 rgb(var(--depth));
+  color: rgb(var(--muted));
+  transition:
+    background-color 180ms,
+    box-shadow 180ms,
+    color 180ms,
+    transform 150ms;
+}
+.equipment-icon.is-on .equipment-icon-disc {
+  background: rgb(var(--lit));
+  box-shadow:
+    inset 0 0 0 2px rgb(var(--accent)),
+    0 4px 0 rgb(var(--lit-edge));
+  color: rgb(var(--accent-ink));
+}
+.equipment-icon:active .equipment-icon-disc {
+  transform: translateY(2px);
+}
+.equipment-icon-check {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  display: flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 0 3px rgb(var(--bg));
+  color: rgb(var(--bg));
+}
+.equipment-icon-label {
+  min-height: 2.5em;
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: center;
+}
+.equipment-icon.is-on .equipment-icon-label {
+  color: rgb(var(--ink));
+}
+
+/* Welcome: the team waits, M1 steps forward. */
+.setup-page--welcome {
+  padding: 0;
+}
+.setup-welcome {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 12px;
+}
+.setup-welcome-stage {
+  position: relative;
+  overflow: hidden;
+  height: clamp(320px, 56dvh, 480px);
+  margin: 0 -16px;
+}
+.setup-stage-ring {
+  position: absolute;
+  left: 50%;
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+.setup-stage-ring--outer {
+  bottom: 2%;
+  width: 92%;
+  height: 15%;
+  border: 1px solid rgb(var(--outline) / 0.5);
+}
+.setup-stage-ring--inner {
+  bottom: 4.5%;
+  width: 68%;
+  height: 10%;
+}
+.welcome-ghost {
+  position: absolute;
+  bottom: 14%;
+  height: 58%;
+  width: auto;
+  max-width: none;
+}
+.welcome-ghost.ghost-figure {
+  opacity: 0.09;
+}
+.dark .welcome-ghost.ghost-figure {
+  opacity: 0.11;
+}
+.welcome-ghost--1 {
+  left: -10%;
+  height: 58%;
+}
+.welcome-ghost--2 {
+  right: -12%;
+  height: 59%;
+}
+.welcome-ghost--3 {
+  left: 8%;
+  bottom: 16%;
+}
+.welcome-ghost--4 {
+  right: 6%;
+  bottom: 16%;
+}
+.welcome-hero {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  height: 76%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  animation: welcome-arrive 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.welcome-bubble {
+  position: absolute;
+  top: 2%;
+  right: 4%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px 20px 20px 6px;
+  background: rgb(var(--ink));
+  padding: 11px 15px;
+  color: rgb(var(--bg));
+  box-shadow: 0 4px 0 rgb(var(--ink-depth));
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  animation: guide-in 320ms 180ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.welcome-bubble strong {
+  font-size: 16px;
+  font-weight: 750;
+}
+.setup-welcome-title {
+  margin-top: 20px;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(32px, 9vw, 38px);
+  font-weight: 520;
+  letter-spacing: -0.025em;
+  line-height: 1.06;
+  text-align: center;
+  text-wrap: balance;
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 0;
+}
+
+/* After an answer: the figure lit on its stage. */
+.setup-page--response {
+  justify-content: center;
 }
 .setup-response {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 8px 2px 24px;
-  animation: onboarding-enter 220ms ease-out both;
+  padding: 8px 4px 16px;
+  text-align: center;
+}
+.setup-response-stage {
+  position: relative;
+  width: 100%;
+}
+.setup-burst {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: min(380px, 104%);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  overflow: visible;
+  animation: burst-in 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.burst-lit {
+  stroke: rgb(var(--accent));
+  stroke-width: 5;
+  stroke-linecap: round;
+}
+.burst-soft {
+  stroke: rgb(var(--ink) / 0.3);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.setup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 24px;
+  border-radius: 14px;
+  background: rgb(var(--accent) / 0.16);
+  padding: 6px 12px;
+  color: rgb(var(--accent-ink));
+  font-size: 13px;
+  font-weight: 750;
+}
+.setup-response-title {
+  margin-top: 14px;
+  text-wrap: balance;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(30px, 8.6vw, 36px);
+  font-weight: 520;
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+}
+.setup-badge + .setup-response-title {
+  margin-top: 12px;
+}
+.setup-response-stage + .setup-response-title {
+  margin-top: 24px;
 }
 .setup-response-copy {
-  max-width: 33ch;
-  margin-top: 13px;
-  color: rgb(var(--muted));
-  font-size: 16px;
-  line-height: 1.6;
-}
-.setup-page--welcome {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 0 2px 28px;
-}
-.setup-welcome-title {
-  font-family: 'Fraunces Variable', Georgia, serif;
-  font-size: clamp(35px, 9vw, 42px);
-  font-weight: 540;
-  letter-spacing: -0.025em;
-  line-height: 1.12;
-  font-variation-settings:
-    'SOFT' 100,
-    'WONK' 0;
-}
-.setup-page .onboarding-choice {
-  min-height: 62px;
-  padding: 14px 16px;
-  border-radius: 16px;
-}
-.setup-page .onboarding-choice .dot {
-  width: 23px;
-  height: 23px;
-}
-.setup-page .setup-hint {
+  max-width: 31ch;
   margin-top: 12px;
-  font-size: 14px;
-}
-.setup-page--goal,
-.setup-page--sports,
-.setup-page--home,
-.setup-page--location,
-.setup-page--priority,
-.setup-page--experience {
-  display: flex;
-  flex-direction: column;
-  min-height: 100%;
-}
-.setup-page--goal > .setup-options,
-.setup-page--sports > .setup-options,
-.setup-page--home > .setup-options {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 8px;
-}
-.setup-page--goal > .space-y-3 > :not([hidden]) ~ :not([hidden]),
-.setup-page--sports > .space-y-3 > :not([hidden]) ~ :not([hidden]),
-.setup-page--home > .space-y-3 > :not([hidden]) ~ :not([hidden]) {
-  margin-top: 0;
-}
-.setup-page--goal .onboarding-choice {
-  min-height: 68px;
-  padding: 12px;
-  gap: 8px;
-}
-.setup-page--goal .onboarding-choice .dot {
-  width: 20px;
-  height: 20px;
-}
-.setup-page--goal .onboarding-choice span.block {
+  color: rgb(var(--ink-2));
   font-size: 16px;
+  line-height: 1.5;
 }
-.setup-page--goal .setup-scene {
-  height: clamp(300px, 48dvh, 440px);
+
+/* Review: the first session and every answer, each one tap from an edit. */
+.lit-card {
+  border: 2px solid rgb(var(--accent) / 0.35);
+  border-radius: 24px;
+  background: rgb(var(--lit));
+  box-shadow: 0 4px 0 rgb(var(--lit-edge));
 }
-.setup-page--sports .onboarding-choice,
-.setup-page--home .onboarding-choice {
-  min-height: 105px;
-  align-items: flex-start;
-  flex-direction: column-reverse;
-  justify-content: space-between;
+.checklist {
+  border: 2px solid rgb(var(--line));
+  border-radius: 20px;
+  background: rgb(var(--surface));
+  padding: 2px 14px;
+}
+.checklist-row {
+  display: flex;
+  width: 100%;
+  min-height: 56px;
+  align-items: center;
   gap: 12px;
+  text-align: left;
 }
-.setup-page--sports .setup-scene,
-.setup-page--home .setup-scene {
-  height: clamp(250px, 40dvh, 365px);
+.checklist-row + .checklist-row {
+  border-top: 1px solid rgb(var(--line));
 }
-.setup-page--location > .setup-options,
-.setup-page--priority > .setup-options,
-.setup-page--experience > .setup-options {
-  margin-top: auto;
+.checklist-mark {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  color: rgb(var(--bg));
 }
-.setup-page--equipment .setup-scene {
-  height: 150px;
+.checklist-mark.is-pending {
+  border: 2px dashed rgb(var(--outline));
+  background: transparent;
 }
-.setup-page--manual .setup-scene,
-.setup-page--review .setup-scene {
-  height: 90px;
-}
-.setup-page--sport-choice .setup-scene {
-  height: 145px;
-}
-.setup-photo-title {
-  margin: 5px 0 17px;
-}
+
 .photo-mannequin-guide {
   display: flex;
   width: 100%;
@@ -236,6 +617,9 @@
   height: 96%;
   object-fit: contain;
 }
+.setup-photo-title {
+  margin: 5px 0 17px;
+}
 .equipment-options > button {
   min-height: 58px;
   padding: 10px;
@@ -245,7 +629,7 @@
 }
 .equipment-name {
   white-space: nowrap;
-  font-size: clamp(11px, 3.35vw, 14px);
+  font-size: clamp(13px, 3.6vw, 15px);
 }
 .equipment-status {
   min-height: 20px;
@@ -274,55 +658,95 @@
   font-size: 14px;
   color: rgb(var(--muted));
 }
+
 @keyframes mannequin-arrive {
   from {
     opacity: 0;
-    transform: translate3d(9px, 0, 0) scale(0.985);
+    transform: translate3d(0, 8px, 0) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: none;
   }
 }
-@media (max-height: 740px) {
-  .setup-scene,
-  .setup-page--sports .setup-scene,
-  .setup-page--home .setup-scene {
-    height: 210px;
+@keyframes welcome-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(-50%, 10px, 0);
   }
-  .setup-page--goal .setup-scene {
-    height: clamp(185px, 33dvh, 240px);
+  to {
+    opacity: 1;
+    transform: translate3d(-50%, 0, 0);
   }
-  .setup-scene--compact,
-  .setup-page--equipment .setup-scene {
-    height: 100px;
+}
+@keyframes guide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes burst-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.84) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1) rotate(0);
+  }
+}
+
+@media (max-height: 700px) {
+  .guide-question {
+    font-size: 21px;
+  }
+  .setup-scene {
+    height: clamp(140px, 24dvh, 200px);
+    margin-top: 16px;
+  }
+  .image-choices,
+  .setup-options {
+    margin-top: 16px;
+  }
+  .image-choices--grid .image-choice {
+    height: clamp(132px, 25dvh, 180px);
+  }
+  .image-choices--rows .image-choice {
+    height: clamp(88px, 15dvh, 112px);
+  }
+  .setup-welcome-stage {
+    height: clamp(270px, 50dvh, 360px);
   }
   .setup-scene--response {
-    height: 270px;
+    height: clamp(190px, 34dvh, 260px);
   }
-  .setup-page--manual .setup-scene,
-  .setup-page--review .setup-scene {
-    height: 90px;
+}
+@media (max-width: 359px) {
+  .image-choices--rows .image-choice-label {
+    font-size: 16px;
+    padding-left: 14px;
   }
-  .setup-page--sport-choice .setup-scene {
-    height: 130px;
+  .equipment-icon-disc {
+    width: 58px;
+    height: 58px;
+  }
+  .equipment-icon-label {
+    font-size: 13px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .setup-response,
-  .setup-scene .scene-current.is-loaded {
+  .guide-bubble,
+  .welcome-bubble,
+  .welcome-hero,
+  .setup-burst,
+  .setup-scene .scene-current.is-entering {
     animation: none;
   }
-  .setup-dialog .setup-progress > span,
-  .session-progress > span {
-    transition: none;
-  }
 }
-.tally-reduce-motion .setup-response,
-.tally-reduce-motion .scene-current.is-loaded {
-  animation: none;
-}
-.tally-reduce-motion .setup-progress > span,
-.tally-reduce-motion .session-progress > span {
-  transition: none;
+.tally-reduce-motion :is(.guide-bubble, .welcome-bubble, .welcome-hero, .setup-burst, .scene-current) {
+  animation: none !important;
 }

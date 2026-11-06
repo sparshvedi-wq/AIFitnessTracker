@@ -71,3 +71,10 @@ export function onboardingScene(step, profile = {}, response = false) {
     }[step] || 'neutral'
   )
 }
+
+// The scene that matches what a planned session is for (Home's training card).
+export function planScene(plan = {}, goal) {
+  if (['recovery', 'movement'].includes(plan.kind) || plan.mode === 'movement') return 'movement'
+  if (plan.kind === 'sport') return 'sports'
+  return { 'Build muscle': 'muscle', 'Get stronger': 'strength', 'Lose weight': 'weight' }[goal] || 'rhythm'
+}

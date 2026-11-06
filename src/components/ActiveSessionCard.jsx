@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import Icon from './Icon.jsx'
-import TrainingPhoto from './TrainingPhoto.jsx'
+import { ONBOARDING_ART } from '../lib/onboarding-art.js'
 import { sessionStatus, setCounts } from '../lib/workout.js'
 
 // Home's view of the workout in progress. It shows the same live status as
@@ -15,26 +15,37 @@ export default function ActiveSessionCard({ session, onOpen }) {
   }, [ticking])
   const { done, total } = setCounts(session)
   const prepared = session.phase === 'prepared'
+  const share = total ? done / total : 0
   return (
-    <button
-      onClick={onOpen}
-      className="flex min-h-[120px] w-full items-center gap-4 rounded-hero bg-paper p-4 text-left text-on-paper"
-    >
-      <TrainingPhoto rotate className="!aspect-square !h-20 !w-20 shrink-0 rounded-2xl" />
-      <span className="min-w-0 flex-1">
-        <span className="block text-[12px] text-paper-muted">
-          {prepared ? 'Ready to start' : `${done} of ${total} sets`}
+    <button onClick={onOpen} className="training-card block w-full text-left">
+      <span className="training-card-art" aria-hidden="true">
+        <span className="floor-glow training-card-glow" />
+        <img src={ONBOARDING_ART.muscle} alt="" decoding="async" />
+      </span>
+      <span className="training-card-head block">
+        <span className="block text-[14px] font-bold text-accent-ink">
+          {prepared ? 'Ready to start' : 'In progress'}
         </span>
-        <span className="mt-1 block truncate font-display text-[25px] leading-tight">{session.name}</span>
+        <span className="mt-2 block font-display text-[30px] leading-[1.04]">{session.name}</span>
         {!prepared && (
-          <span className="mt-1 block truncate text-[13px] text-paper-muted">
+          <span className="mt-2 block truncate text-[14px] font-semibold text-ink2">
             {sessionStatus(session, now)}
           </span>
         )}
-        <span className="mt-2 inline-flex items-center gap-1.5 text-[14px] font-semibold">
-          {prepared ? 'Start' : 'Resume'}
-          <Icon name="arrowRight" size={15} />
+      </span>
+      {!prepared && (
+        <span className="relative mt-2 block">
+          <span className="block text-[13px] font-semibold text-muted">
+            {done} of {total} sets
+          </span>
+          <span className="progress-chunky mt-2" aria-hidden="true">
+            <span style={{ width: `${Math.max(share * 100, 4)}%` }} />
+          </span>
         </span>
+      )}
+      <span className="btn-primary pointer-events-none mt-4 w-full">
+        {prepared ? 'Start' : 'Resume'}
+        <Icon name="arrowRight" size={16} />
       </span>
     </button>
   )

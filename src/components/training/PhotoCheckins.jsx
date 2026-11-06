@@ -11,7 +11,7 @@ import { isNativeApp } from '../../lib/native.js'
 import { photoDraft } from '../../lib/photo-draft.js'
 import { uid } from '../../lib/id.js'
 import { Choice, Field } from './Fields.jsx'
-import { SetupHeader } from './SetupVisuals.jsx'
+import { GuideBubble, SetupHeader } from './SetupVisuals.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import PhotoReviewStory, { PhotoReviewLoading } from './PhotoReviewStory.jsx'
 import { photoReviewSlides } from '../../lib/photo-review.js'
@@ -363,6 +363,8 @@ export default function PhotoCheckins({
         dismissible={!onboarding}
         onClose={close}
         className={onboarding ? 'setup-dialog' : ''}
+        bodyClassName={onboarding ? 'setup-body' : ''}
+        footerClassName={onboarding ? 'setup-footer' : ''}
         hideHandle={onboarding}
         header={
           onboarding ? (
@@ -457,10 +459,10 @@ export default function PhotoCheckins({
               {onboarding && (
                 <button
                   disabled={Boolean(busy)}
-                  className="mx-auto mt-1 block min-h-11 px-3 text-[14px] text-muted underline underline-offset-4"
+                  className="mx-auto mt-2 block min-h-11 px-3 text-[15px] font-semibold text-ink2"
                   onClick={onManual}
                 >
-                  Opt out of photos
+                  Skip photos, enter details instead
                 </button>
               )}
             </div>
@@ -491,10 +493,10 @@ export default function PhotoCheckins({
                 Use this starting point
               </button>
               <button
-                className="mx-auto mt-1 block min-h-11 px-3 text-[14px] text-muted underline underline-offset-4"
+                className="mx-auto mt-2 block min-h-11 px-3 text-[15px] font-semibold text-ink2"
                 onClick={onManual}
               >
-                Opt out of photos
+                Skip photos, enter details instead
               </button>
             </div>
           ) : (
@@ -520,7 +522,7 @@ export default function PhotoCheckins({
         }
       >
         {onboarding && adding && !reviewing && (
-          <h3 className="setup-question-title setup-photo-title">Your starting photos</h3>
+          <GuideBubble note="Front, side and back. Optional.">Your starting photos</GuideBubble>
         )}
         {reviewing ? (
           <PhotoReviewLoading status={busy} />
@@ -534,7 +536,7 @@ export default function PhotoCheckins({
                   aria-label={`${a} view`}
                   aria-pressed={angle === a}
                   onClick={() => setAngle(a)}
-                  className={`flex min-h-12 items-center justify-center gap-2 rounded-2xl border text-[14px] capitalize ${angle === a ? 'border-accent bg-accent/10 text-accent' : 'border-line text-muted'}`}
+                  className={`tile flex min-h-12 items-center justify-center gap-2 !rounded-[16px] text-[15px] font-semibold capitalize ${angle === a ? '' : 'text-ink2'}`}
                 >
                   <span>{a}</span>
                   {photos[a] ? (
@@ -545,7 +547,7 @@ export default function PhotoCheckins({
                 </button>
               ))}
             </div>
-            <div className="mt-4 flex h-[260px] items-center justify-center overflow-hidden rounded-tuck bg-bg/80 sm:h-[300px]">
+            <div className="photo-frame mt-4 flex h-[clamp(220px,32dvh,300px)] items-center justify-center overflow-hidden">
               {photos[angle] ? (
                 <img
                   src={photos[angle].preview}
@@ -615,7 +617,7 @@ export default function PhotoCheckins({
             />
             {!simulate && (
               <div className="mt-5 space-y-3">
-                <label className="flex items-start gap-3 text-[13px] leading-relaxed">
+                <label className="flex items-start gap-3 text-[15px] leading-relaxed">
                   <input
                     className="mt-1 h-5 w-5 shrink-0"
                     type="checkbox"

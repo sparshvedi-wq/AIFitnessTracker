@@ -1,29 +1,77 @@
-import { useEffect, useState } from 'react'
 import Icon from '../Icon.jsx'
 import { photoReviewSlides, conciseSummary } from '../../lib/photo-review.js'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import './photo-review.css'
+// Only the real request state is shown; no invented stages or percentages.
 export function PhotoReviewLoading({ status }) {
-  const [hint, setHint] = useState(0)
-  const lines = ['Checking the views', 'Looking at visible balance', 'Preparing your training focus']
-  useEffect(() => {
-    const t = setInterval(() => setHint((v) => (v + 1) % lines.length), 3500)
-    return () => clearInterval(t)
-  }, [lines.length])
   return (
     <section className="review-loading" role="status" aria-live="polite">
       <div className="review-scan">
+        <span className="floor-glow review-scan-floor" />
         <img src={ONBOARDING_ART.neutral} alt="" />
         <span className="review-scan-line" />
       </div>
-      <h3 className="font-display text-[30px]">A closer look.</h3>
-      <p className="mt-3 text-[15px] text-muted">{status}</p>
-      <p key={hint} aria-hidden="true" className="review-loading-hint">
-        {lines[hint]}
-      </p>
+      <h3 className="font-display text-[30px]">A closer look</h3>
+      <p className="mt-3 text-[16px] text-ink2">{status}</p>
     </section>
   )
 }
+// Where each reviewed area sits on M1, in % of the render. Only a qualitative highlight:
+// it marks the area a finding refers to, never a size, score or measurement.
+const FRONT = '/onboarding/m1-neutral.webp'
+const BACK = '/onboarding/m1-photo-back.webp'
+const FOCUS = {
+  shoulders: {
+    src: BACK,
+    spots: [
+      [33, 22, 10, 6],
+      [67, 22, 10, 6],
+    ],
+  },
+  back: { src: BACK, spots: [[50, 30, 17, 9]] },
+  glutes: { src: BACK, spots: [[50, 51, 15, 6]] },
+  chest: { src: FRONT, spots: [[50, 25, 15, 6]] },
+  arms: {
+    src: FRONT,
+    spots: [
+      [27, 37, 7, 10],
+      [73, 37, 7, 10],
+    ],
+  },
+  legs: {
+    src: FRONT,
+    spots: [
+      [42, 72, 8, 17],
+      [58, 72, 8, 17],
+    ],
+  },
+}
+
+export function FocusModel({ area }) {
+  const focus = FOCUS[area]
+  const src = focus?.src || FRONT
+  const glow = focus
+    ? focus.spots
+        .map(
+          ([x, y, w, h]) =>
+            `radial-gradient(${w}% ${h}% at ${x}% ${y}%, rgb(var(--accent) / 0.95), rgb(var(--accent) / 0.4) 55%, rgb(var(--accent) / 0) 100%)`,
+        )
+        .join(', ')
+    : 'linear-gradient(rgb(var(--accent) / 0.38), rgb(var(--accent) / 0.38))'
+  return (
+    <div className="focus-model" aria-hidden="true">
+      <span className="floor-glow focus-model-floor" />
+      <div className="focus-model-figure">
+        <img src={src} alt="" width="1024" height="1536" decoding="async" />
+        <span
+          className="focus-model-tint"
+          style={{ backgroundImage: glow, WebkitMaskImage: `url(${src})`, maskImage: `url(${src})` }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function PhotoReviewStory({
   review,
   step,
@@ -93,33 +141,43 @@ export default function PhotoReviewStory({
         )}
         {slide.kind === 'finding' && (
           <>
-            <div className="review-evidence">
-              {slide.evidenceViews?.map((a) => (
-                <button
-                  key={a}
-                  type="button"
-                  onClick={() => onZoom({ src: previews?.[a], label: `${a} view` })}
-                  disabled={!previews?.[a]}
-                  aria-label={`Enlarge ${a} evidence`}
-                >
-                  {previews?.[a] && <img src={previews[a]} alt={`${a} view`} />}
-                  <span>{a}</span>
-                </button>
-              ))}
+            <div className="review-finding">
+              <FocusModel area={slide.area} />
+              {slide.evidenceViews?.length > 0 && (
+                <div className="review-evidence" aria-label="Seen in your photos">
+                  {slide.evidenceViews.map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      onClick={() => onZoom({ src: previews?.[a], label: `${a} view` })}
+                      disabled={!previews?.[a]}
+                      aria-label={`Enlarge ${a} photo`}
+                    >
+                      {previews?.[a] ? <img src={previews[a]} alt={`${a} view`} /> : <i aria-hidden="true" />}
+                      <span>{a}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-            <h3 className="review-title">{slide.title}</h3>
-            <p className="review-copy">{slide.observation}</p>
-            <p className="review-uncertainty">
-              <Icon name="info" size={16} />
-              <span>{slide.uncertainty}</span>
+            <p className="review-area">
+              <span aria-hidden="true" />
+              {slide.title}
             </p>
+            <h3 className="review-observation">{slide.observation}</h3>
+            {slide.uncertainty && (
+              <p className="review-uncertainty">
+                <Icon name="info" size={16} />
+                <span>{slide.uncertainty}</span>
+              </p>
+            )}
             {review.suggestedFocus?.some((f) => f.area === slide.area) && (
               <div className="review-training-response">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-accent">
+                <span className="flex items-center gap-2 text-[13px] font-bold text-accent-ink">
                   <Icon name="train" size={16} />
                   In your training
                 </span>
-                <p className="mt-2 text-[14px] leading-relaxed">
+                <p className="mt-2 text-[15px] leading-relaxed">
                   {review.suggestedFocus.find((f) => f.area === slide.area).reason}
                 </p>
               </div>
@@ -145,7 +203,7 @@ export default function PhotoReviewStory({
                           : [...selectedFocus, f.area],
                       )
                     }
-                    className={`review-focus ${selectedFocus.includes(f.area) ? 'is-selected' : ''}`}
+                    className="tile review-focus"
                   >
                     <span className="review-focus-heading">
                       <span className="capitalize">

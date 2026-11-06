@@ -20,6 +20,7 @@ export default function Modal({
   className = '',
   bodyClassName = '',
   hideHandle = false,
+  footerClassName = '',
 }) {
   const dialog = useRef(null)
   const titleId = useId()
@@ -84,7 +85,9 @@ export default function Modal({
           {children}
         </div>
         {footer && (
-          <div className="shrink-0 border-t border-line px-[22px] py-3 pb-[max(env(safe-area-inset-bottom),12px)]">
+          <div
+            className={`shrink-0 border-t border-line px-[22px] pb-[max(env(safe-area-inset-bottom),14px)] pt-3 ${footerClassName}`}
+          >
             {footer}
           </div>
         )}

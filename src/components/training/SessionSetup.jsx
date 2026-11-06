@@ -29,6 +29,7 @@ import EnvironmentFields from './EnvironmentFields.jsx'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
 import { SHORT_DURATIONS } from '../../lib/flexible-training.js'
 import { PlanRibbon } from './SetupVisuals.jsx'
+import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import WorkoutSwitchDialog from '../workout/WorkoutSwitchDialog.jsx'
 import { endForSwitch } from '../../lib/workout-switch.js'
 
@@ -364,11 +365,15 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     aria-label={`${v} minutes`}
                     aria-pressed={minutes === v}
                     onClick={() => setMinutes(v)}
-                    className={`duration-choice ${minutes === v ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-surface2'}`}
+                    className="tile duration-choice"
                   >
                     <span className="num text-[42px] leading-none">{v}</span>
-                    <span className="text-[14px] text-muted">minutes</span>
-                    {minutes === v && <Icon name="check" size={17} className="absolute right-4 top-4" />}
+                    <span className="text-[15px] font-semibold opacity-80">minutes</span>
+                    {minutes === v && (
+                      <span className="tile-check" aria-hidden="true">
+                        <Icon name="check" size={14} strokeWidth={3} />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -394,22 +399,22 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     role="radio"
                     aria-checked={location === option.id}
                     onClick={() => setLocation(option.id)}
-                    className={`location-choice ${location === option.id ? 'border-accent bg-accent/10' : 'border-line bg-surface2'}`}
+                    className="tile location-choice"
                   >
                     <span className="icon-tile !h-12 !w-12">
                       <Icon name={placeIcon(option)} size={24} />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[20px] font-semibold">{option.name}</span>
-                      <span className="mt-1 block truncate text-[13px] text-muted">
+                      <span className="mt-1 block truncate text-[14px] text-muted">
                         {placeSummary(option)}
                       </span>
                     </span>
-                    {location === option.id && <Icon name="check" size={19} className="text-accent" />}
+                    {location === option.id && <Icon name="check" size={19} strokeWidth={3} />}
                   </button>
                 ))}
                 <button
-                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[20px] border border-dashed border-outline text-[15px] font-semibold text-ink2"
+                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-outline text-[15px] font-semibold text-ink2"
                   onClick={() => setAddingPlace(true)}
                 >
                   <Icon name="plus" size={17} />
@@ -446,7 +451,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     key={value}
                     aria-pressed={readiness.energy === value}
                     onClick={() => setReadiness((r) => ({ ...r, energy: value }))}
-                    className={`energy-choice ${readiness.energy === value ? 'border-accent bg-accent/10 text-accent' : 'border-line bg-surface2 text-ink2'}`}
+                    className={`tile energy-choice ${readiness.energy === value ? '' : 'text-ink2'}`}
                   >
                     <span className="flex h-7 items-end gap-1" aria-hidden="true">
                       {[1, 2, 3].map((n) => (
@@ -502,14 +507,14 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                 ].map(([value, label, detail]) => (
                   <button
                     key={value}
-                    className="min-h-[76px] rounded-2xl border border-outline px-2 py-3 text-left"
+                    className="tile min-h-[76px] px-2.5 py-3 text-left"
                     onClick={() => {
                       setReturnToPlan(true)
                       setStep(value)
                     }}
                   >
-                    <span className="block text-[12px] text-muted">{label}</span>
-                    <span className="mt-1 flex items-center justify-between gap-1 text-[14px] font-semibold">
+                    <span className="block text-[13px] font-semibold text-muted">{label}</span>
+                    <span className="mt-1 flex items-center justify-between gap-1 text-[15px] font-bold">
                       <span>{detail}</span>
                       <Icon name="edit" size={12} className="shrink-0 text-muted" />
                     </span>
@@ -537,6 +542,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     key={`${it.exId}-${i}`}
                     label={findExercise(it.exId, state.customExercises)?.name}
                     detail={dose(it)}
+                    thumb={exerciseThumb(it.exId)}
                     onClick={() => {
                       setExerciseIndex(i)
                       setExerciseReturn(null)
@@ -767,12 +773,17 @@ function SwitchRow({ label, checked, onChange }) {
   )
 }
 
-function OptionRow({ label, detail, onClick }) {
+function OptionRow({ label, detail, onClick, thumb }) {
   return (
-    <button onClick={onClick} className="flex min-h-14 w-full items-center gap-3 py-3.5 text-left">
+    <button onClick={onClick} className="flex min-h-14 w-full items-center gap-3 py-3 text-left">
+      {thumb && (
+        <span className="exercise-thumb !h-12 !flex-[0_0_64px]" aria-hidden="true">
+          <img src={thumb} alt="" loading="lazy" decoding="async" />
+        </span>
+      )}
       <span className="min-w-0 flex-1">
-        <span className="block text-[14px] font-semibold">{label}</span>
-        {detail && <span className="mt-1 block text-[12px] text-muted">{detail}</span>}
+        <span className="block text-[16px] font-semibold">{label}</span>
+        {detail && <span className="mt-1 block text-[14px] text-muted">{detail}</span>}
       </span>
       <Icon name="chevronRight" size={16} className="shrink-0 text-faint" />
     </button>

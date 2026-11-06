@@ -6,6 +6,7 @@ import { allExercises, MUSCLES } from '../../lib/exercises.js'
 import { uid } from '../../lib/id.js'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
+import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import Select from '../Select.jsx'
 import { MuscleTag, Toggle } from './Controls.jsx'
 import { matchesExercise } from '../../lib/exercise-search.js'
@@ -175,12 +176,18 @@ export default function ExercisePicker({ open, onClose, onPick, filterExercise, 
                   onClick={() => pick(e)}
                   className="flex min-h-[76px] w-full items-center gap-3 py-3 text-left"
                 >
-                  <span className="icon-tile !h-10 !w-10">
-                    <Icon name={MUSCLE_ICONS[e.muscle] || 'train'} size={20} />
-                  </span>
+                  {exerciseThumb(e.id) ? (
+                    <span className="exercise-thumb !h-12 !flex-[0_0_60px]" aria-hidden="true">
+                      <img src={exerciseThumb(e.id)} alt="" loading="lazy" decoding="async" />
+                    </span>
+                  ) : (
+                    <span className="icon-tile !h-12 !w-[60px]">
+                      <Icon name={MUSCLE_ICONS[e.muscle] || 'train'} size={20} />
+                    </span>
+                  )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[15px] font-semibold leading-snug text-ink">{e.name}</p>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
+                    <p className="text-[16px] font-semibold leading-snug text-ink">{e.name}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted">
                       <MuscleTag muscle={e.muscle} />
                       {e.type === 'time' ? 'Timed' : e.weighted ? 'Weight × reps' : 'Reps'}
                     </div>

@@ -33,9 +33,9 @@
   background: rgb(var(--accent) / 0.13);
 }
 .body-hotspot.is-selected {
-  background: rgb(var(--accent) / 0.32);
-  border-color: rgb(var(--accent) / 0.6);
-  box-shadow: 0 0 20px rgb(var(--accent) / 0.12);
+  background: rgb(var(--accent) / 0.38);
+  border-color: rgb(var(--accent) / 0.75);
+  box-shadow: 0 0 24px rgb(var(--accent) / 0.35);
 }
 .body-label {
   position: absolute;
@@ -48,11 +48,17 @@
   min-width: 77px;
   padding: 6px 8px;
   transform: translateY(-50%);
-  border-radius: 12px;
-  font-size: 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 650;
   background: rgb(var(--surface));
-  border: 1px solid rgb(var(--line));
+  border: 2px solid rgb(var(--line));
+  box-shadow: 0 3px 0 rgb(var(--depth));
   color: rgb(var(--ink-2));
+  transition:
+    background-color 180ms,
+    border-color 180ms,
+    color 180ms;
 }
 .body-label--left {
   left: 0;
@@ -62,8 +68,9 @@
 }
 .body-label.is-selected {
   border-color: rgb(var(--accent));
-  color: rgb(var(--accent));
-  background: rgb(var(--bg));
+  color: rgb(var(--accent-ink));
+  background: rgb(var(--lit));
+  box-shadow: 0 3px 0 rgb(var(--lit-edge));
 }
 .body-label:disabled {
   opacity: 0.7;

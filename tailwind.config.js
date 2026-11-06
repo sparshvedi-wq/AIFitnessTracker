@@ -40,13 +40,16 @@ export default {
         'on-accent': token('bg'),
         danger: token('danger'),
         success: token('accent'),
+        // Silhouette: a chosen option is lit; pressable things sit on a depth edge.
+        lit: token('lit'),
+        'lit-edge': token('lit-edge'),
+        'accent-ink': token('accent-ink'),
+        depth: token('depth'),
       },
       borderRadius: {
-        // Plain, even corners for cards. The tucked corner is a signature kept
-        // to the hero card and the primary button only.
         tuck: '22px',
-        hero: '28px 28px 28px 8px',
-        btn: '999px 999px 999px 10px',
+        hero: '26px',
+        btn: '18px',
       },
       boxShadow: {
         float: '0 18px 40px -8px rgb(var(--shadow) / 0.35), 0 2px 6px rgb(var(--shadow) / 0.15)',

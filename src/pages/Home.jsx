@@ -6,16 +6,16 @@ import { MONTHS, fromKey, shortLabel, addDays } from '../lib/date.js'
 import { avgSessionMin, weekVolume } from '../lib/derive.js'
 import { scoreSeries } from '../lib/score.js'
 import { buildDailyPlan, checkinSchedule, profileOf, readinessOf, todayChoice } from '../lib/planner.js'
-import { placeSummary, placesOf, resolvePlace } from '../lib/places.js'
+import { placesOf, resolvePlace } from '../lib/places.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
-import { convertWeight, formatHeight } from '../lib/units.js'
 import { returnMessage, shortSessionRequest } from '../lib/flexible-training.js'
 import { fmtNum, muscleSets } from '../lib/workout.js'
 import Icon from '../components/Icon.jsx'
-import Select from '../components/Select.jsx'
-import { LineChart, PageTitle, SectionHead } from '../components/Ink.jsx'
-import TrainingCard from '../components/TrainingCard.jsx'
-import AskAdjust from '../components/AskAdjust.jsx'
+import { LineChart, SectionHead, TallyLogo } from '../components/Ink.jsx'
+import TrainingCard, { planScene } from '../components/TrainingCard.jsx'
+import AdjustSheet from '../components/AdjustSheet.jsx'
+import { CheckinCard, TallyCard, WeekStrip } from '../components/HomeOverview.jsx'
+import { ONBOARDING_ART } from '../lib/onboarding-art.js'
 import ActiveSessionCard from '../components/ActiveSessionCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
 import WeeklyRecap from '../components/WeeklyRecap.jsx'
@@ -25,12 +25,6 @@ import useStartWorkout, { bodyweights } from '../components/workout/useStartWork
 import usePlanningTime from '../components/training/usePlanningTime.js'
 import { ONBOARDING_VERSION } from '../lib/onboarding.js'
 
-const ENERGY = [
-  ['low', 'Low energy'],
-  ['normal', 'Usual energy'],
-  ['high', 'High energy'],
-  ['unwell', 'Not feeling well'],
-]
 const strength = (w) =>
   !['sport', 'recovery', 'pump'].includes(w.kind) &&
   w.exercises.some((e) => e.sets?.some((s) => s.kind !== 'warmup'))
@@ -43,6 +37,7 @@ export default function Home({ nav }) {
   const display = displayOf(state)
   const start = useStartWorkout(nav)
   const [detail, setDetail] = useState(null)
+  const [adjusting, setAdjusting] = useState(false)
   const choice = todayChoice(state, today)
   const readiness = readinessOf(state, today)
   const next = useMemo(
@@ -57,31 +52,52 @@ export default function Home({ nav }) {
   const checkin = checkinSchedule(state, today)
   const progress = trainingDays(workouts, settings, today)
   const active = state.activeWorkout
-  const testPhotos = settings.training.baselineMode === 'test'
   const manual = settings.training.baselineMode === 'manual' ? settings.training.manualBaseline : null
   const welcomeBack = returnMessage(workouts, today)
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
   const minutes = choice.minutes || settings.training.minutes || 30
 
+  const places = placesOf(profileOf(state))
+  const location = choice.location || settings.training.location
+  const scene = planScene(next, settings.training.goal)
+  const setupPending = settings.training.onboardingVersion !== ONBOARDING_VERSION
+
   return (
     <div className="animate-fade-in">
-      <PageTitle
-        title="Today"
-        right={
-          <button
-            onClick={() => nav.go('you')}
-            className="icon-btn !h-11 !w-11 font-display text-[18px]"
-            aria-label="You"
-          >
-            {settings.name ? [...settings.name.trim()][0]?.toUpperCase() : <Icon name="user" size={21} />}
-          </button>
-        }
-      />
+      <header className="flex min-h-11 items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-2 font-display text-[24px] leading-none tracking-[-0.04em]">
+          <TallyLogo width={26} />
+          tally
+        </span>
+        <button
+          onClick={() => nav.go('you')}
+          className="icon-btn !h-11 !w-11 border-2 border-line font-display text-[18px]"
+          aria-label="You"
+        >
+          {settings.name ? [...settings.name.trim()][0]?.toUpperCase() : <Icon name="user" size={21} />}
+        </button>
+      </header>
+      <h1 className="sr-only">Home</h1>
+
+      <WeekStrip state={state} today={today} />
+
+      <div className={`mt-5 grid gap-3 ${display.metricLight ? 'grid-cols-1' : 'grid-cols-2'}`}>
+        <TallyCard workouts={workouts} today={today} />
+        {!display.metricLight && (
+          <CheckinCard
+            checkin={checkin}
+            today={today}
+            everyDays={settings.training.checkinDays}
+            manual={Boolean(manual)}
+            onOpen={manual ? nav.openProfile : () => nav.openCheckins()}
+          />
+        )}
+      </div>
 
       {!active && welcomeBack && (
-        <div className="mt-4 rounded-tuck bg-surface p-4">
-          <p className="text-[14px] leading-relaxed text-ink2">{welcomeBack}</p>
-          <button className="text-link mt-1" onClick={() => start(shortSessionRequest())}>
+        <div className="mt-4 rounded-tuck border-2 border-line bg-surface p-4">
+          <p className="text-[15px] leading-relaxed text-ink2">{welcomeBack}</p>
+          <button className="text-link mt-1 !text-[15px]" onClick={() => start(shortSessionRequest())}>
             Start with 10 easy minutes
             <Icon name="arrowRight" size={15} className="ml-1" />
           </button>
@@ -91,33 +107,43 @@ export default function Home({ nav }) {
       <div className="mt-5">
         {active ? (
           <ActiveSessionCard session={active} onOpen={nav.openPlayer} />
+        ) : resting ? (
+          <section className="training-card">
+            <span className="training-card-art is-wide" aria-hidden="true">
+              <span className="floor-glow training-card-glow" />
+              <img src={ONBOARDING_ART.movement} alt="" decoding="async" />
+            </span>
+            <div className="training-card-head">
+              <p className="text-[14px] font-bold text-accent-ink">Today</p>
+              <h2 className="font-display text-[32px] leading-tight">Rest day</h2>
+            </div>
+            <p className="training-card-why">Resting today is a good choice. Nothing carries over.</p>
+            <button className="btn-secondary mt-4 w-full" onClick={() => setToday({ rest: false })}>
+              Plan a session anyway
+            </button>
+          </section>
         ) : (
           <>
-            {resting ? (
-              <section className="rounded-hero bg-surface p-5">
-                <h2 className="font-display text-[26px] leading-tight">Rest day</h2>
-                <p className="mt-2 text-[14px] leading-relaxed text-ink2">
-                  Resting today is a good choice. Nothing carries over.
-                </p>
-                <button className="text-link mt-3" onClick={() => setToday({ rest: false })}>
-                  Plan a session anyway
-                  <Icon name="arrowRight" size={15} className="ml-1" />
-                </button>
-              </section>
-            ) : (
-              <TrainingCard
-                title="Your training"
-                plan={next}
-                place={resolvePlace(profileOf(state), next.location)}
-                customExercises={state.customExercises}
-                rotate
-                showContext={false}
-                onStart={() => start(next)}
-              />
-            )}
-            {!resting && next.alternatives?.length > 0 && (
+            <TrainingCard
+              title="Your training"
+              plan={next}
+              place={resolvePlace(profileOf(state), next.location)}
+              customExercises={state.customExercises}
+              scene={scene}
+              hideStart
+            />
+            <div className="mt-4 flex gap-3">
+              <button className="btn-secondary shrink-0 !px-4" onClick={() => setAdjusting(true)}>
+                <Icon name="sliders" size={18} />
+                Adjust
+              </button>
+              <button className="btn-primary min-w-0 flex-1" onClick={() => start(next)}>
+                Start training
+              </button>
+            </div>
+            {next.alternatives?.length > 0 && (
               <div
-                className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]"
+                className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px]"
                 role="group"
                 aria-label="Other options today"
               >
@@ -126,7 +152,7 @@ export default function Home({ nav }) {
                   alt.kind === 'movement' && next.kind !== 'recovery' ? (
                     <button
                       key={alt.kind}
-                      className="text-link min-h-11"
+                      className="text-link min-h-11 !text-[14px]"
                       onClick={() =>
                         start(
                           buildDailyPlan(state, {
@@ -143,7 +169,7 @@ export default function Home({ nav }) {
                   ) : alt.kind === 'rest' ? (
                     <button
                       key={alt.kind}
-                      className="text-link min-h-11"
+                      className="text-link min-h-11 !text-[14px]"
                       onClick={() => setToday({ rest: true })}
                     >
                       {alt.label}
@@ -152,88 +178,33 @@ export default function Home({ nav }) {
                 )}
               </div>
             )}
-            <div className="mt-3">
-              <div className="today-controls grid grid-cols-3 gap-2">
-                <Select
-                  variant="chip"
-                  label="Time today"
-                  value={minutes}
-                  onChange={(todayMinutes) => setToday({ todayMinutes })}
-                  options={[10, 15, 20, 30, 45, 60, 75, 90].map((m) => [m, `${m} min`])}
-                />
-                <Select
-                  variant="chip"
-                  label="Where today"
-                  value={choice.location || settings.training.location}
-                  onChange={(todayLocation) => setToday({ todayLocation })}
-                  options={placesOf(profileOf(state)).map((p) => [p.id, p.name, placeSummary(p)])}
-                />
-                <Select
-                  variant="chip"
-                  label="Energy today"
-                  displayValue={!readiness.unwell && readiness.energy === 'normal' ? 'Energy' : undefined}
-                  value={readiness.unwell ? 'unwell' : readiness.energy}
-                  onChange={(value) =>
-                    setToday(
-                      value === 'unwell' ? { energy: 'low', unwell: true } : { energy: value, unwell: false },
-                    )
-                  }
-                  options={ENERGY}
-                />
-              </div>
-            </div>
           </>
         )}
       </div>
 
-      <AskAdjust nav={nav} plan={next} />
+      <AdjustSheet
+        open={adjusting}
+        onClose={() => setAdjusting(false)}
+        plan={next}
+        minutes={minutes}
+        location={location}
+        places={places}
+        readiness={readiness}
+        onChange={setToday}
+        nav={nav}
+        scene={scene}
+      />
 
-      {settings.training.onboardingVersion !== ONBOARDING_VERSION && (
+      {setupPending && (
         <button className="list-row mt-3" onClick={nav.openProfile}>
           <span className="icon-tile">
             <Icon name="settings" size={19} />
           </span>
           <span className="flex-1 text-left">
             <span className="block text-[15px] font-semibold">Finish your setup</span>
-            <span className="mt-1 block text-[13px] text-muted">Your answers are saved</span>
+            <span className="mt-1 block text-[14px] text-muted">Your answers are saved</span>
           </span>
           <Icon name="chevronRight" size={16} />
-        </button>
-      )}
-      {!display.metricLight && (
-        <button
-          onClick={manual ? nav.openProfile : () => nav.openCheckins()}
-          className="list-row mt-4 border-y border-line px-1"
-        >
-          <span className="icon-tile">
-            <Icon name={manual ? 'user' : 'camera'} size={20} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-semibold">
-              {manual
-                ? 'Starting profile'
-                : testPhotos
-                  ? 'Photo review'
-                  : checkin.latest
-                    ? 'Photo check-ins'
-                    : 'Starting photos'}
-            </span>
-            <span className="mt-1 block text-[13px] text-muted">
-              {manual
-                ? `${formatHeight(manual.heightCm, settings.weightUnit)} · ${fmtNum(convertWeight(manual.weightKg, 'kg', settings.weightUnit))} ${settings.weightUnit}`
-                : testPhotos
-                  ? 'Your starting point'
-                  : !checkin.latest
-                    ? 'Front, side and back'
-                    : checkin.due
-                      ? 'Your next check-in is ready'
-                      : `Next on ${shortLabel(checkin.next)}`}
-            </span>
-          </span>
-          {!manual && !testPhotos && checkin.due && (
-            <span className="status-dot" aria-label="Check-in ready" />
-          )}
-          <Icon name="chevronRight" size={16} className="text-faint" />
         </button>
       )}
       <EventShortcut state={state} today={today} now={now} nav={nav} hideEmpty />

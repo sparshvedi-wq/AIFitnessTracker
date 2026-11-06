@@ -22,7 +22,17 @@ import {
   manualEntryOf,
   readManualBaseline,
 } from '../../lib/starting-profile.js'
-import { SetupHeader, SetupIllustration, SetupWelcome, PlanRibbon } from './SetupVisuals.jsx'
+import {
+  ChoiceArt,
+  GuideBubble,
+  ImageChoices,
+  PlanRibbon,
+  SetupHeader,
+  SetupIllustration,
+  SetupResponse,
+  SetupWelcome,
+} from './SetupVisuals.jsx'
+import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
 import EnvironmentFields from './EnvironmentFields.jsx'
@@ -58,6 +68,29 @@ const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
   comfort: 'These areas stay out of your suggested workouts.',
 }
+// What M1 says on each question. Shorter than the plain title, same meaning.
+const GUIDE = {
+  goal: 'What are we training for?',
+  experience: 'How familiar is training?',
+  about: 'A little about you',
+  sports: 'Play any sports?',
+  'sport-choice': 'Which ones?',
+  priority: 'What comes first?',
+  location: 'Where do you usually train?',
+  home: 'Do you also train at home?',
+  equipment: 'What’s at home?',
+  'home-loads': 'Which dumbbells are there?',
+  movement: 'What works in your space?',
+  time: 'How much time usually works?',
+  rhythm: 'How much structure feels right?',
+  comfort: 'Any areas to avoid?',
+  manual: 'Your starting profile',
+  review: 'Here’s your first session',
+}
+// Questions without their own artwork show one lit scene; it never repeats on the reply.
+const STAGED = ['experience', 'priority', 'home', 'movement', 'time', 'rhythm']
+const BADGE = { goal: 'Goal set', 'sport-choice': 'Sports added', time: 'Time set', priority: 'Priority set' }
+const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
   const { state, dispatch, toast, today } = useApp()
@@ -272,6 +305,7 @@ export default function TrainingProfile({ onClose }) {
       hideHandle={!returning}
       className={!returning ? 'setup-dialog' : ''}
       bodyClassName={!returning ? 'setup-body' : ''}
+      footerClassName={!returning ? 'setup-footer' : ''}
       onClose={close}
       title={response ? response[0] : returning && step === 'review' ? 'Your training setup' : TITLES[step]}
       subtitle={returning ? 'Changes save when you finish' : null}
@@ -311,41 +345,32 @@ export default function TrainingProfile({ onClose }) {
         className={`onboarding-question ${!returning ? `setup-page setup-page--${responseFor ? 'response' : step}` : ''}`}
       >
         {response ? (
-          <div className="setup-response" role="status">
-            <SetupIllustration scene={onboardingScene(step, p, true)} variant="response" />
-            <h3 ref={heading} tabIndex={-1} className="setup-question-title">
-              {response[0]}
-            </h3>
-            <p className="setup-response-copy">{response[1]}</p>
-          </div>
+          <SetupResponse
+            scene={onboardingScene(step, p, true)}
+            badge={BADGE[step]}
+            title={response[0]}
+            copy={response[1]}
+            headingRef={heading}
+          />
         ) : (
           <>
             {!returning && step !== 'welcome' && (
-              <h3 ref={heading} tabIndex={-1} className="setup-question-title">
-                {TITLES[step]}
-              </h3>
+              <GuideBubble headingRef={heading}>{GUIDE[step] || TITLES[step]}</GuideBubble>
             )}
-            {!returning && !['welcome', 'comfort', 'home-loads'].includes(step) && (
-              <SetupIllustration
-                scene={onboardingScene(step, p)}
-                variant={
-                  ['about', 'equipment', 'manual', 'review'].includes(step)
-                    ? 'compact'
-                    : ['sports', 'sport-choice'].includes(step)
-                      ? 'sports'
-                      : 'question'
-                }
-              />
+            {!returning && STAGED.includes(step) && (
+              <SetupIllustration scene={onboardingScene(step, p)} variant="question" />
             )}
+            {!returning && step === 'sport-choice' && <SetupIllustration scene="sports" variant="sports" />}
             {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
             {step === 'welcome' && <SetupWelcome headingRef={heading} />}
             {step === 'goal' && (
-              <Cards
-                values={[
-                  ['Build muscle', 'Build muscle'],
-                  ['Get stronger', 'Get stronger'],
-                  ...(p.ageGroup !== '13-17' ? [['Lose weight', 'Lose weight']] : []),
-                  ['General fitness', 'Feel fitter'],
+              <ImageChoices
+                label="Main goal"
+                options={[
+                  ['Build muscle', 'Build muscle', 'muscle'],
+                  ['Get stronger', 'Get stronger', 'strength'],
+                  ...(p.ageGroup !== '13-17' ? [['Lose weight', 'Lose weight', 'weight']] : []),
+                  ['General fitness', 'Feel fitter', 'rhythm'],
                 ]}
                 value={p.goal}
                 onChange={(goal) => set({ goal })}
@@ -409,10 +434,12 @@ export default function TrainingProfile({ onClose }) {
               </>
             )}
             {step === 'sports' && (
-              <Cards
-                values={[
-                  [true, 'Yes, I play'],
-                  [false, 'No sport right now'],
+              <ImageChoices
+                label="Sport"
+                layout="rows"
+                options={[
+                  [true, 'Yes, I play', 'sports', 'Warm-ups fit your sport'],
+                  [false, 'No sport right now', 'neutral', 'Training follows your goal'],
                 ]}
                 value={Boolean(p.wantsSport || p.sports.length)}
                 onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
@@ -476,12 +503,14 @@ export default function TrainingProfile({ onClose }) {
               />
             )}
             {step === 'location' && (
-              <Cards
-                kind="location"
-                values={placesOf(p).map((place) => [
+              <ImageChoices
+                label="Usual place"
+                layout="rows"
+                options={placesOf(p).map((place) => [
                   place.id,
                   place.name,
-                  { gym: 'Full gym equipment', home: 'My own equipment', 'on-the-go': 'Bodyweight' }[
+                  LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
+                  { gym: 'Full gym equipment', home: 'What you own', 'on-the-go': 'Bodyweight, any room' }[
                     place.id
                   ] || placeSummary(place),
                 ])}
@@ -505,6 +534,7 @@ export default function TrainingProfile({ onClose }) {
               <EnvironmentFields
                 place={resolvePlace(p, 'home')}
                 compact
+                variant="icons"
                 section={step === 'equipment' ? 'equipment' : 'loads'}
                 onChange={(patch) => setP((prev) => updatePlace(prev, 'home', patch))}
                 unit={state.settings.weightUnit}
@@ -576,40 +606,37 @@ export default function TrainingProfile({ onClose }) {
             )}
             {step === 'review' && (
               <>
-                <div className="mt-5 rounded-tuck bg-bg/70 p-5">
-                  <div className="mb-4 flex items-center gap-2 text-[13px] text-muted">
-                    <Icon name="check" size={16} className="text-accent" />
+                <section className="lit-card mt-5 p-4" aria-label="First session preview">
+                  <p className="text-[13px] font-bold text-accent-ink">
                     {returning
-                      ? 'Current plan preview'
+                      ? 'Current plan'
                       : name.trim()
-                        ? `${name.trim().split(' ')[0]}’s starting plan`
+                        ? `${name.trim().split(' ')[0]}’s first session`
                         : 'Built from your answers'}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-[16px] font-semibold">
-                      {plan.name}{' '}
-                      <span className="font-normal text-muted">· {count(plan.items.length, 'exercise')}</span>
-                    </h3>
-                    <Icon name="train" size={22} className="text-accent" />
-                  </div>
-                  <PlanRibbon items={plan.items} findExercise={findExercise} />
-                  <div className="mt-4 divide-y divide-line">
-                    {plan.items.map((it) => (
-                      <div key={it.exId} className="flex items-center justify-between gap-3 py-3">
-                        <span className="text-[15px]">{findExercise(it.exId)?.name}</span>
-                        <span className="shrink-0 text-[13px] text-muted">
-                          {it.sets} {it.sets === 1 ? 'set' : 'sets'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-[13px] text-muted">
-                    {p.sports.length
-                      ? 'Includes your sport. Adjusted before you start.'
-                      : 'Fits your usual time and place.'}
                   </p>
-                </div>
-                <div className="mt-5 divide-y divide-line">
+                  <h4 className="mt-2 font-display text-[28px] leading-tight">{plan.name}</h4>
+                  <p className="mt-1 text-[14px] font-semibold text-ink2">
+                    {count(plan.items.length, 'exercise')} · {plan.requestedMinutes} min
+                  </p>
+                  <ExerciseThumbs items={plan.items} className="mt-4" />
+                  <details className="mt-3">
+                    <summary className="min-h-11 cursor-pointer text-[14px] font-semibold">
+                      All exercises
+                    </summary>
+                    <PlanRibbon items={plan.items} findExercise={findExercise} />
+                    <div className="mt-2 divide-y divide-line/70">
+                      {plan.items.map((it) => (
+                        <div key={it.exId} className="flex items-center justify-between gap-3 py-3">
+                          <span className="text-[15px]">{findExercise(it.exId)?.name}</span>
+                          <span className="shrink-0 text-[13px] text-muted">
+                            {it.sets} {it.sets === 1 ? 'set' : 'sets'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </section>
+                <div className="checklist mt-5">
                   {[
                     ['goal', p.goal],
                     [
@@ -633,19 +660,27 @@ export default function TrainingProfile({ onClose }) {
                             ? 'Starting photos added'
                             : 'Add starting photos',
                     ],
-                  ].map(([group, label]) => (
-                    <button
-                      key={group}
-                      className="list-row !min-h-14"
-                      onClick={() => {
-                        setCurrent(group)
-                        setEditingGroup(group)
-                      }}
-                    >
-                      <span className="flex-1 text-[14px]">{label}</span>
-                      <Icon name="edit" size={15} className="text-muted" />
-                    </button>
-                  ))}
+                  ].map(([group, label]) => {
+                    const pending = ['photos', 'manual'].includes(group) && !baselineReady
+                    return (
+                      <button
+                        key={group}
+                        className="checklist-row"
+                        aria-label={`Edit ${CHECK_LABEL[group]}: ${label}`}
+                        onClick={() => {
+                          setCurrent(group)
+                          setEditingGroup(group)
+                        }}
+                      >
+                        <span className={`checklist-mark ${pending ? 'is-pending' : ''}`} aria-hidden="true">
+                          {!pending && <Icon name="check" size={13} strokeWidth={3.2} />}
+                        </span>
+                        <span className="w-[74px] shrink-0 text-[14px] text-muted">{CHECK_LABEL[group]}</span>
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{label}</span>
+                        <Icon name="edit" size={15} className="shrink-0 text-muted" />
+                      </button>
+                    )
+                  })}
                 </div>
                 {returning && (
                   <button
@@ -667,30 +702,37 @@ export default function TrainingProfile({ onClose }) {
     </Modal>
   )
 }
+const CHECK_LABEL = {
+  goal: 'Goal',
+  time: 'Time',
+  location: 'Place',
+  sports: 'Sports',
+  photos: 'Start',
+  manual: 'Start',
+}
 function Cards({ values, value, onChange, kind }) {
   return (
-    <div className="setup-options mt-5 space-y-3">
-      {values.map(([id, title]) => (
-        <button
-          key={String(id)}
-          type="button"
-          aria-label={kind === 'time' && typeof id === 'number' ? `${id} minutes` : undefined}
-          aria-pressed={value === id}
-          onClick={() => onChange(id)}
-          className={`onboarding-choice ${value === id ? 'border-accent bg-accent/10' : 'border-line bg-surface2'}`}
-        >
-          <span className="min-w-0 flex-1">
-            <span className="block text-[17px] font-semibold leading-snug">
-              {kind === 'time' && typeof id === 'number' ? `${id} minutes` : title}
-            </span>
-          </span>
-          <span
-            className={`dot h-7 w-7 shrink-0 border ${value === id ? 'border-accent text-accent' : 'border-outline text-transparent'}`}
+    <div className={`setup-options ${kind === 'time' ? 'setup-options--grid' : ''}`}>
+      {values.map(([id, title]) => {
+        const on = value === id
+        const art = kind ? <ChoiceArt kind={kind} value={id} /> : null
+        return (
+          <button
+            key={String(id)}
+            type="button"
+            aria-label={kind === 'time' && typeof id === 'number' ? `${id} minutes, ${title}` : undefined}
+            aria-pressed={on}
+            onClick={() => onChange(id)}
+            className="tile onboarding-choice"
           >
-            <Icon name="check" size={16} />
-          </span>
-        </button>
-      ))}
+            {art}
+            <span className="min-w-0 flex-1 text-[17px] font-bold leading-snug">{title}</span>
+            <span className={`choice-ring ${on ? 'is-on' : ''}`} aria-hidden="true">
+              {on && <Icon name="check" size={14} strokeWidth={3} />}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -10,6 +10,9 @@ export function onboardingSteps(p) {
     'location',
     ...(p.location === 'home' ? [] : ['home']),
     ...(p.hasHomeSetup || p.location === 'home' ? ['equipment'] : []),
+    ...((p.hasHomeSetup || p.location === 'home') && p.equipment?.includes('Dumbbells')
+      ? ['home-loads']
+      : []),
     ...(p.location === 'on-the-go' ? ['movement'] : []),
     'time',
     'rhythm',
@@ -23,7 +26,7 @@ export function onboardingStage(step) {
   const groups = [
     ['welcome', 'goal', 'experience', 'about'],
     ['sports', 'sport-choice', 'priority'],
-    ['location', 'home', 'equipment', 'movement'],
+    ['location', 'home', 'equipment', 'home-loads', 'movement'],
     ['time', 'rhythm', 'comfort'],
     ['photos', 'manual', 'review'],
   ]
@@ -45,8 +48,47 @@ export function nextOnboardingStep(step, p, editingGroup = null) {
     (editingGroup === 'time' && step === 'rhythm') ||
     (editingGroup === 'sports' &&
       ((step === 'sports' && !p.wantsSport && !p.sports.length) || step === 'priority')) ||
-    (editingGroup === 'location' && !['home', 'equipment', 'movement'].includes(next))
+    (editingGroup === 'location' && !['home', 'equipment', 'home-loads', 'movement'].includes(next))
   return finished ? 'review' : next
+}
+// Stable checkpoints avoid a retreating progress bar when an answer adds a branch.
+// The first question has no visible bar; its response earns the first filled step.
+export function onboardingProgress(step) {
+  return (
+    {
+      welcome: 0,
+      goal: 0,
+      experience: 8,
+      about: 16,
+      sports: 22,
+      'sport-choice': 28,
+      priority: 33,
+      location: 40,
+      home: 45,
+      equipment: 50,
+      'home-loads': 55,
+      movement: 58,
+      time: 63,
+      rhythm: 70,
+      comfort: 77,
+      photos: 84,
+      manual: 91,
+      review: 100,
+    }[step] ?? 0
+  )
+}
+export function shouldShowOnboardingResponse(step, p) {
+  if (step === 'sports') return !p.wantsSport && !p.sports.length
+  if (step === 'equipment') return !p.equipment?.includes('Dumbbells')
+  if (step === 'comfort') return Boolean(p.avoidMuscles?.length)
+  return ['goal', 'experience', 'sport-choice', 'priority', 'home-loads', 'time', 'rhythm'].includes(step)
+}
+export function restoredOnboardingResponse(draft, profile) {
+  return draft?.step === draft?.responseFor &&
+    onboardingSteps(profile).includes(draft.step) &&
+    shouldShowOnboardingResponse(draft.step, profile)
+    ? draft.step
+    : null
 }
 // The short reply shown after each setup answer: a title and one sentence.
 export function onboardingResponse(step, p) {
@@ -55,17 +97,21 @@ export function onboardingResponse(step, p) {
     welcome: ['Built around your day', 'Each session fits the time, place and energy you have.'],
     goal: [
       p.goal === 'Build muscle'
-        ? 'Room to build'
+        ? 'Build muscle.'
         : p.goal === 'Get stronger'
-          ? 'A clear starting point'
-          : 'Fitness that fits your life',
-      `${p.goal} shapes your exercises and reps.`,
+          ? 'Get stronger.'
+          : 'Feel fitter.',
+      p.goal === 'Build muscle'
+        ? 'Your working sets will be balanced across your sessions.'
+        : p.goal === 'Get stronger'
+          ? 'Your logged sets guide when targets increase.'
+          : 'Strength and movement, fitted to the time you have.',
     ],
     experience: [
-      p.experience === 'Starting out' ? 'We’ll start with the basics' : 'Your experience counts',
+      p.experience === 'Starting out' ? 'We’ll show you how.' : 'Start with what you know.',
       p.experience === 'Starting out'
         ? 'Fewer sets, simple moves and guidance when you want it.'
-        : 'Your logged sets shape what comes next. No max testing.',
+        : 'Your first logged sets help set useful targets.',
     ],
     about: ['Thanks', 'Gender never decides your strength or your plan.'],
     sports: p.sports.length
@@ -73,12 +119,16 @@ export function onboardingResponse(step, p) {
       : ['That’s perfectly fine', 'We’ll focus on your main goal.'],
     'sport-choice': ['Warm-ups for your sport', 'Each sport gets its own warm-up.'],
     priority: [
-      'Both can fit',
+      p.sportPriority === 'sport'
+        ? 'Sport comes first.'
+        : p.sportPriority === 'goal'
+          ? 'Your goal comes first.'
+          : 'Both shape your plan.',
       p.sportPriority === 'sport'
         ? 'Sport comes first. Games nearby mean lighter training.'
         : p.sportPriority === 'goal'
           ? 'Your goal comes first, with room for your sport.'
-          : 'Sport and your goal share the plan.',
+          : 'Add a practice or match and your next workout can adjust.',
     ],
     location: ['A starting place', 'You can pick another place before any workout.'],
     home: [
@@ -91,8 +141,15 @@ export function onboardingResponse(step, p) {
         ? `Home plans use ${p.equipment.join(', ').toLowerCase()}.`
         : 'Home plans use bodyweight moves.',
     ],
+    'home-loads': [
+      'Your actual weights.',
+      'Suggested loads will fit your listed sizes. If the jump is too big, reps can change first.',
+    ],
     movement: ['Your space counts', 'Plans fit your floor, space and position.'],
-    time: ['A shorter day still works', 'Just your usual length. Change it any day.'],
+    time: [
+      p.flexibleTime ? 'Time can change.' : `${p.minutes} minutes.`,
+      'Change the time whenever you start a workout.',
+    ],
     rhythm: [
       'No set workout days',
       p.goalMode === 'target'

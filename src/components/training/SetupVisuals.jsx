@@ -1,5 +1,6 @@
 import Icon from '../Icon.jsx'
 import { TallyLogo } from '../Ink.jsx'
+import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 
 // Decoration supports the written choice; it never carries the label alone.
 export const SPORT_EMOJI = {
@@ -75,59 +76,70 @@ export function ChoiceArt({ kind, value, emoji }) {
   )
 }
 
-export function SetupProgress({ stage }) {
+export function SetupProgress({ value }) {
+  const progress = Math.max(0, Math.min(100, value || 0))
   return (
     <div
       className="setup-progress"
       role="progressbar"
-      aria-label={`Setup: ${stage.label}`}
-      aria-valuemin={1}
-      aria-valuemax={stage.total}
-      aria-valuenow={stage.index + 1}
+      aria-label="Setup progress"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={progress}
     >
-      {Array.from({ length: stage.total }, (_, i) => (
-        <span key={i} className={i < stage.index ? 'is-complete' : i === stage.index ? 'is-current' : ''} />
-      ))}
+      <span style={{ width: `${progress}%` }} />
     </div>
   )
 }
 
-export function SetupWelcome() {
+export function SetupHeader({ progress, onBack, action }) {
   return (
     <>
-      <div className="setup-welcome-art" aria-hidden="true">
-        <span className="setup-orbit orbit-one">⏱️</span>
-        <span className="setup-orbit orbit-two">🎾</span>
-        <span className="setup-orbit orbit-three">🏋️</span>
-        <div className="setup-welcome-core">
-          <TallyLogo width={50} />
-          <span>
-            Your day.
-            <br />
-            Your training.
-          </span>
-        </div>
+      <div className="setup-header">
+        {onBack ? (
+          <button type="button" className="setup-back" aria-label="Back in setup" onClick={onBack}>
+            <Icon name="chevronLeft" size={20} />
+          </button>
+        ) : (
+          <span className="setup-header-space" />
+        )}
+        <span className="setup-brand">
+          <TallyLogo width={29} />
+          <span>tally</span>
+        </span>
+        <span className="setup-header-space">{action}</span>
       </div>
-      <p className="mt-6 font-display text-[28px] leading-tight">
-        A plan for the day
+      {progress !== null && <SetupProgress value={progress} />}
+    </>
+  )
+}
+
+export function SetupIllustration({ scene = 'neutral', variant = '', className = '' }) {
+  return (
+    <div
+      className={`setup-scene ${variant ? `setup-scene--${variant}` : ''} ${className}`}
+      aria-hidden="true"
+    >
+      <img
+        src={ONBOARDING_ART[scene] || ONBOARDING_ART.neutral}
+        alt=""
+        width={scene === 'neutral' ? 1024 : 1536}
+        height={scene === 'neutral' ? 1536 : 1024}
+        decoding="async"
+      />
+    </div>
+  )
+}
+
+export function SetupWelcome({ headingRef }) {
+  return (
+    <>
+      <SetupIllustration scene="welcome" variant="welcome" />
+      <h3 ref={headingRef} tabIndex={-1} className="setup-welcome-title">
+        Training that
         <br />
-        you actually have.
-      </p>
-      <p className="mt-3 text-[16px] leading-relaxed text-muted">
-        Tell us a little about yourself. We’ll build your first session.
-      </p>
-      <div className="setup-welcome-steps">
-        {[
-          ['01', 'Your goals'],
-          ['02', 'Your setup'],
-          ['03', 'Your starting point'],
-        ].map(([n, label]) => (
-          <span key={n}>
-            <small>{n}</small>
-            {label}
-          </span>
-        ))}
-      </div>
+        fits your day.
+      </h3>
     </>
   )
 }

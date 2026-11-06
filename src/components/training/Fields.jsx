@@ -10,10 +10,10 @@ export function Choice({ value, selected, onClick, children }) {
     </button>
   )
 }
-export function Field({ label, children, hint }) {
+export function Field({ label, children, hint, hideLabel = false }) {
   return (
     <fieldset className="mt-5">
-      <legend className="mb-2 text-[14px] font-semibold">{label}</legend>
+      <legend className={hideLabel ? 'sr-only' : 'mb-2 text-[14px] font-semibold'}>{label}</legend>
       {children}
       {hint && <p className="mt-2 text-[12px] leading-relaxed text-muted">{hint}</p>}
     </fieldset>

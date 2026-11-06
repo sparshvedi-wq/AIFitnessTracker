@@ -9,15 +9,22 @@ import { Toggle } from '../Ink.jsx'
 import { EQUIPMENT_ICON } from './SetupVisuals.jsx'
 import Icon from '../Icon.jsx'
 
-export default function EnvironmentFields({ place, onChange, unit, onValidityChange, compact = false }) {
+export default function EnvironmentFields({
+  place,
+  onChange,
+  unit,
+  onValidityChange,
+  compact = false,
+  section = 'all',
+}) {
   const [error, setError] = useState('')
   const [text, setText] = useState('')
   const errorId = useId()
   const equipped = place.type === 'equipment'
   const showLoads = place.type === 'gym' || place.equipment.includes('Dumbbells')
   useEffect(() => {
-    onValidityChange?.(!showLoads || (!error && !text.trim()))
-  }, [error, text, showLoads, onValidityChange])
+    onValidityChange?.(section === 'equipment' || !showLoads || (!error && !text.trim()))
+  }, [error, text, showLoads, onValidityChange, section])
   const presets = unit === 'kg' ? [2.5, 5, 7.5, 10, 12.5, 15] : [5, 10, 15, 20, 25, 30]
   const sizes = [...new Set([...presets, ...place.dumbbells])].sort((a, b) => a - b)
   const toggleSize = (size) =>
@@ -38,8 +45,9 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
   }
   return (
     <>
-      {equipped && (
+      {equipped && section !== 'loads' && (
         <Field
+          hideLabel={compact}
           label={
             compact
               ? 'Your home equipment'
@@ -78,7 +86,7 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
           />
         </Field>
       )}
-      {place.type === 'gym' && (
+      {place.type === 'gym' && section !== 'loads' && (
         <ExtraEquipment
           label="Also at this gym"
           hint="A full gym is assumed. Add anything more specialised."
@@ -87,13 +95,16 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
           onChange={(equipment) => onChange({ equipment })}
         />
       )}
-      {showLoads && (
+      {showLoads && section !== 'equipment' && (
         <Field
-          label="Which dumbbells can you use?"
+          hideLabel={compact && section === 'loads'}
+          label={compact && section === 'loads' ? 'Available sizes' : 'Which dumbbells can you use?'}
           hint={
-            place.dumbbells.length
-              ? `${place.dumbbells.length} sizes saved · weight per hand`
-              : 'Optional. Leave empty if you’re not sure.'
+            compact && section === 'loads'
+              ? null
+              : place.dumbbells.length
+                ? `${place.dumbbells.length} sizes saved · weight per hand`
+                : 'Optional. Leave empty if you’re not sure.'
           }
         >
           <div
@@ -148,7 +159,7 @@ export default function EnvironmentFields({ place, onChange, unit, onValidityCha
           )}
         </Field>
       )}
-      {place.type !== 'gym' && (
+      {place.type !== 'gym' && section !== 'loads' && (
         <div className="mt-5 flex min-h-12 items-start gap-3">
           <span className="min-w-0 flex-1 text-[14px] font-semibold">
             Keep it quiet

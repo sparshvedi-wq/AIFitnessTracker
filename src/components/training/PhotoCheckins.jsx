@@ -11,6 +11,8 @@ import { isNativeApp } from '../../lib/native.js'
 import { photoDraft } from '../../lib/photo-draft.js'
 import { uid } from '../../lib/id.js'
 import { Choice, Field } from './Fields.jsx'
+import { SetupHeader } from './SetupVisuals.jsx'
+import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 
 const DEV = import.meta.env.DEV
 const photoLabel = (checkin, all) =>
@@ -23,6 +25,7 @@ export default function PhotoCheckins({
   onManual,
   onComplete,
   initialId,
+  setupProgress = 84,
 }) {
   const { state, dispatch, today, toast, photoPreviews, saveCheckin } = useApp()
   // Images live in the photo store; attach them to the check-ins shown here.
@@ -334,6 +337,28 @@ export default function PhotoCheckins({
         fullScreen={onboarding}
         dismissible={!onboarding}
         onClose={close}
+        className={onboarding ? 'setup-dialog' : ''}
+        hideHandle={onboarding}
+        header={
+          onboarding ? (
+            <SetupHeader
+              progress={adding ? Math.min(93, setupProgress + Object.keys(photos).length * 3) : 93}
+              onBack={onBack}
+              action={
+                DEV ? (
+                  <button
+                    type="button"
+                    className="flex h-8 w-8 items-center justify-center text-faint"
+                    aria-label="Exit setup for testing"
+                    onClick={close}
+                  >
+                    <Icon name="x" size={13} />
+                  </button>
+                ) : null
+              }
+            />
+          ) : null
+        }
         headerAction={
           onboarding && DEV ? (
             <button
@@ -348,11 +373,13 @@ export default function PhotoCheckins({
         }
         title={onboarding ? 'Your starting photos' : 'Photo check-ins'}
         subtitle={
-          adding
-            ? `${Object.keys(photos).length} of 3 views added`
-            : detail?.synthetic
-              ? 'Test result'
-              : detail?.date
+          onboarding
+            ? null
+            : adding
+              ? `${Object.keys(photos).length} of 3 views added`
+              : detail?.synthetic
+                ? 'Test result'
+                : detail?.date
         }
         footer={
           adding ? (
@@ -460,6 +487,11 @@ export default function PhotoCheckins({
           )
         }
       >
+        {onboarding && (
+          <h3 className="setup-question-title setup-photo-title">
+            {adding ? 'Your starting photos' : 'Your starting point'}
+          </h3>
+        )}
         {adding ? (
           <>
             <div className="mt-4 grid grid-cols-3 gap-2">
@@ -475,9 +507,9 @@ export default function PhotoCheckins({
                   <span>{a}</span>
                   {photos[a] ? (
                     <Icon name={checks[a]?.usable === false ? 'info' : 'check'} size={14} />
-                  ) : (
+                  ) : !onboarding ? (
                     <span className="text-[11px] opacity-50">{i + 1}</span>
-                  )}
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -489,22 +521,20 @@ export default function PhotoCheckins({
                   className="h-full w-full object-contain"
                 />
               ) : (
-                <div className="flex flex-col items-center gap-3 text-muted">
-                  <svg viewBox="0 0 100 160" className="h-36 w-24 text-faint" aria-hidden="true">
-                    <circle cx="50" cy="22" r="13" fill="none" stroke="currentColor" strokeWidth="2" />
-                    <path
-                      d={
-                        angle === 'side'
-                          ? 'M48 40Q66 44 61 83L57 139M48 40L42 85 46 139M51 47L65 91'
-                          : 'M35 41Q50 35 65 41L70 83 61 91 64 141M35 41L30 83 39 91 36 141M40 86L50 96 60 86M50 96V139M35 45L23 89M65 45L77 89'
-                      }
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="6"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span className="text-[14px] capitalize">{angle} view</span>
+                <div className="photo-mannequin-guide">
+                  <img
+                    src={
+                      angle === 'side'
+                        ? '/onboarding/m1-photo-side.webp'
+                        : angle === 'back'
+                          ? '/onboarding/m1-photo-back.webp'
+                          : ONBOARDING_ART.neutral
+                    }
+                    alt={`Mannequin showing a relaxed ${angle} stance`}
+                    width={1024}
+                    height={1536}
+                    decoding="async"
+                  />
                 </div>
               )}
             </div>
@@ -584,8 +614,8 @@ export default function PhotoCheckins({
                 Privacy & other options
               </summary>
               <p className="text-[13px] leading-relaxed text-muted">
-                Never shared. Reviews pass through our server, which keeps nothing, to OpenAI under its API
-                policies. Your last 20 check-ins stay on this device.
+                Not posted to other users. Reviews pass through our server to OpenAI under its API policies;
+                our server does not save your photos. Your last 20 check-ins stay on this device.
               </p>
               <button
                 disabled={Boolean(busy)}

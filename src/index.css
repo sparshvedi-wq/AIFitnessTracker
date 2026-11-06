@@ -383,21 +383,19 @@ body {
   background: rgb(var(--outline));
 }
 .setup-progress {
-  display: flex;
-  gap: 5px;
-  margin: 12px 0 20px;
-}
-.setup-progress > span {
-  flex: 1;
+  display: block;
   height: 4px;
+  margin: 0 22px 16px;
+  overflow: hidden;
   border-radius: 4px;
   background: rgb(var(--line));
 }
-.setup-progress .is-complete {
+.setup-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
   background: rgb(var(--accent));
-}
-.setup-progress .is-current {
-  background: rgb(var(--accent) / 0.5);
+  transition: width 280ms ease;
 }
 .setup-welcome-art {
   height: 200px;

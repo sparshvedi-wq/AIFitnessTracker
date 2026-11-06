@@ -1,0 +1,150 @@
+{
+  "character": "M1",
+  "method": "Built-in image generation, with one canonical identity reference. Lossless WebP packaging; no geometry, crop or color changes.",
+  "records": [
+    {
+      "scene": "neutral",
+      "file": "m1-neutral.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 347444,
+      "sha256": "a18c23d3ecf57446546d23dd3829f3e8f5c3966f7d7c99109eccdb67534e4408",
+      "prompt": "Create the canonical Tally mannequin production asset. Use the supplied mannequin as the EXACT character identity: identical featureless oval head, smooth flat neutral chest with NO gendered breast or defined pectoral anatomy, same moderately proportioned adult torso, limb lengths, understated hips, round shoulder/elbow/knee joint caps, dark narrow seams and warm matte ivory ceramic material. Keep the appearance unisex, not bodybuilder-like or sexualized, and clearly manufactured, not a real human. Full body front view, relaxed neutral stance, arms slightly away from hips, whole head and feet visible. Pure genuinely transparent alpha background, no gym, no equipment, no floor plane, no text, no border, no colored background. Gentle neutral studio lighting that reads on either light or dark app backgrounds. Center figure, compact portrait composition with small clear margins. This same named character M1 will appear in every subsequent onboarding scene; preserve its geometry and material."
+    },
+    {
+      "scene": "welcome",
+      "file": "m1-welcome.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 227912,
+      "sha256": "ae529eb551be30e3b58cada92202bd1e9205603f516683e30b12fc8fc1143ce0",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "goal",
+      "file": "m1-goal.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 209292,
+      "sha256": "67e15336042b0fba9964f65e6724d45b7ce17c7e224fb6ffc59eb0973d7fe720",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "experience",
+      "file": "m1-experience.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 397516,
+      "sha256": "e581f835116889a9b29b8ad20506831dcaf66e5d9b6ce325a163dca18f0d6871",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "sports",
+      "file": "m1-sports.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 671122,
+      "sha256": "eb9633083de6353575e2685971266491e1a00e0f453ebfb0f47acab1889e581d",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "priority",
+      "file": "m1-priority.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 432684,
+      "sha256": "2bd1c9f75230a41d7b2b40b09fa7a48bd9aa161b6015e072e9f96bc70662b9fd",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. ALSO make the pose clear and purposeful: M1 takes a mild tennis-ready stance, feet staggered shoulder-width, knees softly bent, torso upright. The racket hand is raised with elbow bent, racket head at upper-chest to shoulder height, clearly beside rather than covering the face; strings and silhouette fully visible. The opposite arm holds the dumbbell naturally at the hip with a neutral wrist. Both hands visibly grip their items correctly. This is a static illustration of strength plus sport, not a weighted racket swing. No extra loose props. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "location",
+      "file": "m1-location.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 459342,
+      "sha256": "2e3e446a47a922bb9e546f3555fe4184629473d2d8bae06f164eaf583b432d1d",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "equipment",
+      "file": "m1-equipment.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 566258,
+      "sha256": "d3f41f19296fe3f0333afd5dcb9c470096057b681e157af017264aca6aedd739",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "movement",
+      "file": "m1-movement.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 294600,
+      "sha256": "d4dab47ef053aaddc814c85558e52b37e1125c0d45775ad9469beb15ddaedf61",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "time",
+      "file": "m1-time.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 256916,
+      "sha256": "f71d569d626b3d0c8d31c40ad781760664949e5f13f109b3e104d04096f98845",
+      "prompt": "PRODUCTION TALLY ONBOARDING ART. The supplied image is the EXACT primary character M1. Identity lock: preserve identical unisex adult body proportions, oval featureless head size and shape, smooth flat chest shell WITHOUT pectoral definition or breasts, narrow dark seams, round shoulder/elbow/knee caps, hand construction and warm matte ivory material. Do not make M1 more muscular, more masculine, more feminine, thinner or differently shaped. Change only pose, camera and task props. Manufactured articulated mannequin, not real human or robot cartoon. Premium softly lit realistic 3D render, restrained black equipment and at most a small periwinkle accent. GENUINELY TRANSPARENT alpha background, no backdrop, no floor plane, no smoky gradient, no colored halo, no labels, words, arrows, numerical marks, logos or UI. All head, feet and props inside frame with compact sensible margins. Landscape 3:2 composition for an app hero. SCENE: M1 performing one clear controlled bodyweight squat, arms extended naturally forward, neutral torso, heels grounded. One simple useful movement with no equipment or clock."
+    },
+    {
+      "scene": "rhythm",
+      "file": "m1-rhythm.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 193302,
+      "sha256": "aaccdf0d28b361fc58a306ccdfd51e17778344e10a53d32f5963b77b721f1d9b",
+      "prompt": "PRODUCTION TALLY ONBOARDING ART. The supplied image is the EXACT primary character M1. Identity lock: preserve identical unisex adult body proportions, oval featureless head size and shape, smooth flat chest shell WITHOUT pectoral definition or breasts, narrow dark seams, round shoulder/elbow/knee caps, hand construction and warm matte ivory material. Do not make M1 more muscular, more masculine, more feminine, thinner or differently shaped. Change only pose, camera and task props. Manufactured articulated mannequin, not real human or robot cartoon. Premium softly lit realistic 3D render, restrained black equipment and at most a small periwinkle accent. GENUINELY TRANSPARENT alpha background, no backdrop, no floor plane, no smoky gradient, no colored halo, no labels, words, arrows, numerical marks, logos or UI. All head, feet and props inside frame with compact sensible margins. Landscape 3:2 composition for an app hero. SCENE: M1 taking a calm walking step in side-three-quarter view with relaxed arms, no equipment, no schedule symbols or backdrop. Forward movement without urgency."
+    },
+    {
+      "scene": "manual",
+      "file": "m1-manual.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 280854,
+      "sha256": "d26fea2f7f9f5a34929de487b76b5b184b7d22fc76ee34a347c4701453e385e3",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "photos",
+      "file": "m1-photos.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 471206,
+      "sha256": "2b265a571caa9c0c230097eed516074c75ae3925ca97e06baaebdb142393f01f",
+      "prompt": "PRODUCTION TALLY ONBOARDING ART. The supplied image is the EXACT primary character M1. Identity lock: preserve identical unisex adult body proportions, oval featureless head size and shape, smooth flat chest shell WITHOUT pectoral definition or breasts, narrow dark seams, round shoulder/elbow/knee caps, hand construction and warm matte ivory material. Do not make M1 more muscular, more masculine, more feminine, thinner or differently shaped. Change only pose, camera and task props. Manufactured articulated mannequin, not real human or robot cartoon. Premium softly lit realistic 3D render, restrained black equipment and at most a small periwinkle accent. GENUINELY TRANSPARENT alpha background, no backdrop, no floor plane, no smoky gradient, no colored halo, no labels, words, arrows, numerical marks, logos or UI. All head, feet and props inside frame with compact sensible margins. Landscape 3:2 composition for an app hero. SCENE: THREE identical copies of M1 in a single uncluttered lineup: direct front, exact side profile and direct rear view. Same precise body proportions, joint seams, materials and scale in every view, relaxed arms and hip-width feet, whole head and feet visible. No props or background."
+    },
+    {
+      "scene": "review",
+      "file": "m1-review.webp",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 346508,
+      "sha256": "afc48193cb8e05b6c93262eaef5992f640df2fdc3521de9a6a3dde0e99ec97c5",
+      "prompt": "EDIT REFERENCE 1. Reference 2 is M1's canonical character identity. Keep the same exact unisex mannequin(s), matte ivory material, oval heads, flat chest shell, round joint caps, thin dark seams, body proportions and anatomy. Standardize ALL sports and training equipment in this image to one Tally material palette: matte CHARCOAL / BLACK bodies (#25262A), dark graphite metal and neutral gray highlights, with a SMALL consistent painted TALLY BLUE trim (#7AA2FF, the cool blue slash in the logo). Remove violet/purple hues; the accent must read blue, never lavender or neon. Dumbbells get a thin blue band around their end faces; rackets get a narrow blue rim accent and small blue grip-end ring, with black strings and grip; balls get subtle blue seams; benches/cable machines/chairs get at most one small blue adjustment or end-cap detail; a bag can have a blue zipper pull; a band stays mostly charcoal with a small blue edge; a clipboard can have a blue clip. Apply only the details relevant to props that already exist, NEVER add gear just to show an accent. No blue on the mannequin itself, no colored lighting, glow or halo. Do NOT change the pose, composition, number of figures, character geometry, hand grips, camera, lighting, props, or object placement. Preserve full head/feet/equipment framing. Keep genuinely transparent alpha background. No text, UI, labels, watermark, extra figures or surrounding scene."
+    },
+    {
+      "scene": "photo-side",
+      "file": "m1-photo-side.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 168292,
+      "sha256": "c8534d97318b51ce0ee95d752f2d3b5ce1d3a4dbf450a57c38e64ac90dad668d",
+      "prompt": "Use the provided image as the EXACT identity of Tally's unisex M1 mannequin. Preserve precisely the same oval featureless head, flat chest shell, moderate adult torso/limb proportions, warm ivory ceramic surface, dark narrow joint seams and round joint caps. Render M1 in exact 90-degree side profile facing right, full head and feet visible, neutral standing pose, arms relaxed, feet hip-width. No change in body shape or styling. Genuinely transparent alpha background, no backdrop, fog, halo, floor, props, gym, text or diagram labels. Compact full-body portrait, consistent soft neutral studio lighting. This is an angle guide for taking a baseline photo."
+    },
+    {
+      "scene": "photo-back",
+      "file": "m1-photo-back.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 326912,
+      "sha256": "422b683087881996d45ae9066963e990dbd24d6db0cb08dd6068129a48853de5",
+      "prompt": "Use the provided image as the EXACT identity of Tally's unisex M1 mannequin. Preserve precisely the same oval featureless head, flat chest shell, moderate adult torso/limb proportions, warm ivory ceramic surface, dark narrow joint seams and round joint caps. Render M1 in straight-on rear view, full head and feet visible, neutral standing pose, arms relaxed, feet hip-width. No change in body shape or styling. Genuinely transparent alpha background, no backdrop, fog, halo, floor, props, gym, text or diagram labels. Compact full-body portrait, consistent soft neutral studio lighting. This is an angle guide for taking a baseline photo."
+    }
+  ]
+}

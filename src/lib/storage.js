@@ -32,6 +32,7 @@ export function defaultState() {
     // activeWorkout: the session in progress, so a reload picks up where you left off
     activeWorkout: null,
     settings: {
+      theme: 'system',
       training: { ...DEFAULT_PROFILE },
       display: { ...DEFAULT_DISPLAY },
       weightUnit: 'lb',

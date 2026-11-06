@@ -1,0 +1,202 @@
+.setup-dialog {
+  background: rgb(var(--bg));
+}
+.setup-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  padding: max(env(safe-area-inset-top), 16px) 22px 18px;
+}
+.setup-brand {
+  justify-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: rgb(var(--ink));
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 27px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.setup-header-space {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+.setup-back {
+  display: flex;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(var(--line));
+  border-radius: 50%;
+  color: rgb(var(--ink-2));
+}
+.setup-body {
+  display: flex;
+  flex-direction: column;
+  padding-top: 0;
+}
+.setup-page {
+  flex: 1;
+}
+.setup-question-title {
+  margin: 8px 0 0;
+  color: rgb(var(--ink));
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(29px, 7.8vw, 34px);
+  font-weight: 540;
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 0;
+}
+.setup-question-title:focus,
+.setup-welcome-title:focus {
+  outline: none;
+}
+.setup-scene {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 175px;
+  margin: 12px -6px 4px;
+  overflow: hidden;
+}
+.setup-scene img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.setup-scene--welcome {
+  height: clamp(270px, 43dvh, 365px);
+  margin: 0 -12px 22px;
+}
+.setup-scene--welcome img {
+  width: auto;
+  max-width: none;
+  object-fit: contain;
+}
+.setup-scene--sports {
+  height: 205px;
+  margin: 10px -12px 8px;
+}
+.setup-scene--compact {
+  height: 110px;
+  margin: 8px 0 0;
+}
+.setup-scene--response {
+  height: min(34dvh, 290px);
+  margin: 0 -12px 24px;
+}
+.setup-scene--response img {
+  object-fit: contain;
+}
+.setup-page--response {
+  display: flex;
+}
+.setup-response {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 2px 24px;
+  animation: onboarding-enter 220ms ease-out both;
+}
+.setup-response-copy {
+  max-width: 33ch;
+  margin-top: 13px;
+  color: rgb(var(--muted));
+  font-size: 16px;
+  line-height: 1.6;
+}
+.setup-page--welcome {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 2px 28px;
+}
+.setup-welcome-title {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(35px, 9vw, 42px);
+  font-weight: 540;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  font-variation-settings:
+    'SOFT' 100,
+    'WONK' 0;
+}
+.setup-page .onboarding-choice {
+  min-height: 62px;
+  padding: 14px 16px;
+  border-radius: 16px;
+}
+.setup-page .onboarding-choice .dot {
+  width: 23px;
+  height: 23px;
+}
+.setup-page .setup-hint {
+  margin-top: 12px;
+  font-size: 14px;
+}
+.setup-page--equipment .setup-scene {
+  height: 95px;
+}
+.setup-page--manual .setup-scene,
+.setup-page--review .setup-scene {
+  height: 90px;
+}
+.setup-page--sport-choice .setup-scene {
+  height: 145px;
+}
+.setup-photo-title {
+  margin: 5px 0 17px;
+}
+.photo-mannequin-guide {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+.photo-mannequin-guide img {
+  width: 100%;
+  height: 96%;
+  object-fit: contain;
+}
+@media (max-height: 740px) {
+  .setup-scene--welcome {
+    height: 220px;
+  }
+  .setup-scene--response {
+    height: 225px;
+  }
+  .setup-scene--question {
+    height: 140px;
+  }
+  .setup-scene--sports {
+    height: 170px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-response {
+    animation: none;
+  }
+  .setup-dialog .setup-progress > span {
+    transition: none;
+  }
+}
+.tally-reduce-motion .setup-response {
+  animation: none;
+}
+.tally-reduce-motion .setup-progress > span {
+  transition: none;
+}

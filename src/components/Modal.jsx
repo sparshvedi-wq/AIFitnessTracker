@@ -16,6 +16,10 @@ export default function Modal({
   fullScreen = false,
   dismissible = true,
   headerAction = null,
+  header = null,
+  className = '',
+  bodyClassName = '',
+  hideHandle = false,
 }) {
   const dialog = useRef(null)
   const titleId = useId()
@@ -37,34 +41,45 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        aria-describedby={subtitle ? subtitleId : undefined}
-        className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float animate-slide-up`}
+        aria-describedby={subtitle && !header ? subtitleId : undefined}
+        className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float animate-slide-up ${className}`}
       >
         {/* Grab handle (phones) */}
-        <div className="flex justify-center pt-2.5 sm:hidden">
-          <span className="h-1 w-10 rounded-full bg-outline" />
-        </div>
-        <div className="flex items-start justify-between gap-3 px-[22px] pb-2 pt-3 sm:pt-5">
-          <div className="min-w-0">
-            <h2 id={titleId} className="font-display text-[26px] leading-tight text-ink">
+        {!hideHandle && (
+          <div className="flex justify-center pt-2.5 sm:hidden">
+            <span className="h-1 w-10 rounded-full bg-outline" />
+          </div>
+        )}
+        {header ? (
+          <header className="shrink-0">
+            <h2 id={titleId} className="sr-only">
               {title}
             </h2>
-            {subtitle && (
-              <p id={subtitleId} className="mt-1 text-[13px] text-muted">
-                {subtitle}
-              </p>
+            {header}
+          </header>
+        ) : (
+          <div className="flex items-start justify-between gap-3 px-[22px] pb-2 pt-3 sm:pt-5">
+            <div className="min-w-0">
+              <h2 id={titleId} className="font-display text-[26px] leading-tight text-ink">
+                {title}
+              </h2>
+              {subtitle && (
+                <p id={subtitleId} className="mt-1 text-[13px] text-muted">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {headerAction}
+            {dismissible && (
+              <button onClick={onClose} className="icon-btn h-9 w-9 bg-surface2" aria-label="Close">
+                <Icon name="x" size={16} strokeWidth={2.4} />
+              </button>
             )}
           </div>
-          {headerAction}
-          {dismissible && (
-            <button onClick={onClose} className="icon-btn h-9 w-9 bg-surface2" aria-label="Close">
-              <Icon name="x" size={16} strokeWidth={2.4} />
-            </button>
-          )}
-        </div>
+        )}
         <div
           key={bodyKey}
-          className={`min-h-0 overflow-y-auto px-[22px] pb-5 pt-1 ${fullScreen ? 'flex-1' : ''}`}
+          className={`min-h-0 overflow-y-auto px-[22px] pb-5 pt-1 ${fullScreen ? 'flex-1' : ''} ${bodyClassName}`}
         >
           {children}
         </div>

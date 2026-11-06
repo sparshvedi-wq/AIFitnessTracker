@@ -1,6 +1,7 @@
 import Icon from '../Icon.jsx'
 import { TallyLogo } from '../Ink.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
+import { useEffect, useRef, useState } from 'react'
 
 // Decoration supports the written choice; it never carries the label alone.
 export const SPORT_EMOJI = {
@@ -115,13 +116,28 @@ export function SetupHeader({ progress, onBack, action }) {
 }
 
 export function SetupIllustration({ scene = 'neutral', variant = '', className = '' }) {
+  const src = ONBOARDING_ART[scene] || ONBOARDING_ART.neutral
+  const [shown, setShown] = useState(src)
+  const [loaded, setLoaded] = useState('')
+  const transition = useRef(null)
+  useEffect(() => {
+    clearTimeout(transition.current)
+    return () => clearTimeout(transition.current)
+  }, [src])
   return (
     <div
       className={`setup-scene ${variant ? `setup-scene--${variant}` : ''} ${className}`}
       aria-hidden="true"
     >
+      {shown !== src && <img className="scene-previous" src={shown} alt="" />}
       <img
-        src={ONBOARDING_ART[scene] || ONBOARDING_ART.neutral}
+        key={src}
+        className={`scene-current ${loaded === src ? 'is-loaded' : ''}`}
+        src={src}
+        onLoad={() => {
+          setLoaded(src)
+          transition.current = setTimeout(() => setShown(src), 360)
+        }}
         alt=""
         width={scene === 'neutral' ? 1024 : 1536}
         height={scene === 'neutral' ? 1536 : 1024}
@@ -132,6 +148,12 @@ export function SetupIllustration({ scene = 'neutral', variant = '', className =
 }
 
 export function SetupWelcome({ headingRef }) {
+  useEffect(() => {
+    for (const key of ['muscle', 'strength', 'weight', 'rhythm']) {
+      const image = new Image()
+      image.src = ONBOARDING_ART[key]
+    }
+  }, [])
   return (
     <>
       <SetupIllustration scene="welcome" variant="welcome" />

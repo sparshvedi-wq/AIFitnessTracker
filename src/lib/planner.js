@@ -8,7 +8,13 @@ import { sportScheduleContext } from './sport-schedule.js'
 import { movementPreferences, DEFAULT_ON_THE_GO } from './movement-preferences.js'
 import { allMeta, metaOf } from './catalog/index.js'
 import { EQUIPMENT_CAPABILITIES, GYM_CAPABILITIES, capabilitiesFor } from './catalog/vocabulary.js'
-import { equipmentSatisfied, ineligibility, placeCapabilities, placeSupports, EXPERIENCE_LEVEL } from './engine/eligibility.js'
+import {
+  equipmentSatisfied,
+  ineligibility,
+  placeCapabilities,
+  placeSupports,
+  EXPERIENCE_LEVEL,
+} from './engine/eligibility.js'
 import { recommendMovement, recommendStrength } from './engine/recommend.js'
 import { exerciseSignals } from './engine/learning.js'
 import { planSeconds } from './engine/session-time.js'
@@ -17,7 +23,7 @@ import { quietAt } from './places.js'
 
 export { planSeconds, carryCandidates }
 
-export const GOALS = ['Build muscle', 'Get stronger', 'General fitness']
+export const GOALS = ['Build muscle', 'Get stronger', 'Lose weight', 'General fitness']
 export const HOME_EQUIPMENT = [
   'Dumbbells',
   'Resistance bands',
@@ -94,7 +100,9 @@ export const MOVEMENTS = allMeta()
   }))
 
 export function profileOf(state) {
-  return { ...DEFAULT_PROFILE, ...state.settings?.training }
+  const profile = { ...DEFAULT_PROFILE, ...state.settings?.training }
+  if (profile.ageGroup === '13-17' && profile.goal === 'Lose weight') profile.goal = 'General fitness'
+  return profile
 }
 // `base` is a place's behaviour (see places.js). A gym has a configured full
 // set of equipment plus any listed extras; other places have exactly what is
@@ -134,7 +142,10 @@ export function buildDailyPlan(state, options = {}) {
   readiness.pain = [...new Set([...(profile.avoidMuscles || []), ...(readiness.pain || [])])]
   // "Not today" exercises from Ask or adjust last for the day only.
   if (readiness.avoidToday?.length)
-    profile = { ...profile, excludedExercises: [...new Set([...(profile.excludedExercises || []), ...readiness.avoidToday])] }
+    profile = {
+      ...profile,
+      excludedExercises: [...new Set([...(profile.excludedExercises || []), ...readiness.avoidToday])],
+    }
   const request = { ...options, today, profile, readiness, now: options.now ?? Date.now() }
   return readiness.unwell || options.mode === 'movement'
     ? recommendMovement(state, request)

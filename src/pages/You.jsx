@@ -120,13 +120,7 @@ export default function You({ nav }) {
           className="mt-5 flex min-h-14 w-full items-center gap-3 rounded-tuck bg-surface px-4 text-left"
           onClick={nav.openProfile}
         >
-          <span aria-hidden="true" className="text-[23px]">
-            {settings.training.goal === 'Build muscle'
-              ? '💪'
-              : settings.training.goal === 'Get stronger'
-                ? '🏋️'
-                : '🌿'}
-          </span>
+          <Icon name="train" size={23} className="text-accent" />
           <span className="flex-1 text-[14px] font-semibold">{settings.training.goal}</span>
           <Icon name="edit" size={16} className="text-muted" />
         </button>

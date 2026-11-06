@@ -13,6 +13,8 @@ import { uid } from '../../lib/id.js'
 import { Choice, Field } from './Fields.jsx'
 import { SetupHeader } from './SetupVisuals.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
+import PhotoReviewStory, { PhotoReviewLoading } from './PhotoReviewStory.jsx'
+import { photoReviewSlides } from '../../lib/photo-review.js'
 
 const DEV = import.meta.env.DEV
 const photoLabel = (checkin, all) =>
@@ -51,9 +53,12 @@ export default function PhotoCheckins({
   const [consent, setConsent] = useState(false)
   const [guardian, setGuardian] = useState(false)
   const [busy, setBusy] = useState('')
+  const [reviewing, setReviewing] = useState(false)
+  const [reviewStep, setReviewStep] = useState(0)
   const [error, setError] = useState('')
   const [selected, setDetail] = useState(existing)
   const detail = selected && withPreviews(checkins.find((c) => c.id === selected.id) || selected)
+  const reviewLast = Math.max(0, photoReviewSlides(detail?.review).length - 1)
   const [deleting, setDeleting] = useState(null)
   const [selectedFocus, setSelectedFocus] = useState(
     existing?.id === p.focusCheckinId ? p.confirmedFocus : [],
@@ -222,7 +227,7 @@ export default function PhotoCheckins({
       setBusy('')
     }
   }
-  const save = (review = null) => {
+  const save = async (review = null) => {
     if (!all) return
     const checkin = {
       id: uid(),
@@ -233,13 +238,14 @@ export default function PhotoCheckins({
       review,
       ...(synthetic ? { synthetic: true, sample: true } : {}),
     }
-    saveCheckin(checkin)
+    await saveCheckin(checkin)
       .then(() => {
         void photoDraft('clear').catch(() => {})
+        setReviewStep(0)
         setDetail(checkin)
         setAdding(false)
         setSelectedFocus(review?.suggestedFocus?.map((f) => f.area) || [])
-        toast(synthetic ? 'Test review saved' : 'Photo check-in saved')
+        toast('Photo review saved')
       })
       .catch(() => setError('Couldn’t save these photos. Free some space and try again.'))
   }
@@ -250,13 +256,30 @@ export default function PhotoCheckins({
       setError('Use three different photos: front, side and back.')
       return
     }
+    setReviewing(true)
+    controller.current = new AbortController()
     if (import.meta.env.DEV && simulate) {
-      setBusy('Preparing demo…')
+      setBusy('Reviewing your photos…')
       try {
         const { demoReview } = await import('../../lib/photo-demo.js')
-        save(demoReview())
+        const signal = controller.current.signal
+        await new Promise((resolve, reject) => {
+          const t = setTimeout(resolve, 2000)
+          signal.addEventListener(
+            'abort',
+            () => {
+              clearTimeout(t)
+              reject(new DOMException('Cancelled', 'AbortError'))
+            },
+            { once: true },
+          )
+        })
+        if (!signal.aborted) await save(demoReview())
+      } catch (e) {
+        if (e.name !== 'AbortError') setError(e.message)
       } finally {
         setBusy('')
+        setReviewing(false)
       }
       return
     }
@@ -303,11 +326,12 @@ export default function PhotoCheckins({
         if (bad) setAngle(bad)
         throw new Error(bad ? `${bad}: ${review.views[bad].feedback}` : 'Replace the flagged photos.')
       }
-      save(review)
+      if (!signal.aborted) await save(review)
     } catch (e) {
       if (e.name !== 'AbortError') setError(e.message)
     } finally {
       setBusy('')
+      setReviewing(false)
     }
   }
   const applyFocus = () => {
@@ -334,6 +358,7 @@ export default function PhotoCheckins({
     <>
       <Modal
         open
+        bodyKey={`${adding ? 'capture' : 'review'}:${reviewStep}:${reviewing}`}
         fullScreen={onboarding}
         dismissible={!onboarding}
         onClose={close}
@@ -378,7 +403,7 @@ export default function PhotoCheckins({
             : adding
               ? `${Object.keys(photos).length} of 3 views added`
               : detail?.synthetic
-                ? 'Test result'
+                ? null
                 : detail?.date
         }
         footer={
@@ -391,16 +416,19 @@ export default function PhotoCheckins({
               )}
               {busy ? (
                 <>
-                  <p role="status" className="mb-2 flex items-center justify-center gap-2 text-[14px]">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
-                    {busy}
-                  </p>
+                  {!reviewing && (
+                    <p role="status" className="mb-2 flex items-center justify-center gap-2 text-[14px]">
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                      {busy}
+                    </p>
+                  )}
                   {/Checking|Reviewing/.test(busy) && (
                     <button
                       className="btn-secondary min-h-12 w-full"
                       onClick={() => {
                         controller.current?.abort()
                         setBusy('')
+                        setReviewing(false)
                       }}
                     >
                       Cancel review
@@ -409,7 +437,7 @@ export default function PhotoCheckins({
                 </>
               ) : all ? (
                 <button className="btn-primary min-h-12 w-full" disabled={!allowed} onClick={analyze}>
-                  {simulate ? 'Preview demo results' : 'See my results'}
+                  See my results
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -436,6 +464,10 @@ export default function PhotoCheckins({
                 </button>
               )}
             </div>
+          ) : detail?.review && reviewStep < reviewLast ? (
+            <button className="btn-primary min-h-12 w-full" onClick={() => setReviewStep((v) => v + 1)}>
+              {reviewStep === 0 ? 'Explore my review' : 'Continue'}
+            </button>
           ) : onboarding ? (
             <div>
               <button
@@ -487,12 +519,12 @@ export default function PhotoCheckins({
           )
         }
       >
-        {onboarding && (
-          <h3 className="setup-question-title setup-photo-title">
-            {adding ? 'Your starting photos' : 'Your starting point'}
-          </h3>
+        {onboarding && adding && !reviewing && (
+          <h3 className="setup-question-title setup-photo-title">Your starting photos</h3>
         )}
-        {adding ? (
+        {reviewing ? (
+          <PhotoReviewLoading status={busy} />
+        ) : adding ? (
           <>
             <div className="mt-4 grid grid-cols-3 gap-2">
               {PHOTO_ANGLES.map((a, i) => (
@@ -731,12 +763,13 @@ export default function PhotoCheckins({
                       value={c.id}
                       selected={detail?.id === c.id}
                       onClick={() => {
+                        setReviewStep(0)
                         setDetail(c)
                         setSelectedFocus(c.id === p.focusCheckinId ? p.confirmedFocus : [])
                         setTested(c.id === p.focusCheckinId && Boolean(p.sideTestConfirmed))
                       }}
                     >
-                      {c.synthetic ? 'Test · ' : ''}
+                      {c.synthetic ? 'Sample · ' : ''}
                       {photoLabel(c, checkins)}
                     </Choice>
                   ))}
@@ -744,35 +777,35 @@ export default function PhotoCheckins({
             )}
             {detail && (
               <section className="mt-5">
-                {detail.synthetic && (
-                  <p className="mb-4 rounded-2xl border border-accent/30 px-3 py-2 text-[13px] text-accent">
-                    {detail.review?.demo
-                      ? 'Demo result · no AI request'
-                      : 'AI review of fictional test photos'}
-                  </p>
-                )}
-                {detail.previews && (
-                  <div className="grid grid-cols-3 gap-2">
-                    {PHOTO_ANGLES.map((a) => (
-                      <figure key={a}>
+                {detail.review ? (
+                  <PhotoReviewStory
+                    review={detail.review}
+                    step={reviewStep}
+                    onStep={setReviewStep}
+                    previews={detail.previews}
+                    onZoom={setZoom}
+                    selectedFocus={selectedFocus}
+                    onFocusChange={setSelectedFocus}
+                    canApply={!detail.synthetic && p.ageGroup === '18+'}
+                  />
+                ) : (
+                  <>
+                    <div className="review-views">
+                      {PHOTO_ANGLES.map((a) => (
                         <button
+                          key={a}
                           type="button"
-                          className="block w-full"
+                          disabled={!detail.previews?.[a]}
                           aria-label={`Enlarge ${a} view`}
-                          onClick={() => setZoom({ src: detail.previews[a], label: `${a} · ${detail.date}` })}
+                          onClick={() => setZoom({ src: detail.previews[a], label: `${a} view` })}
                         >
-                          <img
-                            alt={`${a} check-in ${detail.date}`}
-                            src={detail.previews[a]}
-                            className="h-36 w-full rounded-2xl bg-bg object-contain"
-                          />
+                          {detail.previews?.[a] && <img src={detail.previews[a]} alt={`${a} view`} />}
+                          <span>{a}</span>
                         </button>
-                        <figcaption className="mt-2 text-center text-[12px] capitalize text-muted">
-                          {a}
-                        </figcaption>
-                      </figure>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    <p className="mt-4 text-[15px] text-muted">Photos saved without AI review.</p>
+                  </>
                 )}
                 {!onboarding &&
                   checkins.some(
@@ -798,88 +831,56 @@ export default function PhotoCheckins({
                       )}
                     </>
                   )}
-                <h3 className="mt-6 font-display text-[26px]">
-                  {onboarding ? 'Your starting point' : 'Your photo review'}
-                </h3>
-                <p className="mt-3 text-[15px] leading-relaxed text-ink2">
-                  {detail.review?.summary || 'Photos saved. AI review was not requested.'}
-                </p>
-                {detail.review?.observations?.map((o, i) => (
-                  <div key={i} className="mt-4 rounded-tuck bg-surface2 p-4">
-                    <p className="text-[14px] leading-relaxed">{o.observation}</p>
-                    <p className="mt-2 text-[13px] leading-relaxed text-muted">{o.uncertainty}</p>
-                    <p className="mt-2 text-[12px] text-muted">Based on {o.evidenceViews.join(', ')} views</p>
-                  </div>
-                ))}
-                {!detail.synthetic && p.ageGroup === '18+' && detail.review?.suggestedFocus?.length > 0 && (
-                  <Field label="Training focus">
-                    <div className="space-y-3">
-                      {detail.review.suggestedFocus.map((f) => (
-                        <label key={f.area} className="flex gap-3 text-[14px]">
-                          <input
-                            className="mt-1 h-5 w-5"
-                            type="checkbox"
-                            checked={selectedFocus.includes(f.area)}
-                            onChange={(e) =>
-                              setSelectedFocus(
-                                e.target.checked
-                                  ? [...selectedFocus, f.area]
-                                  : selectedFocus.filter((v) => v !== f.area),
-                              )
-                            }
-                          />
-                          <span>
-                            <span className="capitalize">{f.area}</span>
-                            <span className="mt-1 block text-[13px] text-muted">{f.reason}</span>
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                    <details className="mt-4">
-                      <summary className="min-h-11 cursor-pointer py-2 text-[13px] text-muted">
-                        Side-to-side preference
-                      </summary>
-                      <p className="text-[12px] text-muted">Base this on a real exercise, not a photo.</p>
-                      <Segmented
-                        className="mt-3"
-                        label="Less capable side"
-                        value={weakSide}
-                        onChange={setWeakSide}
-                        options={[
-                          ['', 'No preference'],
-                          ['left', 'Left'],
-                          ['right', 'Right'],
-                        ]}
-                      />
-                      <Segmented
-                        className="mt-3"
-                        label="Compared movement"
-                        value={sideExercise}
-                        onChange={setSideExercise}
-                        options={[
-                          ['db-row', 'One-arm row'],
-                          ['biceps-curl', 'Curl'],
-                          ['split-squat', 'Split squat'],
-                        ]}
-                      />
-                      <label className="mt-3 flex gap-3 text-[12px]">
-                        <input
-                          type="checkbox"
-                          checked={tested}
-                          onChange={(e) => setTested(e.target.checked)}
+                {reviewStep === reviewLast &&
+                  !detail.synthetic &&
+                  p.ageGroup === '18+' &&
+                  detail.review?.suggestedFocus?.length > 0 && (
+                    <Field label="Training focus" hideLabel>
+                      <details className="mt-4">
+                        <summary className="min-h-11 cursor-pointer py-2 text-[13px] text-muted">
+                          Side-to-side preference
+                        </summary>
+                        <p className="text-[12px] text-muted">Base this on a real exercise, not a photo.</p>
+                        <Segmented
+                          className="mt-3"
+                          label="Less capable side"
+                          value={weakSide}
+                          onChange={setWeakSide}
+                          options={[
+                            ['', 'No preference'],
+                            ['left', 'Left'],
+                            ['right', 'Right'],
+                          ]}
                         />
-                        I compared sides without pain.
-                      </label>
-                    </details>
-                    <button onClick={applyFocus} className="btn-secondary mt-4 min-h-12 w-full">
-                      Use selected focus in my training
-                    </button>
-                    <p className="mt-2 text-[13px] text-muted">
-                      These areas get a little extra work. Reviewed after six weeks.
-                    </p>
-                  </Field>
-                )}
-                {detail.review?.limitations?.length > 0 && (
+                        <Segmented
+                          className="mt-3"
+                          label="Compared movement"
+                          value={sideExercise}
+                          onChange={setSideExercise}
+                          options={[
+                            ['db-row', 'One-arm row'],
+                            ['biceps-curl', 'Curl'],
+                            ['split-squat', 'Split squat'],
+                          ]}
+                        />
+                        <label className="mt-3 flex gap-3 text-[12px]">
+                          <input
+                            type="checkbox"
+                            checked={tested}
+                            onChange={(e) => setTested(e.target.checked)}
+                          />
+                          I compared sides without pain.
+                        </label>
+                      </details>
+                      <button onClick={applyFocus} className="btn-secondary mt-4 min-h-12 w-full">
+                        Use selected focus in my training
+                      </button>
+                      <p className="mt-2 text-[13px] text-muted">
+                        These areas get a little extra work. Reviewed after six weeks.
+                      </p>
+                    </Field>
+                  )}
+                {reviewStep === reviewLast && detail.review?.limitations?.length > 0 && (
                   <details className="mt-5 text-[13px] text-muted">
                     <summary className="min-h-11 cursor-pointer py-3">Reading limitations</summary>
                     <ul className="list-disc space-y-2 pl-4">

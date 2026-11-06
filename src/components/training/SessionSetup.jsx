@@ -245,7 +245,9 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     : step === 0
       ? 'How much time do you have?'
       : lastStep
-        ? plan.name
+        ? kind === 'adaptive'
+          ? 'Your training'
+          : plan.name
         : step === 1
           ? 'Where are you training?'
           : 'How are you feeling?'
@@ -319,21 +321,17 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     >
       {!panel && (
         <>
-          {!lastStep && (
-            <ol className="session-steps mt-4" aria-label="Workout preparation">
-              {steps.map((label, i) => (
-                <li
-                  key={label}
-                  aria-current={step === i ? 'step' : undefined}
-                  className={i <= step ? 'text-accent' : 'text-faint'}
-                >
-                  <span className={`dot h-7 w-7 text-[12px] ${i <= step ? 'bg-accent/15' : 'bg-bg'}`}>
-                    {i < step ? <Icon name="check" size={13} /> : i + 1}
-                  </span>
-                  <span className="text-[12px]">{label}</span>
-                </li>
-              ))}
-            </ol>
+          {!lastStep && !returnToPlan && (
+            <div
+              className="session-progress"
+              role="progressbar"
+              aria-label="Workout preparation"
+              aria-valuemin={0}
+              aria-valuemax={4}
+              aria-valuenow={step + 1}
+            >
+              <span style={{ width: `${(step + 1) * 25}%` }} />
+            </div>
           )}
           {step === 0 && (
             <>
@@ -375,30 +373,16 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                 ))}
               </div>
               {!shortSession && !['sport', 'pump'].includes(kind) && (
-                <details className="mt-5 border-t border-line">
-                  <summary className="min-h-12 cursor-pointer py-3 text-[14px] text-muted">
-                    {[15, 20, 30, 45].includes(minutes) ? 'Another duration' : `${minutes} minutes · change`}
-                  </summary>
-                  <div className="grid grid-cols-4 gap-2 pb-3" role="radiogroup" aria-label="Other duration">
-                    {[10, 25, 35, 40, 50, 60, 75, 90].map((v) => (
-                      <button
-                        key={v}
-                        type="button"
-                        role="radio"
-                        aria-checked={minutes === v}
-                        aria-label={`${v} minutes`}
-                        className={`chip justify-center ${minutes === v ? 'chip-active' : 'bg-surface2'}`}
-                        onClick={() => setMinutes(v)}
-                      >
-                        {v}
-                      </button>
-                    ))}
-                  </div>
-                </details>
+                <div className="custom-duration">
+                  <span>Custom time</span>
+                  <Select
+                    label="Workout duration"
+                    value={minutes}
+                    onChange={setMinutes}
+                    options={[10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 75, 90].map((v) => [v, `${v} min`])}
+                  />
+                </div>
               )}
-              <p className="mt-6 flex items-center gap-2 text-[14px] text-muted">
-                <Icon name="clock" size={17} />A guide, not a countdown.
-              </p>
             </>
           )}
           {step === 1 && (
@@ -508,12 +492,12 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     readiness.unwell
                       ? 'Not feeling well'
                       : readiness.energy === 'low'
-                      ? 'Low energy'
-                      : readiness.sore.length || readiness.pain.length
-                        ? 'Areas avoided'
-                        : readiness.energy === 'high'
-                          ? 'High energy'
-                          : 'Usual',
+                        ? 'Low energy'
+                        : readiness.sore.length || readiness.pain.length
+                          ? 'Areas avoided'
+                          : readiness.energy === 'high'
+                            ? 'High energy'
+                            : 'Usual',
                   ],
                 ].map(([value, label, detail]) => (
                   <button

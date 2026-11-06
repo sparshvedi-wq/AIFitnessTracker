@@ -11,16 +11,28 @@ export const demoReview = () => ({
   views: Object.fromEntries(
     ['front', 'side', 'back'].map((a) => [a, { usable: true, feedback: 'Demo fixture, not checked by AI.' }]),
   ),
-  summary:
-    'Demo result: all three views are present. This preview lets you test the result screen without an AI request.',
+  summary: 'A balanced starting point, with shoulders and upper back as possible training priorities.',
   observations: [
     {
-      area: 'overall',
-      observation: 'Example observation: compare relaxed front and back outlines across check-ins.',
-      uncertainty: 'Preset test copy, not an assessment of these images.',
+      area: 'shoulders',
+      observation: 'The relaxed shoulder outline looks slightly different between sides.',
+      uncertainty:
+        'Camera angle and how you stand can create this appearance. It does not establish a strength difference.',
       evidenceViews: ['front', 'back'],
     },
+    {
+      area: 'back',
+      observation: 'Upper-back development is a possible area to follow across future check-ins.',
+      uncertainty: 'A photo cannot measure muscle mass or tell whether an area is weak.',
+      evidenceViews: ['back'],
+    },
   ],
-  suggestedFocus: [{ area: 'shoulders', reason: 'Example focus for testing the results layout.' }],
-  limitations: ['This is a simulated result. It does not measure analysis accuracy or describe your body.'],
+  suggestedFocus: [
+    { area: 'shoulders', reason: 'A small, balanced shoulder emphasis within your usual training time.' },
+    { area: 'back', reason: 'Keep pulling work in the rotation, adjusted using your logged performance.' },
+  ],
+  limitations: [
+    'Illustrative sample findings, not an analysis of these fixtures or your body.',
+    'Lighting, clothing and pose affect visible outlines.',
+  ],
 })

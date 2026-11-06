@@ -1,0 +1,214 @@
+.review-loading {
+  min-height: 58dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px 0;
+}
+.review-scan {
+  height: 300px;
+  width: 240px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.review-scan img {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  opacity: 0.8;
+}
+.review-scan-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 22px rgb(var(--accent) / 0.6);
+  animation: review-scan 3s ease-in-out infinite alternate;
+}
+.review-loading-hint {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgb(var(--faint));
+  animation: review-appear 400ms ease both;
+}
+.review-story-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.review-story-track {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+.review-story-track span {
+  height: 3px;
+  background: rgb(var(--line));
+  flex: 1;
+  border-radius: 3px;
+}
+.review-story-track .is-filled {
+  background: rgb(var(--accent));
+}
+.review-demo {
+  display: inline-block;
+  margin: 4px 0 12px;
+  padding: 5px 9px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 30px;
+  font-size: 11px;
+  color: rgb(var(--muted));
+}
+.review-slide {
+  animation: review-appear 280ms ease-out both;
+}
+.review-title {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 30px;
+  line-height: 1.15;
+  margin-top: 24px;
+  letter-spacing: -0.025em;
+}
+.review-copy {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: rgb(var(--ink-2));
+}
+.review-views {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.review-views button,
+.review-evidence button {
+  min-width: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgb(var(--bg));
+  padding: 8px;
+}
+.review-views img {
+  width: 100%;
+  height: 210px;
+  object-fit: contain;
+}
+.review-views span,
+.review-evidence span {
+  display: block;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: rgb(var(--muted));
+  padding: 8px 0;
+}
+.review-evidence {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+.review-evidence button {
+  flex: 1;
+  max-width: 230px;
+}
+.review-evidence img {
+  height: 270px;
+  width: 100%;
+  object-fit: contain;
+}
+.review-uncertainty {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgb(var(--muted));
+  margin-top: 20px;
+}
+.review-uncertainty svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.review-plan-art {
+  height: 180px;
+  width: 100%;
+  object-fit: contain;
+}
+.review-focus-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.review-focus {
+  padding: 16px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 18px;
+  text-align: left;
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  color: rgb(var(--muted));
+  line-height: 1.6;
+}
+.review-focus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgb(var(--ink));
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 7px;
+}
+.review-focus.is-selected {
+  border-color: rgb(var(--accent));
+  background: rgb(var(--accent) / 0.05);
+}
+.review-focus:disabled {
+  opacity: 1;
+}
+@keyframes review-scan {
+  from {
+    top: 10%;
+  }
+  to {
+    top: 90%;
+  }
+}
+@keyframes review-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-scan-line,
+  .review-slide,
+  .review-loading-hint {
+    animation: none;
+  }
+  .review-scan-line {
+    top: 50%;
+  }
+}
+.tally-reduce-motion .review-scan-line,
+.tally-reduce-motion .review-slide,
+.tally-reduce-motion .review-loading-hint {
+  animation: none;
+}
+.review-training-response {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgb(var(--accent) / 0.06);
+  border: 1px solid rgb(var(--accent) / 0.2);
+}

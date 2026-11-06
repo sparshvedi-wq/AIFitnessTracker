@@ -35,6 +35,7 @@ export const WEEKLY_TARGET = {
   'Build muscle': 10,
   'Get stronger': 8,
   'General fitness': 6,
+  'Lose weight': 6,
   'Sport performance': 6,
 }
 export const EXPERIENCE_TARGET_SCALE = { 'Starting out': 0.6, 'Some experience': 0.8, Experienced: 1 }

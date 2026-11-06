@@ -145,6 +145,42 @@
       "bytes": 326912,
       "sha256": "422b683087881996d45ae9066963e990dbd24d6db0cb08dd6068129a48853de5",
       "prompt": "Use the provided image as the EXACT identity of Tally's unisex M1 mannequin. Preserve precisely the same oval featureless head, flat chest shell, moderate adult torso/limb proportions, warm ivory ceramic surface, dark narrow joint seams and round joint caps. Render M1 in straight-on rear view, full head and feet visible, neutral standing pose, arms relaxed, feet hip-width. No change in body shape or styling. Genuinely transparent alpha background, no backdrop, fog, halo, floor, props, gym, text or diagram labels. Compact full-body portrait, consistent soft neutral studio lighting. This is an angle guide for taking a baseline photo."
+    },
+    {
+      "scene": "muscle",
+      "file": "m1-v3-muscle.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 386548,
+      "sha256": "d0c4265f5ad156351e8376032e0760cdbbcae10e8d2ae39d86c2f71694cbd369",
+      "promptSet": "docs/onboarding/interactive-art.md"
+    },
+    {
+      "scene": "strength",
+      "file": "m1-v3-strength.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 458140,
+      "sha256": "b67883a9092fbccb7ca5730177423479193d24acbeaa0f28685aedccd9d23ec0",
+      "promptSet": "docs/onboarding/interactive-art.md"
+    },
+    {
+      "scene": "weight",
+      "file": "m1-v3-weight.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 440018,
+      "sha256": "298e6a4d431b91dec9374a77835e721394c4417e7e3afb24aeece1f13d2d65fd",
+      "promptSet": "docs/onboarding/interactive-art.md"
+    },
+    {
+      "scene": "gym",
+      "file": "m1-v3-gym.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 825000,
+      "sha256": "47f32359fbc8fb9231375ee6ed684859003ece112be39b175825dda2f5b6e0b8",
+      "promptSet": "docs/onboarding/interactive-art.md"
     }
   ]
 }

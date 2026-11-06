@@ -344,6 +344,7 @@ export default function TrainingProfile({ onClose }) {
                 values={[
                   ['Build muscle', 'Build muscle'],
                   ['Get stronger', 'Get stronger'],
+                  ...(p.ageGroup !== '13-17' ? [['Lose weight', 'Lose weight']] : []),
                   ['General fitness', 'Feel fitter'],
                 ]}
                 value={p.goal}
@@ -393,7 +394,14 @@ export default function TrainingProfile({ onClose }) {
                         key={v}
                         value={v}
                         selected={p.ageGroup === v}
-                        onClick={(ageGroup) => set({ ageGroup })}
+                        onClick={(ageGroup) =>
+                          set({
+                            ageGroup,
+                            ...(ageGroup === '13-17' && p.goal === 'Lose weight'
+                              ? { goal: 'General fitness' }
+                              : {}),
+                          })
+                        }
                       />
                     ))}
                   </div>
@@ -620,7 +628,7 @@ export default function TrainingProfile({ onClose }) {
                       p.baselineMode === 'manual'
                         ? 'Manual starting profile'
                         : p.baselineMode === 'test'
-                          ? 'Test photos'
+                          ? 'Starting photos'
                           : baselineReady
                             ? 'Starting photos added'
                             : 'Add starting photos',
@@ -661,7 +669,7 @@ export default function TrainingProfile({ onClose }) {
 }
 function Cards({ values, value, onChange, kind }) {
   return (
-    <div className="mt-5 space-y-3">
+    <div className="setup-options mt-5 space-y-3">
       {values.map(([id, title]) => (
         <button
           key={String(id)}

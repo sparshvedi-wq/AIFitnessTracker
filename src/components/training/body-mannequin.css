@@ -1,0 +1,91 @@
+.body-picker {
+  margin-top: 20px;
+}
+.body-mannequin {
+  position: relative;
+  max-width: 350px;
+  height: 360px;
+  margin: 16px auto 4px;
+}
+.body-mannequin > img {
+  position: absolute;
+  top: 0;
+  left: 15.715%;
+  width: 68.57%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+  animation: body-turn 300ms ease-out both;
+}
+.body-hotspot {
+  position: absolute;
+  z-index: 1;
+  transform: translate(-50%, -50%);
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 45%;
+  border: 1px solid transparent;
+  transition:
+    background 180ms,
+    border-color 180ms;
+}
+.body-hotspot:hover {
+  background: rgb(var(--accent) / 0.13);
+}
+.body-hotspot.is-selected {
+  background: rgb(var(--accent) / 0.32);
+  border-color: rgb(var(--accent) / 0.6);
+  box-shadow: 0 0 20px rgb(var(--accent) / 0.12);
+}
+.body-label {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 44px;
+  min-width: 77px;
+  padding: 6px 8px;
+  transform: translateY(-50%);
+  border-radius: 12px;
+  font-size: 12px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  color: rgb(var(--ink-2));
+}
+.body-label--left {
+  left: 0;
+}
+.body-label--right {
+  right: 0;
+}
+.body-label.is-selected {
+  border-color: rgb(var(--accent));
+  color: rgb(var(--accent));
+  background: rgb(var(--bg));
+}
+.body-label:disabled {
+  opacity: 0.7;
+}
+@keyframes body-turn {
+  from {
+    opacity: 0.3;
+    transform: scaleX(0.93);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .body-mannequin > img {
+    animation: none;
+  }
+  .body-hotspot {
+    transition: none;
+  }
+}
+.tally-reduce-motion .body-mannequin > img {
+  animation: none;
+}

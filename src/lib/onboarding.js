@@ -101,12 +101,16 @@ export function onboardingResponse(step, p) {
         ? 'Build muscle.'
         : p.goal === 'Get stronger'
           ? 'Get stronger.'
-          : 'Feel fitter.',
+          : p.goal === 'Lose weight'
+            ? 'Make movement a habit.'
+            : 'Feel fitter.',
       p.goal === 'Build muscle'
         ? 'Your working sets will be balanced across your sessions.'
         : p.goal === 'Get stronger'
           ? 'Your logged sets guide when targets increase.'
-          : 'Strength and movement, fitted to the time you have.',
+          : p.goal === 'Lose weight'
+            ? 'Keep strength in your routine, with activity you can return to.'
+            : 'Strength and movement, fitted to the time you have.',
     ],
     experience: [
       p.experience === 'Starting out' ? 'We’ll show you how.' : 'Start with what you know.',

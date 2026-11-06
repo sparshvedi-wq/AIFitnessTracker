@@ -4,7 +4,7 @@ The production onboarding uses one unisex, featureless ivory mannequin (M1), mat
 
 Equipment is charcoal with restrained Tally blue (#7AA2FF) trim. Keep this trim on the racket, dumbbells, balls and supporting equipment; do not tint the mannequin. The sports scene has exactly three figures: tennis, basketball and soccer. The strength-and-sport scene raises the racket in a gentle ready stance while keeping the dumbbell visible.
 
-The 16 transparent WebP assets in public/onboarding preserve the generated originals' resolution and alpha using lossless encoding. mannequin-art.json records each scene's generation prompt, dimensions, size and SHA-256. Generation used the built-in image tool, not the application's API key. Do not resize or recolor these files as creative edits; edit from the M1 reference with the image tool.
+The 20 transparent WebP assets in public/onboarding preserve the generated originals' resolution and alpha using lossless encoding. mannequin-art.json records each scene's generation prompt, dimensions, size and SHA-256. Generation used the built-in image tool, not the application's API key. Do not resize or recolor these files as creative edits; edit from the M1 reference with the image tool.
 
 UI uses the existing appearance setting, defaulting to the system theme. There is one continuous progress track, no visible numerical counter, and no track on welcome or the first question. Meaningful answer responses are saved with the draft. Reviewing an answered section keeps completion progress full.
 

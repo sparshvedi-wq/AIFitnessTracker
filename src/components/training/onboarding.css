@@ -40,6 +40,7 @@
   display: flex;
   flex-direction: column;
   padding-top: 0;
+  scrollbar-gutter: stable;
 }
 .setup-page {
   flex: 1;
@@ -62,42 +63,49 @@
 }
 .setup-scene {
   display: flex;
+  position: relative;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  height: 175px;
-  margin: 12px -6px 4px;
+  height: clamp(220px, 34dvh, 340px);
+  margin: 8px -8px 12px;
   overflow: hidden;
 }
 .setup-scene img {
+  position: absolute;
   display: block;
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: none;
   object-fit: contain;
+}
+.setup-scene .scene-current {
+  opacity: 0;
+}
+.setup-scene .scene-current.is-loaded {
+  opacity: 1;
+  animation: mannequin-arrive 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .setup-scene--welcome {
   height: clamp(270px, 43dvh, 365px);
   margin: 0 -12px 22px;
 }
-.setup-scene--welcome img {
-  width: auto;
-  max-width: none;
-  object-fit: contain;
+.setup-scene--welcome img,
+.setup-scene--response img,
+.setup-page--location .setup-scene img {
+  max-width: 100%;
 }
-.setup-scene--sports {
-  height: 205px;
-  margin: 10px -12px 8px;
+.setup-scene--sports img {
+  width: 100%;
+  max-width: 100%;
 }
 .setup-scene--compact {
-  height: 110px;
+  height: 130px;
   margin: 8px 0 0;
 }
 .setup-scene--response {
-  height: min(34dvh, 290px);
+  height: clamp(280px, 45dvh, 410px);
   margin: 0 -12px 24px;
-}
-.setup-scene--response img {
-  object-fit: contain;
 }
 .setup-page--response {
   display: flex;
@@ -147,8 +155,64 @@
   margin-top: 12px;
   font-size: 14px;
 }
+.setup-page--goal,
+.setup-page--sports,
+.setup-page--home,
+.setup-page--location,
+.setup-page--priority,
+.setup-page--experience {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+.setup-page--goal > .setup-options,
+.setup-page--sports > .setup-options,
+.setup-page--home > .setup-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+.setup-page--goal > .space-y-3 > :not([hidden]) ~ :not([hidden]),
+.setup-page--sports > .space-y-3 > :not([hidden]) ~ :not([hidden]),
+.setup-page--home > .space-y-3 > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 0;
+}
+.setup-page--goal .onboarding-choice {
+  min-height: 68px;
+  padding: 12px;
+  gap: 8px;
+}
+.setup-page--goal .onboarding-choice .dot {
+  width: 20px;
+  height: 20px;
+}
+.setup-page--goal .onboarding-choice span.block {
+  font-size: 16px;
+}
+.setup-page--goal .setup-scene {
+  height: clamp(300px, 48dvh, 440px);
+}
+.setup-page--sports .onboarding-choice,
+.setup-page--home .onboarding-choice {
+  min-height: 105px;
+  align-items: flex-start;
+  flex-direction: column-reverse;
+  justify-content: space-between;
+  gap: 12px;
+}
+.setup-page--sports .setup-scene,
+.setup-page--home .setup-scene {
+  height: clamp(250px, 40dvh, 365px);
+}
+.setup-page--location > .setup-options,
+.setup-page--priority > .setup-options,
+.setup-page--experience > .setup-options {
+  margin-top: auto;
+}
 .setup-page--equipment .setup-scene {
-  height: 95px;
+  height: 150px;
 }
 .setup-page--manual .setup-scene,
 .setup-page--review .setup-scene {
@@ -172,31 +236,93 @@
   height: 96%;
   object-fit: contain;
 }
+.equipment-options > button {
+  min-height: 58px;
+  padding: 10px;
+}
+.equipment-options > button > span {
+  gap: 7px;
+}
+.equipment-name {
+  white-space: nowrap;
+  font-size: clamp(11px, 3.35vw, 14px);
+}
+.equipment-status {
+  min-height: 20px;
+}
+.session-progress {
+  height: 3px;
+  margin-top: 18px;
+  border-radius: 9px;
+  overflow: hidden;
+  background: rgb(var(--line));
+}
+.session-progress > span {
+  display: block;
+  height: 100%;
+  background: rgb(var(--accent));
+  transition: width 280ms ease;
+}
+.custom-duration {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgb(var(--line));
+  font-size: 14px;
+  color: rgb(var(--muted));
+}
+@keyframes mannequin-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(9px, 0, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
 @media (max-height: 740px) {
-  .setup-scene--welcome {
-    height: 220px;
+  .setup-scene,
+  .setup-page--sports .setup-scene,
+  .setup-page--home .setup-scene {
+    height: 210px;
+  }
+  .setup-page--goal .setup-scene {
+    height: clamp(220px, 39dvh, 300px);
+  }
+  .setup-scene--compact,
+  .setup-page--equipment .setup-scene {
+    height: 100px;
   }
   .setup-scene--response {
-    height: 225px;
+    height: 270px;
   }
-  .setup-scene--question {
-    height: 140px;
+  .setup-page--manual .setup-scene,
+  .setup-page--review .setup-scene {
+    height: 90px;
   }
-  .setup-scene--sports {
-    height: 170px;
+  .setup-page--sport-choice .setup-scene {
+    height: 130px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .setup-response {
+  .setup-response,
+  .setup-scene .scene-current.is-loaded {
     animation: none;
   }
-  .setup-dialog .setup-progress > span {
+  .setup-dialog .setup-progress > span,
+  .session-progress > span {
     transition: none;
   }
 }
-.tally-reduce-motion .setup-response {
+.tally-reduce-motion .setup-response,
+.tally-reduce-motion .scene-current.is-loaded {
   animation: none;
 }
-.tally-reduce-motion .setup-progress > span {
+.tally-reduce-motion .setup-progress > span,
+.tally-reduce-motion .session-progress > span {
   transition: none;
 }

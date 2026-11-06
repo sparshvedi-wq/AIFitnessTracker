@@ -19,6 +19,7 @@ export default function EnvironmentFields({
 }) {
   const [error, setError] = useState('')
   const [text, setText] = useState('')
+  const [quietHelp, setQuietHelp] = useState(false)
   const errorId = useId()
   const equipped = place.type === 'equipment'
   const showLoads = place.type === 'gym' || place.equipment.includes('Dumbbells')
@@ -54,7 +55,7 @@ export default function EnvironmentFields({
               : `Equipment at ${place.name.toLowerCase() === 'home' ? 'home' : place.name}`
           }
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="equipment-options grid grid-cols-2 gap-2">
             {HOME_EQUIPMENT.map((value) => (
               <Choice
                 key={value}
@@ -70,14 +71,16 @@ export default function EnvironmentFields({
               >
                 <span className="flex items-center gap-2.5">
                   <Icon name={EQUIPMENT_ICON[value]} size={22} className="shrink-0" />
-                  <span>{value}</span>
+                  <span className="equipment-name">{value}</span>
                 </span>
               </Choice>
             ))}
           </div>
-          {!place.equipment.length && (
-            <p className="mt-3 text-[13px] text-muted">Nothing selected? We’ll use bodyweight.</p>
-          )}
+          <p className="equipment-status mt-3 text-[13px] text-muted">
+            {!place.equipment.length
+              ? 'Nothing selected? We’ll use bodyweight.'
+              : `${place.equipment.length} selected`}
+          </p>
           <ExtraEquipment
             label="More equipment"
             options={MORE_EQUIPMENT}
@@ -161,12 +164,25 @@ export default function EnvironmentFields({
       )}
       {place.type !== 'gym' && section !== 'loads' && (
         <div className="mt-5 flex min-h-12 items-start gap-3">
-          <span className="min-w-0 flex-1 text-[14px] font-semibold">
-            Keep it quiet
-            <span className="mt-1 block text-[13px] font-normal leading-relaxed text-muted">
-              Skip jumping and noisy moves.
+          <div className="min-w-0 flex-1 text-[14px] font-semibold">
+            <span className="inline-flex items-center gap-1">
+              Keep it quiet{' '}
+              <button
+                type="button"
+                className="icon-btn !h-11 !w-11"
+                aria-label="About quiet workouts"
+                aria-expanded={quietHelp}
+                onClick={() => setQuietHelp(!quietHelp)}
+              >
+                <Icon name="info" size={17} />
+              </button>
             </span>
-          </span>
+            {quietHelp && (
+              <p className="mt-1 text-[13px] font-normal leading-relaxed text-muted">
+                Skip jumping and noisy movements. Useful for apartments, shared rooms or early starts.
+              </p>
+            )}
+          </div>
           <Toggle checked={place.quiet} onChange={(quiet) => onChange({ quiet })} label="Keep it quiet" />
         </div>
       )}

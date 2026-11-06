@@ -5,14 +5,19 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Icon from './Icon.jsx'
 import { useApp } from '../store/AppContext.jsx'
 import { parseRequest } from '../lib/assistant/parse.js'
-import { applyPreview, explainResult, historyResult, previewChanges, progressResult, undoChange } from '../lib/assistant/actions.js'
+import {
+  applyPreview,
+  explainResult,
+  historyResult,
+  previewChanges,
+  progressResult,
+  undoChange,
+} from '../lib/assistant/actions.js'
 import { interpretRemotely, remoteInterpretationAvailable } from '../lib/assistant/remote.js'
 import { profileOf } from '../lib/planner.js'
 import { placesOf } from '../lib/places.js'
 import { findExercise } from '../lib/exercises.js'
 import { shortLabel } from '../lib/date.js'
-
-const EXAMPLES = ['Show workouts over the past 30 days', 'Only 15 minutes today', 'Why these exercises?']
 
 export default function AskAdjust({ nav, plan }) {
   const { state, dispatch, today, toast } = useApp()
@@ -33,12 +38,23 @@ export default function AskAdjust({ nav, plan }) {
       plan,
       places: placesOf(profileOf(state)).map((p) => ({ id: p.id, name: p.name })),
       planIds: plan.items.map((i) => i.exId),
-      workoutIds: state.activeWorkout ? state.activeWorkout.exercises.filter((e) => e.sets.some((s) => s.status === 'todo')).map((e) => e.exId) : [],
-      historyIds: [...new Set(state.workouts.filter((w) => !w.sample).flatMap((w) => w.exercises.map((e) => e.exId)))],
+      workoutIds: state.activeWorkout
+        ? state.activeWorkout.exercises
+            .filter((e) => e.sets.some((s) => s.status === 'todo'))
+            .map((e) => e.exId)
+        : [],
+      historyIds: [
+        ...new Set(state.workouts.filter((w) => !w.sample).flatMap((w) => w.exercises.map((e) => e.exId))),
+      ],
       custom: state.customExercises,
       nameOf: (id) => findExercise(id, state.customExercises)?.name || id,
     }
   }, [state, today, plan])
+  const examples = [
+    'Why these exercises?',
+    ...(context.planIds.length ? [`Replace ${context.nameOf(context.planIds[0])}`] : []),
+    ...(context.historyIds.length ? ['Show workouts over the past 30 days'] : []),
+  ]
 
   useEffect(() => {
     if (open) input.current?.focus()
@@ -56,7 +72,9 @@ export default function AskAdjust({ nav, plan }) {
   function run(parsed) {
     if (parsed.clarify) return setOutcome({ kind: 'clarify', ...parsed.clarify })
     const reads = []
-    const changes = parsed.intents.filter((i) => ['plan.minutes', 'plan.place', 'exercise.replace'].includes(i.type))
+    const changes = parsed.intents.filter((i) =>
+      ['plan.minutes', 'plan.place', 'exercise.replace'].includes(i.type),
+    )
     for (const intent of parsed.intents) {
       if (intent.type === 'history.show') reads.push(historyResult(state, intent.args, today))
       if (intent.type === 'exercise.progress') reads.push(progressResult(state, intent.args.exId, today))
@@ -98,13 +116,26 @@ export default function AskAdjust({ nav, plan }) {
       const result = applyPreview(state, preview, { today, now: Date.now() })
       if (result.status === 'stale') {
         // Recompute from the current state rather than overwrite newer work.
-        setOutcome((o) => ({ ...o, preview: previewChanges(state, o.intents.filter((i) => ['plan.minutes', 'plan.place', 'exercise.replace'].includes(i.type)), { today, now: Date.now() }), stale: true }))
+        setOutcome((o) => ({
+          ...o,
+          preview: previewChanges(
+            state,
+            o.intents.filter((i) => ['plan.minutes', 'plan.place', 'exercise.replace'].includes(i.type)),
+            { today, now: Date.now() },
+          ),
+          stale: true,
+        }))
         return
       }
       result.actions.forEach(dispatch)
       setUndo(result.undo)
       setOutcome((o) => ({ ...o, applied: true }))
-      toast(preview.target === 'workout' ? 'Workout adjusted · logged sets kept' : 'Today’s plan updated · just for today', 'info')
+      toast(
+        preview.target === 'workout'
+          ? 'Workout adjusted · logged sets kept'
+          : 'Today’s plan updated · just for today',
+        'info',
+      )
     } finally {
       applying.current = false
     }
@@ -131,7 +162,7 @@ export default function AskAdjust({ nav, plan }) {
           value={text}
           maxLength={200}
           autoComplete="off"
-          placeholder="e.g. Only 15 minutes today"
+          placeholder="Ask about your training…"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Escape') close()
@@ -147,7 +178,7 @@ export default function AskAdjust({ nav, plan }) {
       <div aria-live="polite" className="mt-3">
         {!outcome && (
           <div className="flex flex-wrap gap-2">
-            {EXAMPLES.map((example) => (
+            {examples.map((example) => (
               <button key={example} className="chip bg-surface2" onClick={() => setText(example)}>
                 {example}
               </button>
@@ -156,7 +187,7 @@ export default function AskAdjust({ nav, plan }) {
         )}
         {outcome?.kind === 'unknown' && (
           <p className="text-[14px] text-muted">
-            {outcome.note || 'I didn’t catch that.'} Try “Only 15 minutes today”, “Replace lunges” or “How has my squat improved?”
+            {outcome.note || 'I didn’t catch that.'} Try “Replace lunges” or “How has my squat improved?”
           </p>
         )}
         {outcome?.kind === 'cancelled' && <p className="text-[14px] text-muted">Cancelled.</p>}
@@ -171,7 +202,9 @@ export default function AskAdjust({ nav, plan }) {
                     className="chip bg-surface2"
                     onClick={() => run({ intents: [option], scope: 'temporary' })}
                   >
-                    {option.args.exId ? findExercise(option.args.exId, state.customExercises)?.name : placesOf(profileOf(state)).find((p) => p.id === option.args.location)?.name}
+                    {option.args.exId
+                      ? findExercise(option.args.exId, state.customExercises)?.name
+                      : placesOf(profileOf(state)).find((p) => p.id === option.args.location)?.name}
                   </button>
                 ))}
               </div>
@@ -196,7 +229,8 @@ export default function AskAdjust({ nav, plan }) {
                   undo
                     ? () => {
                         const result = undoChange(state, undo)
-                        if (result.status === 'stale') toast('Can’t undo: the workout has changed since', 'info')
+                        if (result.status === 'stale')
+                          toast('Can’t undo: the workout has changed since', 'info')
                         else {
                           result.actions.forEach(dispatch)
                           toast('Undone', 'info')
@@ -223,13 +257,17 @@ function ResultCard({ read, nav, onClose }) {
           {read.label} · {shortLabel(read.from)}–{shortLabel(read.to)}
         </p>
         <p className="mt-2 text-[15px]">
-          <span className="font-semibold">{read.trainingSessions}</span> training {read.trainingSessions === 1 ? 'session' : 'sessions'} on{' '}
-          <span className="font-semibold">{read.trainingDays}</span> {read.trainingDays === 1 ? 'day' : 'days'} ·{' '}
-          <span className="font-semibold">{read.workingSets}</span> working {read.workingSets === 1 ? 'set' : 'sets'}
+          <span className="font-semibold">{read.trainingSessions}</span> training{' '}
+          {read.trainingSessions === 1 ? 'session' : 'sessions'} on{' '}
+          <span className="font-semibold">{read.trainingDays}</span>{' '}
+          {read.trainingDays === 1 ? 'day' : 'days'} ·{' '}
+          <span className="font-semibold">{read.workingSets}</span> working{' '}
+          {read.workingSets === 1 ? 'set' : 'sets'}
         </p>
         {(read.warmups > 0 || read.activities > 0) && (
           <p className="mt-1 text-[13px] text-muted">
-            Plus {read.warmups} warm-up{read.warmups === 1 ? '' : 's'} and {read.activities} activit{read.activities === 1 ? 'y' : 'ies'}, counted separately.
+            Plus {read.warmups} warm-up{read.warmups === 1 ? '' : 's'} and {read.activities} activit
+            {read.activities === 1 ? 'y' : 'ies'}, counted separately.
           </p>
         )}
         {read.recent.length > 0 && (
@@ -258,12 +296,14 @@ function ResultCard({ read, nav, onClose }) {
         <p className="text-[15px] font-semibold">{read.name}</p>
         {read.enough ? (
           <p className="mt-1 text-[14px] text-ink2">
-            Best set {read.from.text} ({shortLabel(read.from.date)}) → {read.to.text} ({shortLabel(read.to.date)}), across {read.sessions} logged sessions
+            Best set {read.from.text} ({shortLabel(read.from.date)}) → {read.to.text} (
+            {shortLabel(read.to.date)}), across {read.sessions} logged sessions
             {read.direction === 'same' ? '. About the same so far.' : '.'}
           </p>
         ) : (
           <p className="mt-1 text-[14px] text-muted">
-            {read.sessions ? 'Only one logged session so far' : 'No logged sessions yet'}, so there’s no change to show.
+            {read.sessions ? 'Only one logged session so far' : 'No logged sessions yet'}, so there’s no
+            change to show.
           </p>
         )}
       </div>
@@ -293,7 +333,8 @@ function ResultCard({ read, nav, onClose }) {
         </button>
       </div>
     )
-  if (read.kind === 'cleared') return <p className="text-[13px] text-muted">Nothing filtered. Ask again any time.</p>
+  if (read.kind === 'cleared')
+    return <p className="text-[13px] text-muted">Nothing filtered. Ask again any time.</p>
   return null
 }
 
@@ -302,9 +343,18 @@ function PreviewCard({ preview, stale, applied, scope, onApply, onUndo }) {
   const d = preview.diff
   return (
     <div className="rounded-2xl border border-line p-4">
-      <p className="text-[12px] text-muted">{preview.target === 'workout' ? 'Workout in progress · logged sets stay' : 'Today only'}</p>
+      <p className="text-[12px] text-muted">
+        {preview.target === 'workout' ? 'Workout in progress · logged sets stay' : 'Today only'}
+      </p>
       <ul className="mt-2 space-y-1 text-[14px]">
-        {d.minutes && <li>Time: {typeof d.minutes === 'object' ? `${d.minutes.from} → ${d.minutes.to} min` : `${d.minutes} min left`}</li>}
+        {d.minutes && (
+          <li>
+            Time:{' '}
+            {typeof d.minutes === 'object'
+              ? `${d.minutes.from} → ${d.minutes.to} min`
+              : `${d.minutes} min left`}
+          </li>
+        )}
         {d.place && <li>Place: {d.place}</li>}
         {d.added.map((a) => (
           <li key={`a-${a}`}>+ {a}</li>
@@ -318,7 +368,9 @@ function PreviewCard({ preview, stale, applied, scope, onApply, onUndo }) {
       </ul>
       {stale && <p className="mt-2 text-[13px]">Your workout changed, so this preview was updated.</p>}
       {scope === 'persistent-requested' && (
-        <p className="mt-2 text-[12px] text-muted">This changes today only. Your usual setup stays in Training preferences.</p>
+        <p className="mt-2 text-[12px] text-muted">
+          This changes today only. Your usual setup stays in Training preferences.
+        </p>
       )}
       <div className="mt-3 flex gap-2">
         {!applied ? (

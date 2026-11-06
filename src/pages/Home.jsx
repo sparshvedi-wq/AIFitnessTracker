@@ -10,7 +10,6 @@ import { placeSummary, placesOf, resolvePlace } from '../lib/places.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
 import { convertWeight, formatHeight } from '../lib/units.js'
 import { returnMessage, shortSessionRequest } from '../lib/flexible-training.js'
-import { greeting } from '../lib/presentation.js'
 import { fmtNum, muscleSets } from '../lib/workout.js'
 import Icon from '../components/Icon.jsx'
 import Select from '../components/Select.jsx'
@@ -78,10 +77,6 @@ export default function Home({ nav }) {
           </button>
         }
       />
-      <p className="mt-1 text-[14px] text-muted">
-        {greeting(now, settings.name)} ·{' '}
-        {fromKey(today).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
-      </p>
 
       {!active && welcomeBack && (
         <div className="mt-4 rounded-tuck bg-surface p-4">
@@ -111,6 +106,7 @@ export default function Home({ nav }) {
               </section>
             ) : (
               <TrainingCard
+                title="Your training"
                 plan={next}
                 place={resolvePlace(profileOf(state), next.location)}
                 customExercises={state.customExercises}
@@ -120,7 +116,11 @@ export default function Home({ nav }) {
               />
             )}
             {!resting && next.alternatives?.length > 0 && (
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]" role="group" aria-label="Other options today">
+              <div
+                className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]"
+                role="group"
+                aria-label="Other options today"
+              >
                 <span className="text-muted">Or</span>
                 {next.alternatives.map((alt) =>
                   alt.kind === 'movement' && next.kind !== 'recovery' ? (
@@ -128,13 +128,24 @@ export default function Home({ nav }) {
                       key={alt.kind}
                       className="text-link min-h-11"
                       onClick={() =>
-                        start(buildDailyPlan(state, { today, now, ...todayChoice(state, today), mode: 'movement' }))
+                        start(
+                          buildDailyPlan(state, {
+                            today,
+                            now,
+                            ...todayChoice(state, today),
+                            mode: 'movement',
+                          }),
+                        )
                       }
                     >
                       {alt.label}
                     </button>
                   ) : alt.kind === 'rest' ? (
-                    <button key={alt.kind} className="text-link min-h-11" onClick={() => setToday({ rest: true })}>
+                    <button
+                      key={alt.kind}
+                      className="text-link min-h-11"
+                      onClick={() => setToday({ rest: true })}
+                    >
                       {alt.label}
                     </button>
                   ) : null,
@@ -142,7 +153,6 @@ export default function Home({ nav }) {
               </div>
             )}
             <div className="mt-3">
-              <p className="mb-2 text-[13px] text-muted">Today I have</p>
               <div className="flex flex-wrap gap-2">
                 <Select
                   variant="chip"
@@ -164,9 +174,7 @@ export default function Home({ nav }) {
                   value={readiness.unwell ? 'unwell' : readiness.energy}
                   onChange={(value) =>
                     setToday(
-                      value === 'unwell'
-                        ? { energy: 'low', unwell: true }
-                        : { energy: value, unwell: false },
+                      value === 'unwell' ? { energy: 'low', unwell: true } : { energy: value, unwell: false },
                     )
                   }
                   options={ENERGY}
@@ -204,7 +212,7 @@ export default function Home({ nav }) {
               {manual
                 ? 'Starting profile'
                 : testPhotos
-                  ? 'Test starting photos'
+                  ? 'Photo review'
                   : checkin.latest
                     ? 'Photo check-ins'
                     : 'Starting photos'}
@@ -213,7 +221,7 @@ export default function Home({ nav }) {
               {manual
                 ? `${formatHeight(manual.heightCm, settings.weightUnit)} · ${fmtNum(convertWeight(manual.weightKg, 'kg', settings.weightUnit))} ${settings.weightUnit}`
                 : testPhotos
-                  ? 'Development test photos'
+                  ? 'Your starting point'
                   : !checkin.latest
                     ? 'Front, side and back'
                     : checkin.due

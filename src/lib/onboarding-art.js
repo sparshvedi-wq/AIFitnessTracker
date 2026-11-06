@@ -14,12 +14,40 @@ export const ONBOARDING_ART = {
   manual: '/onboarding/m1-manual.webp',
   photos: '/onboarding/m1-photos.webp',
   review: '/onboarding/m1-review.webp',
+  muscle: '/onboarding/m1-v3-muscle.webp',
+  strength: '/onboarding/m1-v3-strength.webp',
+  weight: '/onboarding/m1-v3-weight.webp',
+  gym: '/onboarding/m1-v3-gym.webp',
 }
 
 export function onboardingScene(step, profile = {}, response = false) {
   if (response && step === 'sports' && !profile.sports?.length) return 'rhythm'
   if (response && step === 'equipment' && !profile.equipment?.length) return 'time'
-  if (step === 'goal' && response && profile.goal === 'General fitness') return 'time'
+  if (response)
+    return (
+      {
+        goal: 'review',
+        experience: 'experience',
+        'sport-choice': 'priority',
+        priority: 'time',
+        'home-loads': 'location',
+        time: 'welcome',
+        rhythm: 'movement',
+        comfort: 'manual',
+      }[step] || 'review'
+    )
+  if (step === 'goal')
+    return (
+      {
+        'Build muscle': 'muscle',
+        'Get stronger': 'strength',
+        'Lose weight': 'weight',
+        'General fitness': 'rhythm',
+      }[profile.goal] || 'neutral'
+    )
+  if (step === 'location')
+    return { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }[profile.location] || 'location'
+  if (step === 'experience') return 'neutral'
   return (
     {
       welcome: 'welcome',

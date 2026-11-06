@@ -14,10 +14,23 @@ const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v))
 
 // How well a role and loading type serves each goal (0..1).
 const GOAL_FIT = {
+  'Lose weight': { compoundLoaded: 0.85, compoundBody: 0.9, accessory: 0.7, isolation: 0.5, control: 0.5 },
   'Get stronger': { compoundLoaded: 0.85, compoundBody: 0.55, accessory: 0.5, isolation: 0.3, control: 0.25 },
   'Build muscle': { compoundLoaded: 0.95, compoundBody: 0.75, accessory: 0.8, isolation: 0.7, control: 0.3 },
-  'General fitness': { compoundLoaded: 0.85, compoundBody: 0.9, accessory: 0.7, isolation: 0.5, control: 0.5 },
-  'Sport performance': { compoundLoaded: 0.85, compoundBody: 0.8, accessory: 0.65, isolation: 0.35, control: 0.5 },
+  'General fitness': {
+    compoundLoaded: 0.85,
+    compoundBody: 0.9,
+    accessory: 0.7,
+    isolation: 0.5,
+    control: 0.5,
+  },
+  'Sport performance': {
+    compoundLoaded: 0.85,
+    compoundBody: 0.8,
+    accessory: 0.65,
+    isolation: 0.35,
+    control: 0.5,
+  },
 }
 export function goalFit(meta, goal) {
   const table = GOAL_FIT[goal] || GOAL_FIT['General fitness']
@@ -73,9 +86,10 @@ export function scoreCandidate(meta, ctx) {
     : 0
   f.sport =
     ctx.sportAreas.size && primaryAreas.some((a) => ctx.sportAreas.has(a))
-      ? SPORT_PRIORITY_SCALE[ctx.sportPriority] ?? 0.5
+      ? (SPORT_PRIORITY_SCALE[ctx.sportPriority] ?? 0.5)
       : 0
-  if (ctx.preparationAreas.size && primaryAreas.some((a) => ctx.preparationAreas.has(a))) f.sport = Math.max(f.sport, 0.6)
+  if (ctx.preparationAreas.size && primaryAreas.some((a) => ctx.preparationAreas.has(a)))
+    f.sport = Math.max(f.sport, 0.6)
   // Areas to keep fresh around a planned sport event: a strong soft penalty.
   f.eventProtect = primaryAreas.some((a) => ctx.protectedAreas.has(a)) ? 1 : 0
 
@@ -105,7 +119,9 @@ export function scoreCandidate(meta, ctx) {
   const trend = ctx.trends.get(meta.id)
   f.progression = trend ? { up: 1, flat: 0.3, down: -0.2, unknown: 0 }[trend.direction] : 0
   const completions = signal?.completions || 0
-  f.familiarity = clamp(Math.log2(1 + completions) / 3) * (ctx.variety === 'familiar' ? 1.6 : ctx.variety === 'more' ? 0.4 : 1)
+  f.familiarity =
+    clamp(Math.log2(1 + completions) / 3) *
+    (ctx.variety === 'familiar' ? 1.6 : ctx.variety === 'more' ? 0.4 : 1)
   f.staple = meta.staple ? 1 : 0
   f.setup = -clamp(meta.setupSec / 120) - (signal?.setup.awkwardHere ? 1 : 0)
   f.replacement = ctx.preferredReplacements.has(meta.id) ? 1 : 0
@@ -126,7 +142,10 @@ export function scoreCandidate(meta, ctx) {
   // Overlap with recent completed work, kept as three separate features.
   const capacity = ctx.capacity
   f.muscleOverlap = clamp(
-    Object.entries(shares).reduce((n, [a, s]) => n + s * Math.min(1.5, (ctx.exposure.area[a]?.recent || 0) / capacity), 0) / 1.5,
+    Object.entries(shares).reduce(
+      (n, [a, s]) => n + s * Math.min(1.5, (ctx.exposure.area[a]?.recent || 0) / capacity),
+      0,
+    ) / 1.5,
   )
   const familyRecent = ctx.exposure.family[meta.family]?.recent || 0
   const ownRecent = ctx.exposure.exercise[meta.id]?.recent || 0
@@ -147,7 +166,13 @@ export function scoreCandidate(meta, ctx) {
   const lastAt = ctx.exposure.exercise[meta.id]?.lastAt || 0
   const hoursSince = lastAt ? (ctx.now - lastAt) / 3600000 : Infinity
   f.practice =
-    ctx.goal === 'Get stronger' && meta.role === 'compound' && ctx.level >= 1 && hoursSince >= 44 && hoursSince <= 120 ? 1 : 0
+    ctx.goal === 'Get stronger' &&
+    meta.role === 'compound' &&
+    ctx.level >= 1 &&
+    hoursSince >= 44 &&
+    hoursSince <= 120
+      ? 1
+      : 0
 
   const w = WEIGHTS
   let score =
@@ -200,7 +225,8 @@ export function explorationSample(meta, signal, ctx) {
     ctx.variety !== 'familiar' &&
     !ctx.easy &&
     ctx.familiesToLearn.has(meta.family)
-  if (!open || ctx.strategy === 'greedy') return { mean, value: mean, adjustment: 0, exploratory, alpha, beta }
+  if (!open || ctx.strategy === 'greedy')
+    return { mean, value: mean, adjustment: 0, exploratory, alpha, beta }
   if (ctx.strategy === 'ucb') {
     // Deterministic optimism: a bonus proportional to the posterior's spread,
     // for rarely tried options only.

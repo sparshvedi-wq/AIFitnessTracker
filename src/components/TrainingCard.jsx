@@ -13,6 +13,7 @@ export default function TrainingCard({
   compact = false,
   customExercises = [],
   showContext = true,
+  title,
 }) {
   const [expanded, setExpanded] = useState(false)
   const sets = plan.items.reduce((n, it) => n + it.sets, 0)
@@ -22,7 +23,7 @@ export default function TrainingCard({
       <div className="p-4">
         <div className="flex items-start justify-between gap-3">
           <h2 className={`font-display ${compact ? 'text-[25px]' : 'text-[28px]'} leading-tight`}>
-            {plan.name}
+            {title || plan.name}
           </h2>
           <button
             className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border border-paper-muted/40 px-3 text-[12px] font-semibold"
@@ -35,7 +36,9 @@ export default function TrainingCard({
           </button>
         </div>
         <p className="mt-2 text-[14px] leading-relaxed text-paper-muted">{planSummary(plan)}</p>
-        <PlanRibbon items={plan.items} customExercises={customExercises} findExercise={findExercise} />
+        {expanded && (
+          <PlanRibbon items={plan.items} customExercises={customExercises} findExercise={findExercise} />
+        )}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-paper-muted">
           {showContext && (
             <>

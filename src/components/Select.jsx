@@ -13,6 +13,7 @@ export default function Select({
   placeholder = 'Choose',
   className = '',
   variant = 'field',
+  displayValue,
 }) {
   const [open, setOpen] = useState(false)
   const current = options.find(([v]) => v === value)
@@ -27,7 +28,7 @@ export default function Select({
         onClick={() => setOpen(true)}
       >
         <span className={`min-w-0 truncate ${current ? '' : 'text-faint'}`}>
-          {current ? current[1] : placeholder}
+          {displayValue ?? (current ? current[1] : placeholder)}
         </span>
         <Icon name="chevronDown" size={variant === 'chip' ? 14 : 16} className="shrink-0 text-muted" />
       </button>

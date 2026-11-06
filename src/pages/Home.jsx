@@ -153,7 +153,7 @@ export default function Home({ nav }) {
               </div>
             )}
             <div className="mt-3">
-              <div className="flex flex-wrap gap-2">
+              <div className="today-controls grid grid-cols-3 gap-2">
                 <Select
                   variant="chip"
                   label="Time today"
@@ -171,6 +171,7 @@ export default function Home({ nav }) {
                 <Select
                   variant="chip"
                   label="Energy today"
+                  displayValue={!readiness.unwell && readiness.energy === 'normal' ? 'Energy' : undefined}
                   value={readiness.unwell ? 'unwell' : readiness.energy}
                   onChange={(value) =>
                     setToday(

@@ -925,3 +925,10 @@ input[type='checkbox'] {
 .tally-reduce-motion .ask-panel {
   animation: none;
 }
+.today-controls > button {
+  min-width: 0;
+  justify-content: space-between;
+  padding-inline: 12px;
+  gap: 6px;
+  font-size: 13px;
+}

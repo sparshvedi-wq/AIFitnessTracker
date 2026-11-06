@@ -84,6 +84,7 @@ export function shouldShowOnboardingResponse(step, p) {
   return ['goal', 'experience', 'sport-choice', 'priority', 'home-loads', 'time', 'rhythm'].includes(step)
 }
 export function restoredOnboardingResponse(draft, profile) {
+  if (!draft || typeof draft.step !== 'string') return null
   return draft?.step === draft?.responseFor &&
     onboardingSteps(profile).includes(draft.step) &&
     shouldShowOnboardingResponse(draft.step, profile)

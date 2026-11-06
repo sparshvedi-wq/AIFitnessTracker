@@ -52,6 +52,8 @@ test('responses use actual choices and restored replies cannot point to a differ
   assert.equal(shouldShowOnboardingResponse('sports', p), true)
   assert.equal(shouldShowOnboardingResponse('sports', { ...p, wantsSport: true }), false)
   assert.equal(restoredOnboardingResponse({ step: 'goal', responseFor: 'goal' }, p), 'goal')
+  for (const draft of [undefined, null, {}, { responseFor: 'goal' }])
+    assert.equal(restoredOnboardingResponse(draft, p), null)
   assert.equal(restoredOnboardingResponse({ step: 'goal', responseFor: 'time' }, p), null)
   assert.equal(restoredOnboardingResponse({ step: 'home-loads', responseFor: 'home-loads' }, p), null)
   const state = normalizeState({

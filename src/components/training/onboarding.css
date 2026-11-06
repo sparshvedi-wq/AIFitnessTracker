@@ -291,7 +291,7 @@
     height: 210px;
   }
   .setup-page--goal .setup-scene {
-    height: clamp(220px, 39dvh, 300px);
+    height: clamp(185px, 33dvh, 240px);
   }
   .setup-scene--compact,
   .setup-page--equipment .setup-scene {

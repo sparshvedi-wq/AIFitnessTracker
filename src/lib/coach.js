@@ -1,4 +1,4 @@
-// Sound, voice and vibration cues for the workout player, plus a screen
+// Sound, haptic and optional spoken cues for the workout player, plus a screen
 // wake lock. Every call is best-effort: unsupported browsers just stay quiet.
 
 import { isNativeApp, nativeRequest } from './native.js'
@@ -51,28 +51,56 @@ export function say(text) {
   }
 }
 
-export function buzz(pattern) {
+// Named haptics. Expo Go maps them to native feedback; browsers that support
+// vibration get a short matching pattern; everything else stays still.
+export const HAPTICS = {
+  selection: 6,
+  light: 10,
+  tick: 12,
+  medium: 18,
+  heavy: 28,
+  success: [14, 50, 24],
+  warning: [30, 60, 30],
+  celebrate: [16, 60, 16, 60, 34],
+}
+export function buzz(kind = 'light') {
+  const style = HAPTICS[kind] ? kind : 'light'
   if (isNativeApp()) {
-    void nativeRequest('haptics.buzz', { strong: Array.isArray(pattern) }).catch(() => {})
+    void nativeRequest('haptics.buzz', { style }).catch(() => {})
     return
   }
   try {
-    navigator.vibrate?.(pattern)
+    navigator.vibrate?.(HAPTICS[style])
   } catch {
     /* ignore */
   }
 }
 
-// One place that respects the user's cue settings.
+// A haptic that honors the Haptics setting.
+export function feel(prefs, kind) {
+  if (prefs?.vibrate !== false) buzz(kind)
+}
+
+// One place that respects the user's cue settings. Spoken cues are an
+// accessibility option; haptics and short tones carry the default feel.
 export function makeCoach(prefs) {
   return {
     tick() {
       if (prefs.sound) beep({ freq: 660, ms: 110 })
-      if (prefs.vibrate) buzz(40)
+      if (prefs.vibrate) buzz('tick')
     },
     go(text) {
       if (prefs.sound) beep({ freq: 990, ms: 320, volume: 0.22 })
-      if (prefs.vibrate) buzz([80, 60, 80])
+      if (prefs.vibrate) buzz('heavy')
+      if (prefs.voice && text) say(text)
+    },
+    rest(text) {
+      if (prefs.vibrate) buzz('medium')
+      if (prefs.voice && text) say(text)
+    },
+    done(text) {
+      if (prefs.sound) beep({ freq: 990, ms: 320, volume: 0.22 })
+      if (prefs.vibrate) buzz('success')
       if (prefs.voice && text) say(text)
     },
     speak(text) {

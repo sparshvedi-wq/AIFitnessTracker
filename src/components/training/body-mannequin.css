@@ -96,3 +96,60 @@
 .tally-reduce-motion .body-mannequin > img {
   animation: none;
 }
+.mannequin-render {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.mannequin-render > img,
+.mannequin-regions {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.mannequin-render > img {
+  object-fit: fill;
+  pointer-events: none;
+}
+.body-mannequin > .mannequin-render {
+  position: absolute;
+  left: 15.715%;
+  width: 68.57%;
+  height: 100%;
+}
+.mannequin-regions {
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  overflow: visible;
+}
+.mannequin-region {
+  fill: rgb(var(--accent));
+  fill-opacity: 0;
+  outline: none;
+  transition: fill-opacity 220ms ease;
+}
+.mannequin-region.is-interactive {
+  cursor: pointer;
+}
+.mannequin-region.is-interactive:hover,
+.mannequin-region:has(path:focus-visible) {
+  fill-opacity: 0.25;
+}
+.mannequin-region.is-selected {
+  fill-opacity: 0.62;
+}
+.mannequin-region path:focus-visible {
+  stroke: rgb(var(--ink));
+  stroke-width: 4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mannequin-region {
+    transition: none;
+  }
+}
+.tally-reduce-motion .mannequin-region {
+  transition: none;
+}

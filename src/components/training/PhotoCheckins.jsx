@@ -15,10 +15,12 @@ import { GuideBubble, SetupHeader } from './SetupVisuals.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import PhotoReviewStory, { PhotoReviewLoading } from './PhotoReviewStory.jsx'
 import { photoReviewSlides } from '../../lib/photo-review.js'
+import { shortLabel } from '../../lib/date.js'
 
 const DEV = import.meta.env.DEV
+const viewName = (angle) => `${angle.charAt(0).toUpperCase()}${angle.slice(1)} view`
 const photoLabel = (checkin, all) =>
-  `${checkin.date}${all.filter((c) => c.date === checkin.date).length > 1 && checkin.createdAt ? ` · ${new Date(checkin.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : ''}`
+  `${shortLabel(checkin.date)}${all.filter((c) => c.date === checkin.date).length > 1 && checkin.createdAt ? ` · ${new Date(checkin.createdAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' })}` : ''}`
 export default function PhotoCheckins({
   onClose,
   onboarding = false,
@@ -443,7 +445,7 @@ export default function PhotoCheckins({
                 </button>
               ) : (
                 <div className="flex gap-2">
-                  <button className="btn-primary min-h-12 flex-1 capitalize" onClick={() => pick(true)}>
+                  <button className="btn-primary min-h-12 flex-1" onClick={() => pick(true)}>
                     <Icon name="camera" size={18} />
                     Take {angle} photo
                   </button>
@@ -521,11 +523,9 @@ export default function PhotoCheckins({
           )
         }
       >
-        {onboarding && adding && !reviewing && (
-          <GuideBubble note="Front, side and back. Optional.">Your starting photos</GuideBubble>
-        )}
+        {onboarding && adding && !reviewing && <GuideBubble>Your starting photos</GuideBubble>}
         {reviewing ? (
-          <PhotoReviewLoading status={busy} />
+          <PhotoReviewLoading status={busy} previews={photos} />
         ) : adding ? (
           <>
             <div className="mt-4 grid grid-cols-3 gap-2">
@@ -538,16 +538,21 @@ export default function PhotoCheckins({
                   onClick={() => setAngle(a)}
                   className={`tile flex min-h-12 items-center justify-center gap-2 !rounded-[16px] text-[15px] font-semibold capitalize ${angle === a ? '' : 'text-ink2'}`}
                 >
+                  {photos[a] && <img src={photos[a].preview} alt="" className="photo-angle-thumb" />}
                   <span>{a}</span>
                   {photos[a] ? (
-                    <Icon name={checks[a]?.usable === false ? 'info' : 'check'} size={14} />
+                    <Icon
+                      name={checks[a]?.usable === false ? 'info' : 'check'}
+                      size={14}
+                      className="shrink-0"
+                    />
                   ) : !onboarding ? (
                     <span className="text-[11px] opacity-50">{i + 1}</span>
                   ) : null}
                 </button>
               ))}
             </div>
-            <div className="photo-frame mt-4 flex h-[clamp(220px,32dvh,300px)] items-center justify-center overflow-hidden">
+            <div className="photo-frame mt-4 flex h-[clamp(220px,32dvh,300px)] shrink-0 items-center justify-center overflow-hidden">
               {photos[angle] ? (
                 <img
                   src={photos[angle].preview}
@@ -572,7 +577,9 @@ export default function PhotoCheckins({
                 </div>
               )}
             </div>
-            <p className="mt-3 text-[14px] text-muted">Stand relaxed. Keep your whole body in frame.</p>
+            {!photos[angle] && (
+              <p className="mt-3 text-[14px] text-muted">Stand relaxed, whole body in frame.</p>
+            )}
             {checks[angle] && (
               <p
                 role="status"
@@ -581,11 +588,7 @@ export default function PhotoCheckins({
                 {checks[angle].usable ? 'This view is usable.' : checks[angle].feedback}
               </p>
             )}
-            {Object.keys(photos).length > 0 && (
-              <p className="mt-2 text-[13px] text-muted">
-                {draftError || 'Draft kept on this device for up to 7 days.'}
-              </p>
-            )}
+            {draftError && <p className="mt-2 text-[13px] text-muted">{draftError}</p>}
             {all && (
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <button
@@ -789,6 +792,7 @@ export default function PhotoCheckins({
                     selectedFocus={selectedFocus}
                     onFocusChange={setSelectedFocus}
                     canApply={!detail.synthetic && p.ageGroup === '18+'}
+                    appliesOnContinue={onboarding}
                   />
                 ) : (
                   <>
@@ -799,7 +803,7 @@ export default function PhotoCheckins({
                           type="button"
                           disabled={!detail.previews?.[a]}
                           aria-label={`Enlarge ${a} view`}
-                          onClick={() => setZoom({ src: detail.previews[a], label: `${a} view` })}
+                          onClick={() => setZoom({ src: detail.previews[a], label: viewName(a) })}
                         >
                           {detail.previews?.[a] && <img src={detail.previews[a]} alt={`${a} view`} />}
                           <span>{a}</span>
@@ -833,7 +837,8 @@ export default function PhotoCheckins({
                       )}
                     </>
                   )}
-                {reviewStep === reviewLast &&
+                {!onboarding &&
+                  reviewStep === reviewLast - 1 &&
                   !detail.synthetic &&
                   p.ageGroup === '18+' &&
                   detail.review?.suggestedFocus?.length > 0 && (
@@ -877,9 +882,6 @@ export default function PhotoCheckins({
                       <button onClick={applyFocus} className="btn-secondary mt-4 min-h-12 w-full">
                         Use selected focus in my training
                       </button>
-                      <p className="mt-2 text-[13px] text-muted">
-                        These areas get a little extra work. Reviewed after six weeks.
-                      </p>
                     </Field>
                   )}
                 {reviewStep === reviewLast && detail.review?.limitations?.length > 0 && (
@@ -988,7 +990,7 @@ function PhotoComparison({ current, checkins, angle, setAngle, onZoom }) {
             key={c.id}
             className="rounded-2xl bg-surface p-2"
             aria-label={`Enlarge ${angle} view from ${photoLabel(c, checkins)}`}
-            onClick={() => onZoom({ src: c.previews[angle], label: `${angle} · ${c.date}` })}
+            onClick={() => onZoom({ src: c.previews[angle], label: `${viewName(angle)} · ${shortLabel(c.date)}` })}
           >
             <img className="h-56 w-full object-contain" src={c.previews[angle]} alt={`${angle} view`} />
             <span className="mt-2 block text-[12px] text-muted">{photoLabel(c, checkins)}</span>

@@ -11,18 +11,18 @@ export const demoReview = () => ({
   views: Object.fromEntries(
     ['front', 'side', 'back'].map((a) => [a, { usable: true, feedback: 'Demo fixture, not checked by AI.' }]),
   ),
-  summary: 'A balanced starting point, with shoulders and upper back as possible training priorities.',
+  summary: 'Shoulder balance and back development, within whole-body training.',
   observations: [
     {
       area: 'shoulders',
-      observation: 'The relaxed shoulder outline looks slightly different between sides.',
+      observation: 'Your shoulders look uneven.',
       uncertainty:
         'Camera angle and how you stand can create this appearance. It does not establish a strength difference.',
       evidenceViews: ['front', 'back'],
     },
     {
       area: 'back',
-      observation: 'Upper-back development is a possible area to follow across future check-ins.',
+      observation: 'Your back looks smaller in proportion to your torso.',
       uncertainty: 'A photo cannot measure muscle mass or tell whether an area is weak.',
       evidenceViews: ['back'],
     },

@@ -16,7 +16,9 @@ function isolateTopDialog() {
   let branch = topDialog()
   while (branch && branch !== document.body) {
     for (const node of branch.parentElement?.children || []) {
-      if (node === branch || ['SCRIPT', 'STYLE'].includes(node.tagName)) continue
+      // Toasts (save errors, Undo) must stay usable above any sheet.
+      if (node === branch || ['SCRIPT', 'STYLE'].includes(node.tagName) || node.hasAttribute('data-dialog-exempt'))
+        continue
       undoIsolation.push({ node, inert: node.inert, hidden: node.getAttribute('aria-hidden') })
       node.inert = true
       node.setAttribute('aria-hidden', 'true')

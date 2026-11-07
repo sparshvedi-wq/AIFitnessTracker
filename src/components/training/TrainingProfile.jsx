@@ -1,5 +1,6 @@
 import { count } from '../../lib/presentation.js'
 import './onboarding.css'
+import { physiqueOptions, physiqueChoice } from '../../lib/physique-preferences.js'
 import { useEffect, useRef, useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
@@ -36,7 +37,7 @@ import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
 import EnvironmentFields from './EnvironmentFields.jsx'
-import { placeSummary, placesOf, resolvePlace, updatePlace } from '../../lib/places.js'
+import { placesOf, resolvePlace, updatePlace } from '../../lib/places.js'
 import MovementFields from './MovementFields.jsx'
 import ManualBaselineFields from './ManualBaselineFields.jsx'
 import PhotoCheckins from './PhotoCheckins.jsx'
@@ -47,6 +48,7 @@ export { Choice, Field } from './Fields.jsx'
 const TITLES = {
   welcome: 'Welcome to Tally',
   goal: 'What’s your main goal?',
+  physique: 'What would you like to build toward?',
   experience: 'How familiar is training?',
   about: 'A little about you',
   sports: 'Do you play a sport?',
@@ -66,11 +68,11 @@ const TITLES = {
 }
 const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
-  comfort: 'These areas stay out of your suggested workouts.',
 }
 // What M1 says on each question. Shorter than the plain title, same meaning.
 const GUIDE = {
   goal: 'What are we training for?',
+  physique: 'What would you like your build to look like?',
   experience: 'How familiar is training?',
   about: 'A little about you',
   sports: 'Play any sports?',
@@ -89,7 +91,6 @@ const GUIDE = {
 }
 // Questions without their own artwork show one lit scene; it never repeats on the reply.
 const STAGED = ['experience', 'priority', 'home', 'movement', 'time', 'rhythm']
-const BADGE = { goal: 'Goal set', 'sport-choice': 'Sports added', time: 'Time set', priority: 'Priority set' }
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
@@ -347,7 +348,6 @@ export default function TrainingProfile({ onClose }) {
         {response ? (
           <SetupResponse
             scene={onboardingScene(step, p, true)}
-            badge={BADGE[step]}
             title={response[0]}
             copy={response[1]}
             headingRef={heading}
@@ -375,6 +375,27 @@ export default function TrainingProfile({ onClose }) {
                 value={p.goal}
                 onChange={(goal) => set({ goal })}
               />
+            )}
+            {step === 'physique' && (
+              <>
+                <ImageChoices
+                  label="Build preference"
+                  layout="physiques"
+                  options={physiqueOptions(p.goal, p.ageGroup).map((o) => [o.id, o.label, o.scene])}
+                  value={physiqueChoice(p)}
+                  onChange={(id) => set({ idealPhysique: { goal: p.goal, id } })}
+                />
+                <button
+                  type="button"
+                  className="btn-ghost mt-3 w-full"
+                  onClick={() => {
+                    set({ idealPhysique: null })
+                    move(nextStep, { ...p, idealPhysique: null })
+                  }}
+                >
+                  Not sure yet
+                </button>
+              </>
             )}
             {step === 'experience' && (
               <Cards
@@ -438,8 +459,8 @@ export default function TrainingProfile({ onClose }) {
                 label="Sport"
                 layout="rows"
                 options={[
-                  [true, 'Yes, I play', 'sports', 'Warm-ups fit your sport'],
-                  [false, 'No sport right now', 'neutral', 'Training follows your goal'],
+                  [true, 'Yes, I play', 'sports'],
+                  [false, 'No sport right now', 'neutral'],
                 ]}
                 value={Boolean(p.wantsSport || p.sports.length)}
                 onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
@@ -510,9 +531,6 @@ export default function TrainingProfile({ onClose }) {
                   place.id,
                   place.name,
                   LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
-                  { gym: 'Full gym equipment', home: 'What you own', 'on-the-go': 'Bodyweight, any room' }[
-                    place.id
-                  ] || placeSummary(place),
                 ])}
                 value={p.location}
                 onChange={(location) =>

@@ -72,9 +72,6 @@ export default function ExerciseVisualGuide({ exercise }) {
             </button>
           ))}
         </div>
-        <p className="px-1 pb-1 pt-3 text-[11px] leading-relaxed text-muted">
-          Illustrated positions. Follow the technique cues below at your own pace.
-        </p>
       </figcaption>
     </figure>
   )

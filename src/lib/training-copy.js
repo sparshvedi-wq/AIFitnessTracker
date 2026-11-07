@@ -9,6 +9,7 @@ export function trainingFocus({
   sports = [],
   sportPriority,
   focus = [],
+  focusSource,
   easy,
   firstSession = false,
 }) {
@@ -29,8 +30,12 @@ export function trainingFocus({
       ? `Building a balanced base for ${name}.`
       : `Overall muscle balance, with a little extra support for ${name}.`
   }
-  if (focus.length) return 'Balanced work, with extra attention to the areas you chose.'
-  if (firstSession) return 'A first session to find comfortable starting weights.'
+  if (focus.length)
+    return focusSource === 'photo'
+      ? 'Balanced training, with a small photo-based emphasis.'
+      : 'Balanced work, with extra attention to the areas you chose.'
+  // The first session explains itself on its own screen in the player.
+  if (firstSession) return ''
   if (recentMuscles.size && muscles.every((m) => !recentMuscles.has(m)))
     return 'Areas you haven’t trained in the last couple of days.'
   return 'Balanced work across your main muscle groups.'

@@ -161,10 +161,13 @@ test('native voice, haptic, wake and sharing actions reach only the selected ada
   )
   await service.handle('speech.say', { text: 'Begin set' })
   await service.handle('haptics.buzz', { strong: true })
+  await service.handle('haptics.buzz', { style: 'celebrate' })
+  await service.handle('haptics.buzz', { style: 'not-a-style' })
   await service.handle('screen.keepAwake', { active: false })
   await service.handle('share.text', { text: 'Fictional summary' })
   await service.handle('backup.export', { raw: snapshot })
-  assert.deepEqual(seen, ['Begin set', true, false, 'Fictional summary', snapshot])
+  // Older { strong } calls still work; unknown styles fall back to a light tap.
+  assert.deepEqual(seen, ['Begin set', 'success', 'celebrate', 'light', false, 'Fictional summary', snapshot])
 })
 
 test('the real web bridge round-trips a response and does not evaluate backup contents', async () => {

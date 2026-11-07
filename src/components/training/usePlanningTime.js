@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-export default function usePlanningTime() {
+// `floor` keeps planning from running behind something that already happened,
+// such as a workout saved seconds ago (the clock only refreshes each minute).
+export const lastRecordedAt = (workouts = []) =>
+  workouts.reduce((latest, w) => (w.sample ? latest : Math.max(latest, w.endedAt || 0)), 0)
+
+export default function usePlanningTime(floor = 0) {
   const [now, setNow] = useState(Date.now)
   useEffect(() => {
     const refresh = () => setNow(Date.now())
@@ -10,5 +15,5 @@ export default function usePlanningTime() {
       document.removeEventListener('visibilitychange', refresh)
     }
   }, [])
-  return now
+  return Math.max(now, Number.isFinite(floor) ? floor : 0)
 }

@@ -53,7 +53,7 @@ function extend(state, c, ctx, overlapWith = (x) => overlapOf(x.meta, c.meta)) {
     for (const a of primaryAreas(c.meta))
       if (ctx.focusAreas.has(a) && !direct.includes(a)) {
         direct = [...direct, a]
-        focusGain += SELECTION.focusBonus
+        focusGain += SELECTION.focusBonus * (ctx.focusStrength?.[a] ?? 1)
       }
   return {
     chosen: [...state.chosen, c],
@@ -74,12 +74,20 @@ const EMPTY = { chosen: [], covered: {}, classes: [], direct: [], value: 0, mask
 
 function fits(chosen, candidate, ctx) {
   if (chosen.some((c) => c.meta.id === candidate.meta.id)) return false
-  if (chosen.filter((c) => c.meta.pattern === candidate.meta.pattern).length >= SELECTION.maxPerPattern) return false
+  if (chosen.filter((c) => c.meta.pattern === candidate.meta.pattern).length >= SELECTION.maxPerPattern)
+    return false
   if (chosen.some((c) => c.meta.family === candidate.meta.family)) return false
   // No broad area is the main target of more than two exercises.
   const areas = primaryAreas(candidate.meta)
   if (areas.some((a) => chosen.filter((c) => primaryAreas(c.meta).includes(a)).length >= 2)) return false
-  if (chosen.some((c) => c.def.muscle === candidate.def.muscle && c.meta.role !== 'compound' && candidate.meta.role !== 'compound'))
+  if (
+    chosen.some(
+      (c) =>
+        c.def.muscle === candidate.def.muscle &&
+        c.meta.role !== 'compound' &&
+        candidate.meta.role !== 'compound',
+    )
+  )
     return false
   if (candidate.sample.exploratory && candidate.explorable) {
     const explore = chosen.filter((c) => c.sample.exploratory && c.explorable).length
@@ -156,7 +164,10 @@ export function selectBeam(candidates, ctx) {
   // A bounded search can prune the greedy path. Keep that feasible baseline
   // as a fallback rather than knowingly returning a worse objective.
   const greedy = selectGreedy(candidates, ctx)
-  if ((greedy.length >= ctx.minItems || best.chosen.length < ctx.minItems) && selectionValue(greedy, ctx) > best.value)
+  if (
+    (greedy.length >= ctx.minItems || best.chosen.length < ctx.minItems) &&
+    selectionValue(greedy, ctx) > best.value
+  )
     return greedy
   return best.chosen
 }

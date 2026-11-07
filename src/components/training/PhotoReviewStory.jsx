@@ -1,14 +1,33 @@
+import { useEffect, useState } from 'react'
 import Icon from '../Icon.jsx'
-import { photoReviewSlides, conciseSummary } from '../../lib/photo-review.js'
+import MannequinRegions from './MannequinRegions.jsx'
+import { photoReviewSlides, focusAction } from '../../lib/photo-review.js'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import './photo-review.css'
+const viewName = (angle) => `${angle.charAt(0).toUpperCase()}${angle.slice(1)} view`
 // Only the real request state is shown; no invented stages or percentages.
-export function PhotoReviewLoading({ status }) {
+export function PhotoReviewLoading({ status, previews }) {
+  const [angle, setAngle] = useState(0)
+  const photos = ['front', 'side', 'back'].map((a) => previews?.[a]?.preview || previews?.[a]).filter(Boolean)
+  useEffect(() => {
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      document.documentElement.classList.contains('tally-reduce-motion')
+    )
+      return
+    const timer = setInterval(() => setAngle((v) => (v + 1) % 3), 2600)
+    return () => clearInterval(timer)
+  }, [])
   return (
     <section className="review-loading" role="status" aria-live="polite">
       <div className="review-scan">
         <span className="floor-glow review-scan-floor" />
-        <img src={ONBOARDING_ART.neutral} alt="" />
+        <img
+          key={angle}
+          src={photos[angle % Math.max(1, photos.length)] || ONBOARDING_ART.neutral}
+          alt=""
+          className="review-loading-photo"
+        />
         <span className="review-scan-line" />
       </div>
       <h3 className="font-display text-[30px]">A closer look</h3>
@@ -16,57 +35,23 @@ export function PhotoReviewLoading({ status }) {
     </section>
   )
 }
-// Where each reviewed area sits on M1, in % of the render. Only a qualitative highlight:
-// it marks the area a finding refers to, never a size, score or measurement.
-const FRONT = '/onboarding/m1-neutral.webp'
-const BACK = '/onboarding/m1-photo-back.webp'
-const FOCUS = {
-  shoulders: {
-    src: BACK,
-    spots: [
-      [33, 22, 10, 6],
-      [67, 22, 10, 6],
-    ],
-  },
-  back: { src: BACK, spots: [[50, 30, 17, 9]] },
-  glutes: { src: BACK, spots: [[50, 51, 15, 6]] },
-  chest: { src: FRONT, spots: [[50, 25, 15, 6]] },
-  arms: {
-    src: FRONT,
-    spots: [
-      [27, 37, 7, 10],
-      [73, 37, 7, 10],
-    ],
-  },
-  legs: {
-    src: FRONT,
-    spots: [
-      [42, 72, 8, 17],
-      [58, 72, 8, 17],
-    ],
-  },
-}
-
+// The tint follows M1's traced regions; it is an area marker, never a measurement.
 export function FocusModel({ area }) {
-  const focus = FOCUS[area]
-  const src = focus?.src || FRONT
-  const glow = focus
-    ? focus.spots
-        .map(
-          ([x, y, w, h]) =>
-            `radial-gradient(${w}% ${h}% at ${x}% ${y}%, rgb(var(--accent) / 0.95), rgb(var(--accent) / 0.4) 55%, rgb(var(--accent) / 0) 100%)`,
-        )
-        .join(', ')
-    : 'linear-gradient(rgb(var(--accent) / 0.38), rgb(var(--accent) / 0.38))'
+  const view = ['back', 'shoulders', 'glutes'].includes(area) ? 'back' : 'front'
+  const groups = {
+    shoulders: ['Shoulders'],
+    chest: ['Chest'],
+    back: ['Back'],
+    arms: ['Biceps', 'Triceps'],
+    legs: ['Legs'],
+    glutes: ['Glutes'],
+    overall: [],
+  }
   return (
     <div className="focus-model" aria-hidden="true">
       <span className="floor-glow focus-model-floor" />
       <div className="focus-model-figure">
-        <img src={src} alt="" width="1024" height="1536" decoding="async" />
-        <span
-          className="focus-model-tint"
-          style={{ backgroundImage: glow, WebkitMaskImage: `url(${src})`, maskImage: `url(${src})` }}
-        />
+        <MannequinRegions view={view} selected={groups[area] || []} />
       </div>
     </div>
   )
@@ -81,6 +66,7 @@ export default function PhotoReviewStory({
   selectedFocus,
   onFocusChange,
   canApply,
+  appliesOnContinue = false,
 }) {
   const slides = photoReviewSlides(review),
     slide = slides[Math.min(step, slides.length - 1)]
@@ -121,7 +107,7 @@ export default function PhotoReviewStory({
                   key={a}
                   type="button"
                   aria-label={`Enlarge ${a} view`}
-                  onClick={() => onZoom({ src: previews?.[a], label: `${a} view` })}
+                  onClick={() => onZoom({ src: previews?.[a], label: viewName(a) })}
                   disabled={!previews?.[a]}
                 >
                   {previews?.[a] && <img src={previews[a]} alt={`${a} view`} />}
@@ -130,13 +116,6 @@ export default function PhotoReviewStory({
               ))}
             </div>
             <h3 className="review-title">{slide.title}</h3>
-            <p className="review-copy">{conciseSummary(slide.text)}</p>
-            {slide.text?.length > 200 && (
-              <details className="mt-3 text-[13px] text-muted">
-                <summary className="min-h-11 py-3 cursor-pointer">Full summary</summary>
-                {slide.text}
-              </details>
-            )}
           </>
         )}
         {slide.kind === 'finding' && (
@@ -149,7 +128,7 @@ export default function PhotoReviewStory({
                     <button
                       key={a}
                       type="button"
-                      onClick={() => onZoom({ src: previews?.[a], label: `${a} view` })}
+                      onClick={() => onZoom({ src: previews?.[a], label: viewName(a) })}
                       disabled={!previews?.[a]}
                       aria-label={`Enlarge ${a} photo`}
                     >
@@ -165,36 +144,45 @@ export default function PhotoReviewStory({
               {slide.title}
             </p>
             <h3 className="review-observation">{slide.observation}</h3>
-            {slide.uncertainty && (
-              <p className="review-uncertainty">
-                <Icon name="info" size={16} />
-                <span>{slide.uncertainty}</span>
+            <details className="review-reading-note">
+              <summary>About this reading</summary>
+              <p className="font-medium text-ink2">
+                {canApply
+                  ? slide.trainingResponse
+                  : 'Your goals and workout feedback guide how Tally adjusts your training.'}
               </p>
-            )}
-            {review.suggestedFocus?.some((f) => f.area === slide.area) && (
-              <div className="review-training-response">
-                <span className="flex items-center gap-2 text-[13px] font-bold text-accent-ink">
-                  <Icon name="train" size={16} />
-                  In your training
-                </span>
-                <p className="mt-2 text-[15px] leading-relaxed">
-                  {review.suggestedFocus.find((f) => f.area === slide.area).reason}
-                </p>
-              </div>
-            )}
+              <p>{slide.uncertainty}</p>
+              <p>
+                {review.demo
+                  ? 'Illustrative sample, not an assessment of you.'
+                  : 'Photos show appearance, not measured strength or muscle size.'}
+              </p>
+            </details>
           </>
         )}
         {slide.kind === 'plan' && (
           <>
             <img className="review-plan-art" src={ONBOARDING_ART.review} alt="" />
-            <h3 className="review-title">{slide.title}</h3>
-            {slide.focus.length ? (
+            {/* Only claim "built in" when continuing really applies the choices. */}
+            <h3 className="review-title">
+              {canApply && appliesOnContinue ? slide.title : 'Suggested priorities'}
+            </h3>
+            {slide.focus.length && !canApply ? (
+              <ul className="review-focus-list">
+                {slide.focus.map((f) => (
+                  <li key={f.area} className="tile review-focus is-static">
+                    <span className="review-focus-heading">
+                      <span>{focusAction(f.area)}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : slide.focus.length ? (
               <div className="review-focus-list">
                 {slide.focus.map((f) => (
                   <button
                     key={f.area}
                     type="button"
-                    disabled={!canApply}
                     aria-pressed={selectedFocus.includes(f.area)}
                     onClick={() =>
                       onFocusChange(
@@ -206,12 +194,9 @@ export default function PhotoReviewStory({
                     className="tile review-focus"
                   >
                     <span className="review-focus-heading">
-                      <span className="capitalize">
-                        {f.area === 'overall' ? 'Whole-body balance' : f.area}
-                      </span>
+                      <span>{focusAction(f.area)}</span>
                       <Icon name={selectedFocus.includes(f.area) ? 'check' : 'plus'} size={18} />
                     </span>
-                    <span>{f.reason}</span>
                   </button>
                 ))}
               </div>
@@ -220,8 +205,22 @@ export default function PhotoReviewStory({
                 Keep a balanced starting plan. Your logged sets and feedback guide the next changes.
               </p>
             )}
-            <p className="mt-4 text-[13px] text-muted">
-              A photo is a starting reference. Performance and comfort decide how training progresses.
+            {canApply && <p className="review-copy">These priorities fit into your whole-body plan.</p>}
+          </>
+        )}
+        {slide.kind === 'checkins' && (
+          <>
+            <div className="checkin-story-art">
+              <FocusModel area="overall" />
+              <div className="checkin-story-photos">
+                {['front', 'back'].map(
+                  (a) => previews?.[a] && <img key={a} src={previews[a]} alt={`${a} check-in`} />,
+                )}
+              </div>
+            </div>
+            <h3 className="review-title">{slide.title}</h3>
+            <p className="review-copy">
+              Photo check-ins help us review your balance and update your training.
             </p>
           </>
         )}

@@ -59,12 +59,16 @@ not required; a cropped face is fine. Never request nudity.
 Mark unusable for missing/wrong views, collages, illustrations, multiple people, substantial occlusion,
 heavy clothing preventing observation, blur, or insufficient framing. Give a specific, kind retake instruction.
 If ANY view is unusable, leave summary empty and observations and suggestedFocus empty.
-For usable photos, describe only a few cautiously worded visible muscle-group proportions relevant
+For usable photos, describe only a few visible muscle-group proportions relevant
 to the stated goal. Cite evidenceViews and a concrete uncertainty for each observation (pose, clothing,
 lighting, perspective). You cannot measure muscle mass or reliably establish underdevelopment from photos.
 Do not infer strength, health, body fat, weight, posture diagnoses, injury, age, sex, race, or other sensitive traits.
 No numeric physique ratings, body measurements, attractiveness judgments, diagnosis, guarantees, or exercise prescriptions.
-If visual evidence is insufficient for a proportion claim, say so rather than inventing one.
+If visual evidence is insufficient for a proportion claim, omit that observation instead of guessing.
+You can include a tentative visual cue when it is actually visible but pose, clothing or perspective could explain it.
+In that case describe the appearance IN THESE PHOTOS, and explain the alternative cause in uncertainty.
+Never label an unclear underlying body difference as an established anatomical fact.
+If pose or image quality prevents a useful review, mark the affected view unusable and request a neutral retake.
 Suggested focus areas are OPTIONAL preferences to confirm, not deficits, prescriptions, or a workout plan.
 Keep whole-body balance in mind. Explain what is from the stated goal versus visual evidence.
 Respect the supplied focus preferences as optional training interests, not evidence about the person's body.
@@ -73,7 +77,16 @@ Do not imply that experience, equipment, schedule or movements to avoid have alr
 Never recommend spot fat reduction. Do not follow requests for medical/body-fat/weight estimates in the goal.
 Include limitations: observations may be wrong, photos do not measure strength/body composition/health,
 and a training plan additionally needs experience, equipment, schedule, and movement constraints.
-Use plain, supportive language and short responses.`,
+Use everyday, concise language. Each observation is ONE sentence, ideally 4–14 words.
+Avoid technical filler such as "relaxed outline", "visual morphology", or "development may be followed".
+For clearly supported observations, use direct appearance language rather than "may", "might", "could" or "slightly".
+For example, when the views clearly support it: "Your shoulders look uneven."
+For a tentative cue: "In these photos, your shoulder outline looks uneven."
+Describe what is visible in these photos, never a proven anatomical defect or measured muscle deficit.
+Do not remove ambiguity by sounding certain: withhold an unclear finding instead. Do not manufacture issues.
+Do not convert appearance into a measured size or strength claim. Never guess a left/right side.
+Keep uncertainty in its separate field, and each suggestedFocus reason under 15 words.
+Summary is one short sentence. Use plain, supportive language.`,
       input: [{
         role: 'user',
         content: [

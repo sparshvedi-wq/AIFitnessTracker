@@ -17,6 +17,7 @@ export function planSummary(plan) {
   if (plan.schedule?.preparation)
     return `Balanced training with a little ${sportById(plan.schedule.preparation.sport).name.toLowerCase()} preparation.`
   if (plan.focus) return plan.focus
+  if (plan.firstSession) return ''
   const muscles = plan.items.map((i) => findExercise(i.exId)?.muscle)
   const lower = muscles.some((m) => ['Legs', 'Glutes'].includes(m))
   const upper = muscles.some((m) => ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'].includes(m))

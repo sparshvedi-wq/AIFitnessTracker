@@ -275,7 +275,7 @@ export default function WeeklyRecap({ state, today, now, nav }) {
                 {state.activeWorkout
                   ? state.activeWorkout.name
                   : nextPlan
-                    ? `${nextPlan.name} · ${planSummary(nextPlan)}`
+                    ? [nextPlan.name, planSummary(nextPlan)].filter(Boolean).join(' · ')
                     : 'Recommended for today'}
               </span>
               {nextEvent && (

@@ -13,7 +13,9 @@ const DOT = {
 export default function ToastHost() {
   const { toasts, dismissToast, storageError, retrySave } = useApp()
   return (
-    <div className="pointer-events-none fixed inset-x-0 top-[max(env(safe-area-inset-top),12px)] z-50 flex flex-col items-center gap-2 px-4">
+    <div
+      data-dialog-exempt
+      className="pointer-events-none fixed inset-x-0 top-[max(env(safe-area-inset-top),12px)] z-50 flex flex-col items-center gap-2 px-4">
       {storageError && (
         <div
           role="alert"

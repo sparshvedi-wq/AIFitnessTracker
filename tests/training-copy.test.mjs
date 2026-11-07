@@ -7,7 +7,9 @@ import { trainingTitle } from '../src/lib/training-copy.js'
 test('generated training is named for its content, with a short description and no invented fatigue', () => {
   const plan = buildDailyPlan(defaultState(), { today: '2026-10-25' })
   assert.equal(plan.name, 'Full body')
-  assert.equal(plan.focus, 'A first session to find comfortable starting weights.')
+  // The first session is introduced by its own screen, not a line on the card.
+  assert.equal(plan.focus, '')
+  assert.equal(plan.firstSession, true)
   assert.ok(!/fatigued|sore|overtrained/i.test(plan.focus))
 })
 

@@ -5,7 +5,7 @@ import { useApp } from '../store/AppContext.jsx'
 import { MONTHS, fromKey, shortLabel, addDays } from '../lib/date.js'
 import { avgSessionMin, weekVolume } from '../lib/derive.js'
 import { scoreSeries } from '../lib/score.js'
-import { buildDailyPlan, checkinSchedule, profileOf, readinessOf, todayChoice } from '../lib/planner.js'
+import { buildDailyPlan, profileOf, readinessOf, todayChoice } from '../lib/planner.js'
 import { placesOf, resolvePlace } from '../lib/places.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
 import { returnMessage, shortSessionRequest } from '../lib/flexible-training.js'
@@ -14,7 +14,8 @@ import Icon from '../components/Icon.jsx'
 import { LineChart, SectionHead, TallyLogo } from '../components/Ink.jsx'
 import TrainingCard, { planScene } from '../components/TrainingCard.jsx'
 import AdjustSheet from '../components/AdjustSheet.jsx'
-import { CheckinCard, TallyCard, WeekStrip } from '../components/HomeOverview.jsx'
+import { TallyCard, WeekStrip, WinCard, useNewMarks } from '../components/HomeOverview.jsx'
+import { latestWin, tallySessions } from '../lib/milestones.js'
 import { ONBOARDING_ART } from '../lib/onboarding-art.js'
 import ActiveSessionCard from '../components/ActiveSessionCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
@@ -22,7 +23,7 @@ import WeeklyRecap from '../components/WeeklyRecap.jsx'
 import SessionRow from '../components/SessionRow.jsx'
 import WorkoutDetail from '../components/workout/WorkoutDetail.jsx'
 import useStartWorkout, { bodyweights } from '../components/workout/useStartWorkout.js'
-import usePlanningTime from '../components/training/usePlanningTime.js'
+import usePlanningTime, { lastRecordedAt } from '../components/training/usePlanningTime.js'
 import { ONBOARDING_VERSION } from '../lib/onboarding.js'
 
 const strength = (w) =>
@@ -31,7 +32,7 @@ const strength = (w) =>
 
 export default function Home({ nav }) {
   const { state, dispatch, today } = useApp()
-  const now = usePlanningTime()
+  const now = usePlanningTime(lastRecordedAt(state.workouts))
   const { settings } = state
   const workouts = state.workouts.filter((w) => !w.sample && w.date <= today)
   const display = displayOf(state)
@@ -49,10 +50,10 @@ export default function Home({ nav }) {
   // Today-only answers live with today's check-in; the usual setup is untouched.
   const setToday = (patch) =>
     dispatch({ type: 'SET_READINESS', readiness: { ...readinessOf(state, today), ...patch, date: today } })
-  const checkin = checkinSchedule(state, today)
+  const win = latestWin(workouts, today)
+  const freshMarks = useNewMarks(tallySessions(workouts, today).length, settings.workout)
   const progress = trainingDays(workouts, settings, today)
   const active = state.activeWorkout
-  const manual = settings.training.baselineMode === 'manual' ? settings.training.manualBaseline : null
   const welcomeBack = returnMessage(workouts, today)
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
   const minutes = choice.minutes || settings.training.minutes || 30
@@ -81,17 +82,17 @@ export default function Home({ nav }) {
 
       <WeekStrip state={state} today={today} />
 
-      <div className={`mt-5 grid gap-3 ${display.metricLight ? 'grid-cols-1' : 'grid-cols-2'}`}>
-        <TallyCard workouts={workouts} today={today} />
-        {!display.metricLight && (
-          <CheckinCard
-            checkin={checkin}
-            today={today}
-            everyDays={settings.training.checkinDays}
-            manual={Boolean(manual)}
-            onOpen={manual ? nav.openProfile : () => nav.openCheckins()}
-          />
-        )}
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <TallyCard workouts={workouts} today={today} fresh={freshMarks} />
+        <WinCard
+          win={win}
+          fresh={freshMarks}
+          onOpen={
+            win.workoutId
+              ? () => setDetail(state.workouts.find((w) => w.id === win.workoutId) || null)
+              : null
+          }
+        />
       </div>
 
       {!active && welcomeBack && (

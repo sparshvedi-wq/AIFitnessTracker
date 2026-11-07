@@ -21,6 +21,31 @@ import { shortSessionRequest } from './lib/flexible-training.js'
 import { photoDraft } from './lib/photo-draft.js'
 import WorkoutSwitchDialog from './components/workout/WorkoutSwitchDialog.jsx'
 import { endForSwitch } from './lib/workout-switch.js'
+import { feel } from './lib/coach.js'
+import { firstSessionAchievement } from './lib/milestones.js'
+
+// Quiet, consistent touch feedback: a selection tick on choices and toggles,
+// a light tap on primary actions. Follows the Haptics setting.
+function useTapHaptics(prefs) {
+  const latest = useRef(prefs)
+  useEffect(() => {
+    latest.current = prefs
+  }, [prefs])
+  useEffect(() => {
+    const onClick = (event) => {
+      const target = event.target instanceof Element ? event.target : null
+      const control = target?.closest('button, [role="button"], [role="radio"], [role="switch"], input')
+      if (!control || control.disabled || control.getAttribute('aria-disabled') === 'true') return
+      if (control.matches('.btn-primary')) feel(latest.current, 'light')
+      else if (
+        control.matches('[aria-pressed], [role="radio"], [role="switch"], [aria-checked], input[type="checkbox"]')
+      )
+        feel(latest.current, 'selection')
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
+  }, [])
+}
 
 // Follows the Appearance setting; "system" tracks the device and updates live.
 function useTheme(preference = 'system') {
@@ -52,7 +77,7 @@ const TABS = [
 ]
 
 export default function App() {
-  const { state, dispatch, toast } = useApp()
+  const { state, dispatch, toast, today } = useApp()
   const [tab, setTab] = useState('home')
   const [setup, setSetup] = useState(null)
   const [pendingWorkout, setPendingWorkout] = useState(null)
@@ -75,6 +100,7 @@ export default function App() {
   const [playerOpen, setPlayerOpen] = useState(() => Boolean(state.activeWorkout))
 
   useTheme(state.settings.theme)
+  useTapHaptics(state.settings.workout)
   // Erasing all data returns to first-run setup.
   const needsSetup = !state.settings.training.completed
   useEffect(() => {
@@ -229,6 +255,13 @@ export default function App() {
                   ? { type: 'FINISH_WORKOUT', workout: record }
                   : { type: 'SET_ACTIVE_WORKOUT', session: null },
               )
+              // The first mark still counts when it was saved by switching.
+              const first = record && firstSessionAchievement(state, record, today)
+              if (first)
+                dispatch({
+                  type: 'UPDATE_SETTINGS',
+                  patch: { milestones: { ...state.settings.milestones, firstSession: first.workoutId } },
+                })
               setPlayerOpen(false)
               const continueWith = pendingWorkout.continueWith
               setPendingWorkout(null)

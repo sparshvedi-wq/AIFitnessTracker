@@ -14,6 +14,9 @@ export const EQUIPMENT_ICON = {
 
 // Every scene a setup screen can show. Decoded ahead so a choice never flashes blank.
 const PRELOAD = [
+  'physique-athletic',
+  'physique-balanced',
+  'physique-powerful',
   'muscle',
   'strength',
   'weight',
@@ -24,6 +27,12 @@ const PRELOAD = [
   'movement',
   'neutral',
   'review',
+  // Scenes used by setup replies, so a reply never opens on an empty stage.
+  'experience',
+  'priority',
+  'time',
+  'location',
+  'manual',
 ]
 export function preloadSetupArt() {
   for (const key of PRELOAD) {
@@ -262,7 +271,7 @@ export function ImageChoices({ options, value, onChange, layout = 'grid', label 
               <span className="block">{title}</span>
               {detail && <span className="image-choice-detail">{detail}</span>}
             </span>
-            {on && (
+            {on && layout !== 'physiques' && (
               <span className="tile-check" aria-hidden="true">
                 <Icon name="check" size={14} strokeWidth={3} />
               </span>
@@ -301,31 +310,13 @@ export function SetupWelcome({ headingRef }) {
 }
 
 // A short reaction after an answer: the lit figure on its stage, one headline, one useful line.
-export function SetupResponse({ scene, badge, title, copy, headingRef }) {
+export function SetupResponse({ scene, title, copy, headingRef }) {
   return (
     <div className="setup-response" role="status">
       <div className="setup-response-stage" aria-hidden="true">
-        <svg className="setup-burst" viewBox="-200 -200 400 400">
-          {Array.from({ length: 12 }, (_, i) => (
-            <line
-              key={i}
-              x1="0"
-              y1={i % 2 ? -158 : -150}
-              x2="0"
-              y2={i % 2 ? -176 : -184}
-              transform={`rotate(${i * 30 + 15})`}
-              className={i % 2 ? 'burst-soft' : 'burst-lit'}
-            />
-          ))}
-        </svg>
+        <span className="setup-response-aura" />
         <SetupIllustration scene={scene} variant="response" />
       </div>
-      {badge && (
-        <span className="setup-badge">
-          <Icon name="check" size={14} strokeWidth={3} />
-          {badge}
-        </span>
-      )}
       <h3 ref={headingRef} tabIndex={-1} className="setup-response-title">
         {title}
       </h3>

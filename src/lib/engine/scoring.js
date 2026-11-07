@@ -77,13 +77,12 @@ export function scoreCandidate(meta, ctx) {
   f.goal = goalFit(meta, ctx.goal)
   f.need = clamp(Object.entries(shares).reduce((n, [a, s]) => n + s * (ctx.needs[a] ?? 0), 0))
   const primaryAreas = [...new Set(meta.primary.map((m) => MUSCLE_AREA[m]))]
-  f.focus = ctx.focusAreas.size
-    ? primaryAreas.some((a) => ctx.focusAreas.has(a))
-      ? 1
-      : Object.keys(shares).some((a) => ctx.focusAreas.has(a))
-        ? 0.4
-        : 0
-    : 0
+  const focusStrength = (a) => ctx.focusStrength?.[a] ?? (ctx.focusAreas.has(a) ? 1 : 0)
+  f.focus = Math.max(
+    0,
+    ...primaryAreas.map(focusStrength),
+    ...Object.keys(shares).map((a) => 0.4 * focusStrength(a)),
+  )
   f.sport =
     ctx.sportAreas.size && primaryAreas.some((a) => ctx.sportAreas.has(a))
       ? (SPORT_PRIORITY_SCALE[ctx.sportPriority] ?? 0.5)

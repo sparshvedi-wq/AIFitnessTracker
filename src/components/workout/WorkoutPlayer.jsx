@@ -53,9 +53,11 @@ import { movementAllowed } from '../../lib/movement-preferences.js'
 import { loadKind, plateBreakdown, startingLoadChoices, stepLoad } from '../../lib/starting-loads.js'
 import { exerciseNote } from '../../lib/exercise-notes.js'
 import { recordPlaceLabel } from '../../lib/places.js'
+import { tallySessions } from '../../lib/milestones.js'
+import FirstSessionIntro from './FirstSessionIntro.jsx'
 
 export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
-  const { state, dispatch } = useApp()
+  const { state, dispatch, today } = useApp()
   const [formOpen, setFormOpen] = useState(false)
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState(false)
@@ -127,6 +129,27 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
   const cur = currentSet(session)
   const { done, total } = setCounts(session)
   const paused = Boolean(session.pausedAt)
+
+  // The very first session gets one calm screen of its own before set one.
+  if (
+    !session.introSeen &&
+    done === 0 &&
+    session.exercises.length > 0 &&
+    !['sport', 'manual'].includes(session.kind) &&
+    !tallySessions(state.workouts, today).length
+  )
+    return (
+      <Screen onClose={onMinimize}>
+        <FirstSessionIntro
+          weighted={session.exercises.some((e) => e.weighted)}
+          onMinimize={onMinimize}
+          // Time spent reading this screen is not training time.
+          onStart={() =>
+            update((s, now) => ({ ...s, introSeen: true, startedAt: s.startedAt ? now : s.startedAt }))
+          }
+        />
+      </Screen>
+    )
 
   return (
     <Screen onClose={onMinimize}>
@@ -804,12 +827,11 @@ function More({
               onClick={onPlan}
             />
             {ex && (
-              <MenuRow label="Exercise guide" detail="Instructions and why it’s included" onClick={onForm} />
+              <MenuRow label="Exercise guide" onClick={onForm} />
             )}
             {ex && session.phase !== 'prepared' && (
               <MenuRow
                 label="Replace exercise"
-                detail="Equipment busy or prefer another movement"
                 onClick={onReplace}
               />
             )}
@@ -820,20 +842,17 @@ function More({
               </summary>
               <div className="flex flex-wrap gap-2 pb-3">
                 {[
-                  ['Quiet', false, false],
-                  ['Sounds', true, false],
-                  ['Spoken', true, true],
-                ].map(([label, sound, voice]) => (
+                  ['Quiet', false],
+                  ['Sounds', true],
+                ].map(([label, sound]) => (
                   <button
                     key={label}
-                    className={`chip ${state.settings.workout.sound === sound && state.settings.workout.voice === voice ? 'chip-active' : 'bg-surface2'}`}
-                    aria-pressed={
-                      state.settings.workout.sound === sound && state.settings.workout.voice === voice
-                    }
+                    className={`chip ${state.settings.workout.sound === sound ? 'chip-active' : 'bg-surface2'}`}
+                    aria-pressed={state.settings.workout.sound === sound}
                     onClick={() =>
                       dispatch({
                         type: 'UPDATE_SETTINGS',
-                        patch: { workout: { ...state.settings.workout, sound, voice } },
+                        patch: { workout: { ...state.settings.workout, sound } },
                       })
                     }
                   >
@@ -859,27 +878,24 @@ function More({
               (canFinish ? (
                 <MenuRow
                   label="Finish & review"
-                  detail="Review your logged sets before saving"
                   onClick={onFinish}
                 />
               ) : (
                 <MenuRow
                   label="End workout"
-                  detail="Nothing logged yet, so nothing to save"
+                  detail="Nothing logged yet"
                   onClick={onDiscard}
                 />
               ))}
             {!['sport', 'manual'].includes(session.kind) && (
               <MenuRow
                 label="I have less time"
-                detail="Shorten only the work that is left"
                 onClick={onShorten}
               />
             )}
             {!['sport', 'manual'].includes(session.kind) && (
               <MenuRow
                 label="Training somewhere else"
-                detail="Change the place; logged sets stay"
                 onClick={onPlace}
               />
             )}
@@ -894,7 +910,6 @@ function More({
             )}
             <MenuRow
               label="More controls"
-              detail="Edit the plan, history and session stats"
               onClick={() => setPanel('controls')}
             />
           </div>
@@ -976,7 +991,6 @@ function More({
         open={skipping}
         onClose={() => setSkipping(false)}
         title="Why skip this one?"
-        subtitle="Optional. This helps adjust future sessions."
       >
         <div className="mt-3 divide-y divide-line">
           {[

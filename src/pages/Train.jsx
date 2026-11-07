@@ -15,7 +15,7 @@ import useStartWorkout from '../components/workout/useStartWorkout.js'
 import { buildDailyPlan, profileOf, todayChoice } from '../lib/planner.js'
 import { resolvePlace } from '../lib/places.js'
 import { sportById } from '../lib/sports.js'
-import usePlanningTime from '../components/training/usePlanningTime.js'
+import usePlanningTime, { lastRecordedAt } from '../components/training/usePlanningTime.js'
 import { sportScheduleContext } from '../lib/sport-schedule.js'
 import TrainingCard from '../components/TrainingCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
@@ -48,7 +48,7 @@ const ICON_FOR = {
 
 export default function Train({ nav }) {
   const { state, today } = useApp()
-  const now = usePlanningTime()
+  const now = usePlanningTime(lastRecordedAt(state.workouts))
   const schedule = sportScheduleContext(state.settings.training, { today, now })
   const { routines, workouts, customExercises } = state
   const start = useStartWorkout(nav)

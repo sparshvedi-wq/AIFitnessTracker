@@ -100,8 +100,19 @@ export default function AdjustSheet({
       </fieldset>
 
       <fieldset className="adjust-group">
-        <legend>Energy</legend>
-        <div className="grid grid-cols-3 gap-2">
+        <legend>Feel</legend>
+        <div className="grid grid-cols-4 gap-2">
+          <button
+            type="button"
+            aria-pressed={unwell}
+            className="tile adjust-energy"
+            onClick={() =>
+              onChange(unwell ? { energy: 'normal', unwell: false } : { energy: 'low', unwell: true })
+            }
+          >
+            <Icon name="heart" size={16} />
+            Unwell
+          </button>
           {ENERGY.map(([value, label, level]) => (
             <button
               key={value}
@@ -115,17 +126,6 @@ export default function AdjustSheet({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          aria-pressed={unwell}
-          className="tile adjust-unwell"
-          onClick={() =>
-            onChange(unwell ? { energy: 'normal', unwell: false } : { energy: 'low', unwell: true })
-          }
-        >
-          <Icon name="heart" size={18} />
-          Not feeling well
-        </button>
       </fieldset>
 
       <div className="adjust-group">

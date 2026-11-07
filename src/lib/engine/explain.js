@@ -14,13 +14,24 @@ const GROUP = {
   arms: 'arm',
   core: 'core',
 }
-const GROUP_PLURAL = { push: 'pressing movements', pull: 'pulling movements', lower: 'lower body', arms: 'arms', core: 'core work' }
+const GROUP_PLURAL = {
+  push: 'pressing movements',
+  pull: 'pulling movements',
+  lower: 'lower body',
+  arms: 'arms',
+  core: 'core work',
+}
 
 /** Headline candidates in priority order; the first that applies is shown. */
 export function headline(decision) {
   const f = decision.facts
-  if (f.mode === 'movement') return { code: 'movement-day', text: 'Gentle movement today. Rest is a good option too.' }
-  if (!f.items) return { code: 'nothing-fits', text: 'Nothing fits what you’re avoiding today, so a break is the sensible choice.' }
+  if (f.mode === 'movement')
+    return { code: 'movement-day', text: 'Gentle movement today. Rest is a good option too.' }
+  if (!f.items)
+    return {
+      code: 'nothing-fits',
+      text: 'Nothing fits what you’re avoiding today, so a break is the sensible choice.',
+    }
   if (f.returning) return { code: 'returning', text: 'A lighter restart. Build back at your own pace.' }
   if (f.mode === 'lighter')
     return { code: 'lighter-day', text: 'A lighter session today, with balanced work and room to recover.' }
@@ -39,7 +50,8 @@ export function headline(decision) {
       code: 'learned-preference',
       text: `You preferred ${lower(f.preferredExercise)} last time, so it’s back today.`,
     }
-  if (f.short) return { code: 'short', text: 'A shorter session today, with the remaining work reassessed next time.' }
+  if (f.short)
+    return { code: 'short', text: 'A shorter session today, with the remaining work reassessed next time.' }
   return null
 }
 
@@ -60,18 +72,25 @@ export function reasonLines(decision) {
       : `${f.goal}, sized for ${lower(f.experience)}.`,
   )
   if (f.sportsLine) lines.push(f.sportsLine)
-  if (f.focusSource) lines.push(f.focusSource === 'manual' ? 'Your chosen focus gets priority.' : 'Your photo focus gets priority.')
+  if (f.focusSource)
+    lines.push(
+      f.focusSource === 'manual'
+        ? 'Your chosen focus gets priority.'
+        : 'A small photo-based emphasis, reviewed with your next check-in.',
+    )
   if (f.sore?.length) lines.push(`Resting ${f.sore.join(', ').toLowerCase()}.`)
   if (f.pain?.length) lines.push(`Avoiding ${f.pain.join(', ').toLowerCase()}. Stop if anything hurts.`)
   if (f.recentAreas?.length)
     lines.push(`Recent work in ${f.recentAreas.join(', ').toLowerCase()} counts toward today’s balance.`)
   if (f.tough) lines.push('Last session felt very hard, so this one is lighter.')
   if (f.unwell) lines.push('You said you’re not feeling well, so nothing strenuous is planned.')
-  if (f.recentUnwell && !f.unwell) lines.push('You stopped last time because you weren’t feeling well, so this starts lighter.')
+  if (f.recentUnwell && !f.unwell)
+    lines.push('You stopped last time because you weren’t feeling well, so this starts lighter.')
   if (f.sportSoon) lines.push('Light, with sport coming up.')
   if (f.flagged) lines.push('Moves you skipped for pain or soreness stay out for now.')
   if (f.bodyweightOnly) lines.push('Bodyweight only.')
-  if (f.rolloverExercise) lines.push('Unfinished work is reconsidered, not owed. It drops out after a few days.')
+  if (f.rolloverExercise)
+    lines.push('Unfinished work is reconsidered, not owed. It drops out after a few days.')
   if (f.learnedLine) lines.push(f.learnedLine)
   if (f.exploring) lines.push(`${f.exploring} is new for you; you can swap it any time.`)
   return lines
@@ -83,7 +102,8 @@ export function itemNote(entry, ctx) {
   const codes = entry.codes
   if (codes.includes('rollover')) parts.push('You didn’t get to this last time.')
   else if (codes.includes('learned-preference')) parts.push('You’ve chosen this one before.')
-  else if (codes.includes('focus')) parts.push(ctx.focusSource === 'manual' ? 'Your chosen focus.' : 'Your photo focus.')
+  else if (codes.includes('focus'))
+    parts.push(ctx.focusSource === 'manual' ? 'Your chosen focus.' : 'Your photo focus.')
   else if (codes.includes('sport')) parts.push('Supports your sport.')
   else if (codes.includes('need')) parts.push(`Balances your ${entry.areaLabel} training.`)
   else parts.push(`Balances your ${entry.areaLabel} training.`)
@@ -93,7 +113,8 @@ export function itemNote(entry, ctx) {
   if (entry.unilateral) parts.push('Reps per side; weaker side first.')
   if (entry.exId === 'biceps-curl') parts.push('One dumbbell at a time.')
   if (entry.progression?.code === 'more-reps-before-jump') parts.push('One more rep before the next weight.')
-  if (entry.progression?.code === 'next-size-missing') parts.push('Your next dumbbell size isn’t listed here.')
+  if (entry.progression?.code === 'next-size-missing')
+    parts.push('Your next dumbbell size isn’t listed here.')
   if (entry.progression?.code === 'fitted-to-available')
     parts.push('The dumbbells here are lighter than last time; aim for clean reps.')
   if (entry.progression?.code === 'missed-twice') parts.push('A little lighter after two tough sessions.')

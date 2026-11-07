@@ -14,7 +14,7 @@ import * as Speech from 'expo-speech'
 import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake'
-import { createDeviceService } from './src/device-service'
+import { createDeviceService, type HapticStyle } from './src/device-service'
 import { isAppOrigin, MAX_SNAPSHOT, parseRequest, resolveInkUrl, responseScript } from './src/protocol'
 
 const AWAKE_TAG = 'tally-ink-workout'
@@ -34,6 +34,27 @@ async function cuePermission() {
   if (current.granted || current.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return true
   if (!current.canAskAgain) return false
   return (await Notifications.requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } })).granted
+}
+
+// Premium feel comes from these, not from speech: short, distinct native feedback.
+async function playHaptic(style: HapticStyle) {
+  const impact = Haptics.ImpactFeedbackStyle
+  const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+  switch (style) {
+    case 'selection': return Haptics.selectionAsync()
+    case 'tick': return Haptics.impactAsync(impact.Rigid)
+    case 'medium': return Haptics.impactAsync(impact.Medium)
+    case 'heavy': return Haptics.impactAsync(impact.Heavy)
+    case 'success': return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    case 'warning': return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
+    case 'celebrate':
+      await Haptics.impactAsync(impact.Soft)
+      await pause(90)
+      await Haptics.impactAsync(impact.Medium)
+      await pause(120)
+      return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    default: return Haptics.impactAsync(impact.Light)
+  }
 }
 
 export default function App() {
@@ -63,7 +84,7 @@ function InkApp() {
       remove: key => Storage.removeItemAsync(key),
       saveStatus: setSaveFailed,
       say: async text => { await Speech.stop(); Speech.speak(text, { rate: 1.05 }) },
-      haptic: strong => strong ? Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success) : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+      haptic: playHaptic,
       awake: async active => {
         const work = awakeQueue.then(() => active ? activateKeepAwakeAsync(AWAKE_TAG) : deactivateKeepAwake(AWAKE_TAG))
         awakeQueue = work.catch(() => {})

@@ -692,6 +692,10 @@ input[type='number'] {
 
 .no-scrollbar {
   scrollbar-width: none;
+  /* A horizontal scroller clips vertically too: leave room for tile and
+     button depth shadows and focus rings instead of cutting them off. */
+  padding-bottom: 8px;
+  margin-bottom: -8px;
 }
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -994,6 +998,13 @@ input[type='checkbox'] {
   height: 100%;
   object-fit: cover;
 }
+.exercise-thumb--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--muted));
+}
 .exercise-thumb--more {
   display: flex;
   flex: 0 0 54px;
@@ -1282,4 +1293,235 @@ button.stat-card:active {
   background: rgb(var(--surface-2));
   padding: 0 14px;
   font-size: 15px;
+}
+
+/* Skeleton loaders: shapes shimmer until their content arrives. Images get it
+   automatically until their load (or error) event marks them (main.jsx). */
+.skeleton,
+img:not([data-loaded]) {
+  background-color: rgb(var(--surface-2));
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgb(var(--raised) / 0.55) 50%,
+    transparent 80%
+  );
+  background-repeat: no-repeat;
+  background-size: 220% 100%;
+  color: transparent;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+.skeleton {
+  display: block;
+}
+img:not([data-loaded]) {
+  border-radius: 16px;
+}
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton,
+  img:not([data-loaded]) {
+    animation: none;
+  }
+}
+.tally-reduce-motion :is(.skeleton, img:not([data-loaded])) {
+  animation: none;
+}
+
+/* Tally card: new marks draw themselves in, the count pops, the card glows. */
+.tally-stroke {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.tally-strokes.is-ghost .tally-stroke {
+  stroke: rgb(var(--line));
+  stroke-dasharray: 0.12 0.1;
+}
+.tally-stroke.is-fresh {
+  stroke: rgb(var(--accent));
+  stroke-width: 2.8;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tally-draw 520ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+.stat-card-number.is-bumped {
+  animation: tally-bump 700ms cubic-bezier(0.2, 0.9, 0.25, 1.2) 380ms both;
+}
+.stat-card.is-celebrating {
+  animation: tally-glow 1600ms ease-out 200ms both;
+}
+@keyframes tally-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes tally-bump {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.22);
+    color: rgb(var(--accent-ink));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes tally-glow {
+  0% {
+    border-color: rgb(var(--line));
+  }
+  25% {
+    border-color: rgb(var(--accent));
+    box-shadow:
+      0 4px 0 rgb(var(--lit-edge)),
+      0 0 0 6px rgb(var(--accent) / 0.14);
+  }
+  100% {
+    border-color: rgb(var(--line));
+  }
+}
+.stat-card-number {
+  display: inline-block;
+  transform-origin: left 70%;
+}
+
+/* Latest win: a five-segment ring (one group of tally marks) around a glyph. */
+.win-card {
+  min-width: 0;
+}
+.win-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.win-ring {
+  position: relative;
+  display: block;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+}
+.win-ring svg {
+  width: 54px;
+  height: 54px;
+}
+.win-segment {
+  fill: none;
+  stroke: rgb(var(--line));
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.win-segment.is-lit {
+  stroke: rgb(var(--accent));
+}
+.win-segment.is-fresh {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: tally-draw 460ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+}
+.win-ring-center {
+  position: absolute;
+  inset: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgb(var(--lit));
+  color: rgb(var(--accent-ink));
+}
+.win-ring-center svg {
+  width: 21px;
+  height: 21px;
+}
+.win-ring--next .win-ring-center {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--muted));
+}
+.win-title {
+  overflow: hidden;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.15;
+  color: rgb(var(--accent-ink));
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.win-card:has(.win-ring--next) .win-title {
+  color: rgb(var(--ink));
+}
+.win-title.is-new {
+  animation: win-rise 520ms cubic-bezier(0.2, 0.8, 0.2, 1) 520ms both;
+}
+.win-when {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgb(var(--muted));
+}
+@keyframes win-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Narrow phones: the ring stays, the day label steps aside. */
+@media (max-width: 359px) {
+  .win-ring,
+  .win-ring svg {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+  }
+  .win-ring-center {
+    inset: 9px;
+  }
+  .win-ring-center svg {
+    width: 18px;
+    height: 18px;
+  }
+  .win-when {
+    font-size: 12px;
+  }
+  .win-title {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tally-stroke.is-fresh,
+  .win-segment.is-fresh {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .stat-card-number.is-bumped,
+  .stat-card.is-celebrating,
+  .win-title.is-new {
+    animation: none;
+  }
+}
+.tally-reduce-motion :is(.tally-stroke.is-fresh, .win-segment.is-fresh) {
+  animation: none;
+  stroke-dashoffset: 0;
+}
+.tally-reduce-motion :is(.stat-card-number.is-bumped, .stat-card.is-celebrating, .win-title.is-new) {
+  animation: none;
 }

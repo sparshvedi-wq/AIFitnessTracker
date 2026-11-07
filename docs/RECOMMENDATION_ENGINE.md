@@ -23,6 +23,24 @@ measurements of recovery, fatigue or physiology.
 | `assistant/` + `components/AskAdjust.jsx` | Local parser, results from real data, previews with Apply/Undo |
 | `server/src/assistant.ts` | Optional gpt-6-luna interpreter (off unless `ASSIST_AI_ENABLED=true` and the client build sets `VITE_ASSIST_AI=on`) |
 
+## Provisional photo priorities
+
+Photo appearance is not evidence of strength, muscle mass or a side that needs extra reps.
+Previously approved adult photo priorities start at one quarter of the selection/scoring
+priority of an explicit manual preference and a 5% increase to the internal area target.
+A later review recommending the same area at least seven calendar days later can raise
+those values to 0.4 and 10%, respectively; repeated uploads never escalate beyond that.
+These are bounded planning heuristics, not confidence estimates or guaranteed extra sets.
+Time limits, normal set caps, discomfort exclusions and recovery rules still apply.
+
+Only one review per calendar day counts. A newer usable review that no longer supports
+an approved area retires its photo emphasis; new areas still need approval. A contradictory
+review breaks the follow-up chain. Photo emphasis pauses on lighter/recovery days and for
+sore or painful areas, fades after 14 days without a fresh supported check-in, and expires
+at 42 days. Sample, future, malformed and unusable reviews cannot reinforce it. Old approved
+saves without review details receive only the initial weight. No visual cue modifies loads
+or enables extra work on one side. The decision record retains the dated evidence used.
+
 ## Exploration decision
 Evaluated greedy (posterior mean), UCB, epsilon-greedy and Thompson sampling on 48 simulated people × 28 days
 (`node scripts/engine-evaluation.mjs`). The sampling policies added variety but also more 24 h repeats and did not

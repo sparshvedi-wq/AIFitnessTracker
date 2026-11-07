@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
 import { nextVisitInvitation } from '../../lib/flexible-training.js'
@@ -9,11 +9,33 @@ import { findExercise } from '../../lib/exercises.js'
 import { chooseQuestion } from '../../lib/engine/feedback.js'
 import { answerEvent, dismissEvent } from '../../lib/engine/learning.js'
 import { useApp } from '../../store/AppContext.jsx'
+import { firstSessionAchievement, warmupSetCount, workingSetCount } from '../../lib/milestones.js'
+import { feel } from '../../lib/coach.js'
+import FirstWorkoutCelebration from './FirstWorkoutCelebration.jsx'
 
 export default function SessionSaved({ workout, onClose, onPreview }) {
   const { state, dispatch, today } = useApp()
+  const [achievement] = useState(() => firstSessionAchievement(state, workout, today))
+  const [celebrating, setCelebrating] = useState(Boolean(achievement))
+  // The sheet replaces the full-screen milestone in place, without a fresh slide-in.
+  const [fromCelebration, setFromCelebration] = useState(false)
+  const felt = useRef(false)
+  useEffect(() => {
+    if (felt.current) return
+    felt.current = true
+    feel(state.settings.workout, achievement ? 'celebrate' : 'success')
+  }, [achievement, state.settings.workout])
+  useEffect(() => {
+    if (!achievement || state.settings.milestones?.firstSession) return
+    dispatch({
+      type: 'UPDATE_SETTINGS',
+      patch: { milestones: { ...state.settings.milestones, firstSession: achievement.workoutId } },
+    })
+  }, [achievement, state.settings.milestones, dispatch])
   const invitation = nextVisitInvitation(workout)
-  const sets = workout.exercises.reduce((n, e) => n + e.sets.length, 0)
+  // Same counting as the tally and the milestone: working sets, warm-ups apart.
+  const sets = workingSetCount(workout)
+  const warmups = warmupSetCount(workout)
   // Pain or soreness means no push for more next time.
   const next = ['pain', 'soreness', 'unwell'].includes(workout.finishReason)
     ? []
@@ -58,13 +80,25 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
     }
   }
   const close = () => {
-    dismiss()
+    if (!celebrating) dismiss()
     onClose()
   }
   const name = question ? findExercise(question.exId, state.customExercises)?.name : ''
+  if (celebrating)
+    return (
+      <FirstWorkoutCelebration
+        achievement={achievement}
+        onClose={close}
+        onContinue={() => {
+          setFromCelebration(true)
+          setCelebrating(false)
+        }}
+      />
+    )
   return (
     <Modal
       open
+      animate={!fromCelebration}
       onClose={close}
       title="Saved"
       footer={
@@ -76,7 +110,8 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
       <div className="pb-3 pt-1">
         <p className="flex items-center gap-2 text-[15px] text-ink2">
           <Icon name="check" size={18} className="text-accent" />
-          {count(sets, 'set')} in History
+          {count(sets, 'set')}
+          {warmups > 0 && ` + ${count(warmups, 'warm-up')}`} in History
           {workout.newBests > 0 && (
             <span className="font-semibold text-accent">· {count(workout.newBests, 'new best')}</span>
           )}
@@ -118,7 +153,7 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
               </div>
             ) : (
               <div className="mt-3" role="status">
-                <p className="text-[13px] text-muted">Thanks. You can change this from the exercise guide.</p>
+                <p className="text-[13px] text-muted">Thanks.</p>
                 {answer !== 'unsure' && (
                   <form
                     className="mt-3 flex gap-2"
@@ -159,7 +194,6 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-[12px] text-muted">Lighter on low-energy days.</p>
           </section>
         )}
         <div className="mt-6 border-t border-line pt-5">

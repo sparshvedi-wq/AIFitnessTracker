@@ -3,6 +3,7 @@ export function onboardingSteps(p) {
   return [
     'welcome',
     'goal',
+    'physique',
     'experience',
     'about',
     'sports',
@@ -24,7 +25,7 @@ export function onboardingSteps(p) {
 }
 export function onboardingStage(step) {
   const groups = [
-    ['welcome', 'goal', 'experience', 'about'],
+    ['welcome', 'goal', 'physique', 'experience', 'about'],
     ['sports', 'sport-choice', 'priority'],
     ['location', 'home', 'equipment', 'home-loads', 'movement'],
     ['time', 'rhythm', 'comfort'],
@@ -44,7 +45,7 @@ export function nextOnboardingStep(step, p, editingGroup = null) {
   const steps = onboardingSteps(p),
     next = steps[steps.indexOf(step) + 1]
   const finished =
-    editingGroup === 'goal' ||
+    (editingGroup === 'goal' && step === 'physique') ||
     (editingGroup === 'time' && step === 'rhythm') ||
     (editingGroup === 'sports' &&
       ((step === 'sports' && !p.wantsSport && !p.sports.length) || step === 'priority')) ||
@@ -58,6 +59,7 @@ export function onboardingProgress(step) {
     {
       welcome: 0,
       goal: 0,
+      physique: 4,
       experience: 8,
       about: 16,
       sports: 22,

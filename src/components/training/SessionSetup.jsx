@@ -32,6 +32,7 @@ import { PlanRibbon } from './SetupVisuals.jsx'
 import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import WorkoutSwitchDialog from '../workout/WorkoutSwitchDialog.jsx'
 import { endForSwitch } from '../../lib/workout-switch.js'
+import { firstSessionAchievement } from '../../lib/milestones.js'
 
 const PLACE_ICON = { gym: 'train', equipment: 'dumbbell', space: 'minimize' }
 const placeIcon = (place) => (place.id === 'home' ? 'home' : PLACE_ICON[place.type])
@@ -190,6 +191,13 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       dispatch(
         record ? { type: 'FINISH_WORKOUT', workout: record } : { type: 'SET_ACTIVE_WORKOUT', session: null },
       )
+      // The first mark still counts when it was saved by switching.
+      const first = record && firstSessionAchievement(state, record, today)
+      if (first)
+        dispatch({
+          type: 'UPDATE_SETTINGS',
+          patch: { milestones: { ...state.settings.milestones, firstSession: first.workoutId } },
+        })
     }
     setReplace(false)
     dispatch({
@@ -441,36 +449,46 @@ export default function SessionSetup({ routine, onClose, onStart }) {
           )}
           {step === 2 && (
             <>
-              <div className="mt-7 grid grid-cols-3 gap-2" role="group" aria-label="Energy today">
+              <div className="mt-7 grid grid-cols-4 gap-2" role="group" aria-label="How you feel today">
                 {[
+                  ['unwell', 'Unwell', 0],
                   ['low', 'Low', 1],
                   ['normal', 'Usual', 2],
                   ['high', 'High', 3],
-                ].map(([value, label, bars]) => (
-                  <button
-                    key={value}
-                    aria-pressed={readiness.energy === value}
-                    onClick={() => setReadiness((r) => ({ ...r, energy: value }))}
-                    className={`tile energy-choice ${readiness.energy === value ? '' : 'text-ink2'}`}
-                  >
-                    <span className="flex h-7 items-end gap-1" aria-hidden="true">
-                      {[1, 2, 3].map((n) => (
-                        <span
-                          key={n}
-                          className={`w-2 rounded-sm bg-current ${n > bars ? 'opacity-15' : ''}`}
-                          style={{ height: 8 + n * 6 }}
-                        />
-                      ))}
-                    </span>
-                    <span className="mt-3 text-[16px] font-semibold">{label}</span>
-                  </button>
-                ))}
+                ].map(([value, label, bars]) => {
+                  const on =
+                    value === 'unwell' ? Boolean(readiness.unwell) : !readiness.unwell && readiness.energy === value
+                  return (
+                    <button
+                      key={value}
+                      aria-pressed={on}
+                      onClick={() =>
+                        setReadiness((r) =>
+                          value === 'unwell'
+                            ? { ...r, unwell: true, energy: 'low' }
+                            : { ...r, unwell: false, energy: value },
+                        )
+                      }
+                      className={`tile energy-choice ${on ? '' : 'text-ink2'}`}
+                    >
+                      <span className="flex h-7 items-end gap-1" aria-hidden="true">
+                        {value === 'unwell' ? (
+                          <Icon name="heart" size={22} />
+                        ) : (
+                          [1, 2, 3].map((n) => (
+                            <span
+                              key={n}
+                              className={`w-2 rounded-sm bg-current ${n > bars ? 'opacity-15' : ''}`}
+                              style={{ height: 8 + n * 6 }}
+                            />
+                          ))
+                        )}
+                      </span>
+                      <span className="mt-3 text-[15px] font-semibold">{label}</span>
+                    </button>
+                  )
+                })}
               </div>
-              <SwitchRow
-                label="Not feeling well today"
-                checked={Boolean(readiness.unwell)}
-                onChange={(unwell) => setReadiness((r) => ({ ...r, unwell }))}
-              />
               <div className="mt-7 divide-y divide-line rounded-tuck bg-bg/60 px-4">
                 <OptionRow
                   label="Sore or tired muscles"
@@ -543,6 +561,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                     label={findExercise(it.exId, state.customExercises)?.name}
                     detail={dose(it)}
                     thumb={exerciseThumb(it.exId)}
+                    thumbSlot
                     onClick={() => {
                       setExerciseIndex(i)
                       setExerciseReturn(null)
@@ -773,13 +792,20 @@ function SwitchRow({ label, checked, onChange }) {
   )
 }
 
-function OptionRow({ label, detail, onClick, thumb }) {
+function OptionRow({ label, detail, onClick, thumb, thumbSlot = false }) {
   return (
     <button onClick={onClick} className="flex min-h-14 w-full items-center gap-3 py-3 text-left">
-      {thumb && (
+      {thumb ? (
         <span className="exercise-thumb !h-12 !flex-[0_0_64px]" aria-hidden="true">
           <img src={thumb} alt="" loading="lazy" decoding="async" />
         </span>
+      ) : (
+        // Rows in one list keep one text column, with or without artwork.
+        thumbSlot && (
+          <span className="exercise-thumb exercise-thumb--empty !h-12 !flex-[0_0_64px]" aria-hidden="true">
+            <Icon name="train" size={20} />
+          </span>
+        )
       )}
       <span className="min-w-0 flex-1">
         <span className="block text-[16px] font-semibold">{label}</span>

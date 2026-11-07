@@ -135,9 +135,9 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
       const what = cur.ex.type === 'time' ? `${cur.set.sec} seconds` : `${cur.set.reps} reps`
       coach.go(`${cur.ex.name}, ${setNo}. ${what}.`)
     } else if (session.phase === 'rest' && cur) {
-      coach.speak(`Rest. Up next, ${cur.ex.name}.`)
+      coach.rest(`Rest. Up next, ${cur.ex.name}.`)
     } else if (session.phase === 'done') {
-      coach.go('Workout complete. Nice work.')
+      coach.done('Workout complete. Nice work.')
     }
   }, [session, prefs])
 

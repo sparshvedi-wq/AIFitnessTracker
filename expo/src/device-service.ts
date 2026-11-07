@@ -1,11 +1,20 @@
 import { LEGACY_STORAGE_KEY, MAX_SNAPSHOT, STORAGE_KEY, validateSnapshot } from './protocol.js'
 
+export const HAPTIC_STYLES = ['selection', 'light', 'tick', 'medium', 'heavy', 'success', 'warning', 'celebrate'] as const
+export type HapticStyle = (typeof HAPTIC_STYLES)[number]
+// Older Ink builds sent { strong }; named styles replace it.
+function hapticStyle(payload: { style?: unknown; strong?: unknown }): HapticStyle {
+  if (typeof payload.style === 'string' && (HAPTIC_STYLES as readonly string[]).includes(payload.style))
+    return payload.style as HapticStyle
+  return payload.strong === true ? 'success' : 'light'
+}
+
 export type DeviceServices = {
   load: (key: string) => Promise<string | null>
   save: (key: string, value: string) => Promise<unknown>
   remove: (key: string) => Promise<unknown>
   say: (text: string) => Promise<void>
-  haptic: (strong: boolean) => Promise<void>
+  haptic: (style: HapticStyle) => Promise<void>
   awake: (active: boolean) => Promise<void>
   shareText: (text: string) => Promise<unknown>
   exportBackup: (raw: string) => Promise<unknown>
@@ -119,7 +128,7 @@ export function createDeviceService(device: DeviceServices) {
           await device.say(payload.text)
           return null
         case 'haptics.buzz':
-          await device.haptic(payload.strong === true)
+          await device.haptic(hapticStyle(payload))
           return null
         case 'screen.keepAwake':
           if (typeof payload.active !== 'boolean') throw new Error('Invalid screen setting.')

@@ -11,6 +11,7 @@ export function resetForTesting(state, stage) {
     settings: {
       ...fresh.settings,
       ...state.settings,
+      milestones: {},
       training: {
         ...fresh.settings.training,
         ...state.settings.training,

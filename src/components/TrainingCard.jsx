@@ -48,7 +48,7 @@ export default function TrainingCard({
           {!showContext && ` · ${sets} ${sets === 1 ? 'set' : 'sets'}`}
         </p>
       </div>
-      <p className="training-card-why">{planSummary(plan)}</p>
+      {planSummary(plan) && <p className="training-card-why">{planSummary(plan)}</p>}
       {!compact && <ExerciseThumbs items={plan.items} customExercises={customExercises} className="mt-4" />}
       <button
         className="training-card-toggle"

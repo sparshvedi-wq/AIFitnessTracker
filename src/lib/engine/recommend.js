@@ -28,7 +28,13 @@ import {
   TIMING,
   WEEKLY_TARGET,
 } from './config.js'
-import { EXPERIENCE_LEVEL, ineligibility, placeCapabilities, placeSupports, screenCatalog } from './eligibility.js'
+import {
+  EXPERIENCE_LEVEL,
+  ineligibility,
+  placeCapabilities,
+  placeSupports,
+  screenCatalog,
+} from './eligibility.js'
 import { exposureFrom, sessionAsRecord } from './exposure.js'
 import { exerciseSignals } from './learning.js'
 import { realHistory, recordOutcome } from './ledger.js'
@@ -38,17 +44,9 @@ import { selectBeam, selectGreedy, selectionValue } from './select.js'
 import { allocateSets, baseDose, withTarget } from './dose.js'
 import { planSeconds } from './session-time.js'
 import { headline, itemNote, reasonLines } from './explain.js'
+import { PHOTO_AREAS, photoFocusEvidence } from './photo-focus.js'
 
 export const DEFAULT_PROFILE_FIELDS = { variety: 'balanced' }
-const PHOTO_AREAS = {
-  arms: ['Biceps', 'Triceps'],
-  shoulders: ['Shoulders'],
-  chest: ['Chest'],
-  back: ['Back'],
-  legs: ['Legs'],
-  glutes: ['Glutes'],
-  overall: [],
-}
 const STRENGTH = (w) => !['sport', 'recovery', 'pump'].includes(w.kind)
 
 /** Everything the policy needs, derived once. Exported for tests and debugging. */
@@ -58,7 +56,10 @@ export function planningContext(state, options = {}) {
   const p = options.profile
   const r = options.readiness
   const shortSession = Boolean(options.shortSession)
-  const minutes = Math.min(shortSession ? 15 : 90, Math.max(shortSession ? 5 : 10, Number(options.minutes || p.minutes) || 30))
+  const minutes = Math.min(
+    shortSession ? 15 : 90,
+    Math.max(shortSession ? 5 : 10, Number(options.minutes || p.minutes) || 30),
+  )
   const place = resolvePlace(p, options.location || p.location)
   const movement = movementPreferences(p, place.id, options.movement)
   const quiet = quietAt(p, place.id)
@@ -91,26 +92,52 @@ export function planningContext(state, options = {}) {
   // Reported pain or soreness on unfinished work in the last two days keeps those areas out.
   const flagged = history
     .filter((w) => w.date >= addDays(today, -2))
-    .flatMap((w) => recordOutcome(w).exercises.filter((o) => ['discomfort', 'soreness'].includes(o.reason) && o.status !== 'complete'))
+    .flatMap((w) =>
+      recordOutcome(w).exercises.filter(
+        (o) => ['discomfort', 'soreness'].includes(o.reason) && o.status !== 'complete',
+      ),
+    )
   const flaggedAreas = new Set(flagged.flatMap((o) => metaOf(o.exId)?.areas || []))
   const blockedAreas = new Set([...(r.pain || []), ...(r.sore || []), ...flaggedAreas])
-  const confirmed = state.checkins?.find(
-    (c) => !c.synthetic && !c.sample && c.id === p.focusCheckinId && c.date >= addDays(today, -42),
-  )
-  const manualFocus = p.baselineMode === 'manual' ? p.manualBaseline?.focusAreas || [] : []
+  const manualFocus =
+    p.baselineMode === 'manual' && Array.isArray(p.manualBaseline?.focusAreas)
+      ? p.manualBaseline.focusAreas.filter((a) => Array.isArray(PHOTO_AREAS[a]) && PHOTO_AREAS[a].length)
+      : []
+  // A manual starting profile uses its own chosen areas; an older photo
+  // priority does not keep applying (or get labelled as a chosen focus).
+  const photoEvidence =
+    !easy && !state.settings?.display?.metricLight && p.baselineMode !== 'manual'
+      ? photoFocusEvidence(state.checkins, p, today).filter(
+          (f) => !PHOTO_AREAS[f.area].some((a) => blockedAreas.has(a)),
+        )
+      : []
   const focus = !state.settings?.display?.metricLight
-    ? [...new Set([...manualFocus, ...(confirmed && p.ageGroup === '18+' ? p.confirmedFocus : [])])]
+    ? [...new Set([...manualFocus, ...photoEvidence.map((f) => f.area)])]
     : []
+  const focusStrength = {},
+    focusTargetBoost = {}
+  if (!state.settings?.display?.metricLight) {
+    for (const f of photoEvidence)
+      for (const area of PHOTO_AREAS[f.area]) {
+        focusStrength[area] = f.rankWeight
+        focusTargetBoost[area] = f.targetBoost
+      }
+    for (const f of manualFocus)
+      for (const area of PHOTO_AREAS[f]) {
+        focusStrength[area] = 1
+        focusTargetBoost[area] = 0.3
+      }
+  }
   const sportAreas = new Set((p.sports || []).flatMap((id) => sportById(id).muscles))
   const preparationAreas = new Set(schedule.preparation ? sportById(schedule.preparation.sport).muscles : [])
   const goal = p.goal || 'General fitness'
   const experience = p.experience || 'Starting out'
   const target = (WEEKLY_TARGET[goal] || 6) * (EXPERIENCE_TARGET_SCALE[experience] || 0.6)
-  const focusAreas = new Set(focus.flatMap((f) => PHOTO_AREAS[f] || []))
+  const focusAreas = new Set(Object.keys(focusStrength))
   const needs = {}
   for (const area of BALANCE_AREAS) {
     const scale = ['Core', 'Biceps', 'Triceps'].includes(area) ? 0.6 : 1
-    const goalTarget = target * scale * (focusAreas.has(area) ? 1.3 : 1)
+    const goalTarget = target * scale * (1 + (focusTargetBoost[area] || 0))
     needs[area] = Math.max(0, Math.min(1, (goalTarget - (exposure.area[area]?.week || 0)) / goalTarget))
   }
   const caps = placeCapabilities(place)
@@ -154,6 +181,9 @@ export function planningContext(state, options = {}) {
     manualFocus,
     focus,
     focusAreas,
+    focusStrength,
+    focusTargetBoost,
+    photoEvidence,
     focusSource: focus.length ? (manualFocus.length ? 'manual' : 'photo') : null,
     sportAreas,
     sportPriority: p.sportPriority || 'balanced',
@@ -220,12 +250,19 @@ function regionGroup(items) {
 
 function recentGroupFact(ctx) {
   // The most recent strength session in the last ~36 hours, and its main region.
-  const recent = [...ctx.strength].reverse().find((w) => ctx.now - (w.endedAt || w.startedAt || 0) <= 36 * 3600000)
+  const recent = [...ctx.strength]
+    .reverse()
+    .find((w) => ctx.now - (w.endedAt || w.startedAt || 0) <= 36 * 3600000)
   if (!recent) return {}
   const items = (recent.exercises || []).filter((e) => (e.sets || []).some((s) => s.kind !== 'warmup'))
   const group = regionGroup(items)
   if (!group) return {}
-  const when = recent.date === ctx.today ? 'earlier today' : recent.date === addDays(ctx.today, -1) ? 'yesterday' : 'recently'
+  const when =
+    recent.date === ctx.today
+      ? 'earlier today'
+      : recent.date === addDays(ctx.today, -1)
+        ? 'yesterday'
+        : 'recently'
   return { recentGroup: group, recentWhen: when }
 }
 
@@ -248,7 +285,8 @@ export function recommendStrength(state, options) {
       .map((m) => m.family),
   )
   ctx.trends = new Map()
-  const exploreBudget = ctx.easy || ctx.returning || ctx.shortSession ? 0 : EXPLORATION.maxPerSession[ctx.variety] ?? 1
+  const exploreBudget =
+    ctx.easy || ctx.returning || ctx.shortSession ? 0 : (EXPLORATION.maxPerSession[ctx.variety] ?? 1)
   ctx.maxExplore = ctx.exploration === 'off' ? 0 : exploreBudget
   ctx.maxItems = Math.min(ctx.shortSession ? 3 : 6, Math.max(2, Math.floor(ctx.minutes / 7)))
   ctx.minItems = Math.min(2, ctx.maxItems)
@@ -350,7 +388,14 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     const codes = codesFor(c, ctx)
     const side = sideFor(c, ctx)
     const areaLabel = (MUSCLE_AREA[c.meta.primary[0]] || c.def.muscle).toLowerCase()
-    const entry = { exId: c.meta.id, codes, unilateral: item.unilateral, progression: c.progression, side, areaLabel }
+    const entry = {
+      exId: c.meta.id,
+      codes,
+      unilateral: item.unilateral,
+      progression: c.progression,
+      side,
+      areaLabel,
+    }
     return {
       item: {
         ...item,
@@ -366,10 +411,16 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
   const carried = ctx.rollover.filter(
     (cand) =>
       included.has(cand.exId) ||
-      planItems.some((i) => metaOf(i.exId)?.family === cand.family && entries.find((e) => e.item === i)?.entry.codes.includes('rollover')),
+      planItems.some(
+        (i) =>
+          metaOf(i.exId)?.family === cand.family &&
+          entries.find((e) => e.item === i)?.entry.codes.includes('rollover'),
+      ),
   )
   const rolloverItem = entries.find((e) => e.entry.codes.includes('rollover'))
-  const preferredItem = entries.find((e) => e.entry.codes.includes('learned-preference') && ctx.signals.get(e.item.exId)?.completions)
+  const preferredItem = entries.find(
+    (e) => e.entry.codes.includes('learned-preference') && ctx.signals.get(e.item.exId)?.completions,
+  )
   const exploringItem = entries.find((e) => e.entry.codes.includes('exploring'))
   const recentAreas = BALANCE_AREAS.filter((a) => (ctx.exposure.area[a]?.recent || 0) >= ctx.capacity * 0.6)
   const facts = {
@@ -388,7 +439,8 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     sportsLine: ctx.p.sports?.length
       ? `${ctx.sportPriority === 'sport' ? 'Sport first' : ctx.sportPriority === 'goal' ? 'Goal first' : 'Sport and goal shared'}: ${ctx.p.sports.map((id) => sportById(id).name).join(', ')}.`
       : null,
-    focusSource: ctx.focus.length ? (ctx.manualFocus.length ? 'manual' : 'photo') : null,
+    focusSource: ctx.focusSource,
+    photoEvidence: ctx.photoEvidence,
     sore: ctx.r.sore,
     pain: ctx.r.pain,
     recentAreas,
@@ -431,13 +483,16 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
       progression: e.c.progression,
       evidence: [
         ...(e.c.features.rolloverSource ? [`rollover:${e.c.features.rolloverSource}`] : []),
-        ...(ctx.signals.get(e.item.exId)?.completions ? [`completions:${ctx.signals.get(e.item.exId).completions}`] : []),
+        ...(ctx.signals.get(e.item.exId)?.completions
+          ? [`completions:${ctx.signals.get(e.item.exId).completions}`]
+          : []),
       ],
     })),
     uncertainty: {
       historySessions: ctx.history.length,
       exploratoryItems: entries.filter((e) => e.c.sample.exploratory).length,
-      learnedExercises: [...ctx.signals.values()].filter((s) => s.sources.explicit || s.sources.inferred).length,
+      learnedExercises: [...ctx.signals.values()].filter((s) => s.sources.explicit || s.sources.inferred)
+        .length,
     },
   }
   const top = headline(decision)
@@ -445,21 +500,23 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
   const firstSession = !ctx.workouts.some((w) => !w.sample && !['sport', 'recovery'].includes(w.kind))
   const focusLine =
     top?.text ||
-    (ctx.schedule.note ||
-      (ctx.movement?.position === 'seated'
-        ? 'Light seated movement, at your own pace.'
-        : trainingFocus({
-            items: planItems,
-            readiness: ctx.r,
-            recentMuscles: new Set(),
-            sports: ctx.p.sports || [],
-            sportPriority: ctx.sportPriority,
-            focus: ctx.focus,
-            easy: ctx.easy,
-            firstSession,
-          })))
+    ctx.schedule.note ||
+    (ctx.movement?.position === 'seated'
+      ? 'Light seated movement, at your own pace.'
+      : trainingFocus({
+          items: planItems,
+          readiness: ctx.r,
+          recentMuscles: new Set(),
+          sports: ctx.p.sports || [],
+          sportPriority: ctx.sportPriority,
+          focus: ctx.focus,
+          focusSource: ctx.focusSource,
+          easy: ctx.easy,
+          firstSession,
+        }))
   return {
     id: `daily-${ctx.today}`,
+    firstSession,
     kind: 'adaptive',
     name: trainingTitle(planItems, { short: ctx.shortSession }),
     focus: focusLine,
@@ -492,7 +549,10 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
       rules: RULES,
       seed: ctx.seed,
       // Compact reason codes travel with the saved workout; the full record stays in memory.
-      decision: { headline: top?.code || null, items: decision.items.map((i) => ({ exId: i.exId, codes: i.codes })) },
+      decision: {
+        headline: top?.code || null,
+        items: decision.items.map((i) => ({ exId: i.exId, codes: i.codes })),
+      },
     },
     decision,
   }
@@ -507,7 +567,17 @@ function alternativesFor(ctx) {
 }
 
 // ── Gentle movement: for unwell days, or as a low-readiness alternative ──
-const GENTLE_ORDER = ['marching', 'spine-mobility', 'hip-mobility', 'shoulder-mobility', 'hamstring-mobility', 'scapular-control', 'core-brace', 'knee-control', 'calf']
+const GENTLE_ORDER = [
+  'marching',
+  'spine-mobility',
+  'hip-mobility',
+  'shoulder-mobility',
+  'hamstring-mobility',
+  'scapular-control',
+  'core-brace',
+  'knee-control',
+  'calf',
+]
 
 /** A short, easy movement session: no loading, no exploration, nothing to make up. */
 export function recommendMovement(state, options) {
@@ -519,7 +589,9 @@ export function recommendMovement(state, options) {
   const pool = []
   for (const family of GENTLE_ORDER) {
     const pick = (GENTLE_IDS[family] || [])
-      .filter((m) => m.impact === 0 && !m.equipment.length && ['stretch', 'drill', 'control'].includes(m.role))
+      .filter(
+        (m) => m.impact === 0 && !m.equipment.length && ['stretch', 'drill', 'control'].includes(m.role),
+      )
       .filter((m) => kinds.some((kind) => m.kinds.includes(kind) && !ineligibility(m, { ...base, kind })))
       .sort((a, b) => a.id.localeCompare(b.id))[0]
     if (pick) pool.push(pick)
@@ -559,7 +631,12 @@ export function recommendMovement(state, options) {
     explanation: headline({ facts }),
     alternatives: [{ kind: 'rest', label: 'Rest today' }],
     planning: { date: ctx.today, purpose: 'movement', engine: ENGINE_VERSION, rules: RULES, carriedFrom: [] },
-    decision: { engine: ENGINE_VERSION, rules: RULES, facts, items: items.map((i) => ({ exId: i.exId, codes: ['gentle'] })) },
+    decision: {
+      engine: ENGINE_VERSION,
+      rules: RULES,
+      facts,
+      items: items.map((i) => ({ exId: i.exId, codes: ['gentle'] })),
+    },
   }
 }
 

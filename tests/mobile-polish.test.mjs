@@ -85,11 +85,11 @@ test('review slides preserve evidence and uncertainty without inventing measurem
   const slides = photoReviewSlides(review)
   assert.deepEqual(
     slides.map((s) => s.kind),
-    ['overview', 'finding', 'plan'],
+    ['overview', 'finding', 'plan', 'checkins'],
   )
   assert.deepEqual(slides[1].evidenceViews, ['front'])
   assert.equal(slides[1].uncertainty, review.observations[0].uncertainty)
   assert.deepEqual(slides[2].focus, review.suggestedFocus)
-  assert.equal(photoReviewSlides({ summary: 'No specific finding.' }).length, 2)
+  assert.equal(photoReviewSlides({ summary: 'No specific finding.' }).length, 3)
   assert.equal(conciseSummary('Short summary.'), 'Short summary.')
 })

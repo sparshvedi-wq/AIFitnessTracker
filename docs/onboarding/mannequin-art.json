@@ -181,6 +181,33 @@
       "bytes": 825000,
       "sha256": "47f32359fbc8fb9231375ee6ed684859003ece112be39b175825dda2f5b6e0b8",
       "promptSet": "docs/onboarding/interactive-art.md"
+    },
+    {
+      "scene": "physique-athletic",
+      "file": "m1-physique-athletic.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 335396,
+      "sha256": "3b3d7d2d046c01856fef9dc6d4a05180c6d6d38215de6d4534dd91d8acbe8a0b",
+      "prompt": "Use case: stylized-concept. Reference image is identity/material reference for Tally's M1 mannequin, NOT an edit of the background. Create a portrait transparent-background premium 3D render of the same manufactured unisex ivory matte featureless mannequin, oval head, thin charcoal joint seams, round joint caps. A compact athletic build with moderate shoulder width, moderate limb thickness and a natural straight waist. No extreme thinness, no body-fat cues. One character only, no equipment. Standing in a relaxed front three-quarter stance, arms a little apart so its build reads clearly. Full body, feet included, fills 92% of 1024x1536 portrait. Same neutral camera, pose and soft studio lighting in all variants. Smooth flat chest, no genital or sexual detail. Real alpha transparency, no background, floor, gradient backdrop, shadow plane, text, numbers or labels. Not a real person. This is an optional style reference, not before/after or a ranked ideal."
+    },
+    {
+      "scene": "physique-balanced",
+      "file": "m1-physique-balanced.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 350462,
+      "sha256": "f362239f1fef4f10b00c61d94c2e5202fa6b621ae4bfc1670303d21ec9e89e68",
+      "prompt": "Use case: stylized-concept. Reference image is identity/material reference for Tally's M1 mannequin, NOT an edit of the background. Create a portrait transparent-background premium 3D render of the same manufactured unisex ivory matte featureless mannequin, oval head, thin charcoal joint seams, round joint caps. A balanced, medium athletic build with slightly broader shoulders and fuller upper arms and thighs than the compact version. Neutral unisex torso. One character only, no equipment. Standing in a relaxed front three-quarter stance, arms a little apart so its build reads clearly. Full body, feet included, fills 92% of 1024x1536 portrait. Same neutral camera, pose and soft studio lighting in all variants. Smooth flat chest, no genital or sexual detail. Real alpha transparency, no background, floor, gradient backdrop, shadow plane, text, numbers or labels. Not a real person. This is an optional style reference, not before/after or a ranked ideal."
+    },
+    {
+      "scene": "physique-powerful",
+      "file": "m1-physique-powerful.webp",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 377396,
+      "sha256": "7aa7f91e8b6caa0bfbfb34ae332249f897c004e1269c7f417532a364484a8044",
+      "prompt": "Use case: stylized-concept. Reference image is identity/material reference for Tally's M1 mannequin, NOT an edit of the background. Create a portrait transparent-background premium 3D render of the same manufactured unisex ivory matte featureless mannequin, oval head, thin charcoal joint seams, round joint caps. A solid, broad athletic build with visibly broader shoulders, substantial arms and legs, still naturally proportioned and unisex. Not a bodybuilder, not shredded or exaggerated. One character only, no equipment. Standing in a relaxed front three-quarter stance, arms a little apart so its build reads clearly. Full body, feet included, fills 92% of 1024x1536 portrait. Same neutral camera, pose and soft studio lighting in all variants. Smooth flat chest, no genital or sexual detail. Real alpha transparency, no background, floor, gradient backdrop, shadow plane, text, numbers or labels. Not a real person. This is an optional style reference, not before/after or a ranked ideal."
     }
   ]
 }

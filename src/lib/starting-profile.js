@@ -44,6 +44,7 @@ export function readManualBaseline(entry = {}) {
     errors,
     value: {
       heightCm,
+      notes: typeof entry.notes === 'string' ? entry.notes.trim().slice(0, 600) : '',
       weightKg,
       muscleEstimate: MUSCLE_ESTIMATES.includes(entry.muscleEstimate) ? entry.muscleEstimate : 'Not sure',
       focusAreas: [
@@ -66,6 +67,7 @@ export function manualEntryOf(baseline, weightUnit = 'lb') {
     weight: baseline?.weightKg
       ? String(Math.round(convertWeight(baseline.weightKg, 'kg', weightUnit) * 10) / 10)
       : '',
+    notes: baseline?.notes || '',
     muscleEstimate: baseline?.muscleEstimate || 'Not sure',
     focusAreas: baseline?.focusAreas || [],
   }

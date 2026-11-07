@@ -21,6 +21,7 @@ export default function Modal({
   bodyClassName = '',
   hideHandle = false,
   footerClassName = '',
+  animate = true,
 }) {
   const dialog = useRef(null)
   const titleId = useId()
@@ -32,7 +33,7 @@ export default function Modal({
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
       <div
-        className="absolute inset-0 bg-black/60 animate-fade-in"
+        className={`absolute inset-0 bg-black/60 ${animate ? 'animate-fade-in' : ''}`}
         onClick={dismissible ? onClose : undefined}
         aria-hidden="true"
       />
@@ -43,7 +44,7 @@ export default function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={subtitle && !header ? subtitleId : undefined}
-        className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float animate-slide-up ${className}`}
+        className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float ${animate ? 'animate-slide-up' : ''} ${className}`}
       >
         {/* Grab handle (phones) */}
         {!hideHandle && (

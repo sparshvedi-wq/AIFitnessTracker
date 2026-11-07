@@ -1,5 +1,8 @@
 // One reference-locked, unisex character. Scene variation never changes theme.
 export const ONBOARDING_ART = {
+  'physique-athletic': '/onboarding/m1-physique-athletic.webp',
+  'physique-balanced': '/onboarding/m1-physique-balanced.webp',
+  'physique-powerful': '/onboarding/m1-physique-powerful.webp',
   neutral: '/onboarding/m1-neutral.webp',
   welcome: '/onboarding/m1-welcome.webp',
   goal: '/onboarding/m1-goal.webp',

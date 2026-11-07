@@ -33,6 +33,7 @@ export function defaultState() {
     activeWorkout: null,
     settings: {
       theme: 'system',
+      milestones: {},
       training: { ...DEFAULT_PROFILE },
       display: { ...DEFAULT_DISPLAY },
       weightUnit: 'lb',
@@ -45,8 +46,10 @@ export function defaultState() {
         goalMode: 'flexible',
         countdown: 5, // get-ready seconds before the first set
         sound: true,
-        voice: true,
+        // Spoken cues are an accessibility choice, never the default.
+        voice: false,
         vibrate: true,
+        cuesVersion: 2,
         keepAwake: true, // hold a screen wake lock while the player is open
       },
     },
@@ -80,6 +83,13 @@ export const byDate = (a, b) =>
   String(a.date).localeCompare(String(b.date)) || (a.startedAt ?? 0) - (b.startedAt ?? 0)
 
 // Fill in anything an older save or backup is missing.
+// Saves from before cuesVersion 2 had spoken cues on by default. Turn them off
+// once; after that the person's own choice is kept.
+function migrateCues(saved) {
+  const workout = { ...defaultState().settings.workout, ...(saved || {}) }
+  return saved?.cuesVersion === 2 ? workout : { ...workout, voice: false, cuesVersion: 2 }
+}
+
 export function normalizeState(parsed) {
   const base = defaultState()
   const state = { ...base, ...parsed }
@@ -91,7 +101,7 @@ export function normalizeState(parsed) {
     version: base.version,
     settings: {
       ...settings,
-      workout: { ...base.settings.workout, ...(parsed.settings?.workout || {}) },
+      workout: migrateCues(parsed.settings?.workout),
       training: { ...DEFAULT_PROFILE, ...(parsed.settings?.training || {}) },
       display: { ...DEFAULT_DISPLAY, ...(parsed.settings?.display || {}) },
     },

@@ -3,15 +3,16 @@
 // they are not measurements of physiology, recovery or fatigue.
 // See docs/RECOMMENDATION_ENGINE.md for the reasoning behind each group.
 
-export const ENGINE_VERSION = 'daily-3.1'
+export const ENGINE_VERSION = 'daily-3.2'
 export const RULES = {
   eligibility: 'elig-2',
   exposure: 'expo-1',
   rollover: 'roll-2',
   learning: 'learn-1',
-  scoring: 'score-2',
+  scoring: 'score-3',
+  photoFocus: 'photo-1',
   exploration: 'explore-1',
-  selection: 'select-3',
+  selection: 'select-4',
   dose: 'dose-2',
   progression: 'prog-3',
   feedback: 'ask-1',
@@ -41,6 +42,19 @@ export const WEEKLY_TARGET = {
 export const EXPERIENCE_TARGET_SCALE = { 'Starting out': 0.6, 'Some experience': 0.8, Experienced: 1 }
 // Main areas the weekly balance considers (Core is planned as an accessory).
 export const BALANCE_AREAS = ['Legs', 'Glutes', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Core']
+
+// Photo cues remain provisional even when a later check-in suggests the same
+// priority. These small planning weights are heuristics, not confidence scores
+// or promised increases in completed sets. Recovery and hard exclusions win.
+export const PHOTO_FOCUS = {
+  initialRank: 0.25,
+  followupRank: 0.4,
+  initialTargetBoost: 0.05,
+  followupTargetBoost: 0.1,
+  followupGapDays: 7,
+  fullWeightDays: 14,
+  expiresDays: 42,
+}
 
 // ── Rollover: unfinished work as optional candidates ─────────────────────
 // Weight of an unfinished exercise as a candidate, by stated reason.

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ProfileNotes from './ProfileNotes.jsx'
 import { Field, Choice } from './Fields.jsx'
 import { BASELINE_FOCUS, MUSCLE_ESTIMATES, readManualBaseline } from '../../lib/starting-profile.js'
 import { convertWeight } from '../../lib/units.js'
@@ -114,7 +115,7 @@ export default function ManualBaselineFields({ value, onChange }) {
           </p>
         )}
       </Field>
-      <Field label="Muscle estimate (optional)">
+      <Field label="Muscle estimate">
         <div className="grid grid-cols-2 gap-2">
           {MUSCLE_ESTIMATES.map((v) => (
             <Choice
@@ -126,6 +127,7 @@ export default function ManualBaselineFields({ value, onChange }) {
           ))}
         </div>
       </Field>
+      <ProfileNotes value={value} onChange={onChange} />
       <details className="mt-5 border-t border-line">
         <summary className="min-h-11 cursor-pointer py-3 text-[14px] font-semibold">
           Add a training focus

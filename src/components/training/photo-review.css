@@ -253,6 +253,14 @@
 .review-focus:disabled {
   opacity: 1;
 }
+/* Suggestions that can't be applied read as a list, not as switches. */
+.review-focus.is-static {
+  list-style: none;
+  box-shadow: none;
+}
+.review-focus.is-static .review-focus-heading {
+  margin-bottom: 0;
+}
 @keyframes focus-light {
   from {
     opacity: 0;
@@ -296,4 +304,85 @@
   background: rgb(var(--lit));
   border: 2px solid rgb(var(--accent) / 0.35);
   box-shadow: 0 4px 0 rgb(var(--lit-edge));
+}
+.photo-angle-thumb {
+  height: 40px;
+  width: 28px;
+  object-fit: cover;
+  border-radius: 7px;
+  background: rgb(var(--bg));
+}
+.photo-frame {
+  position: relative;
+  background: radial-gradient(ellipse at 50% 70%, rgb(var(--accent) / 0.09), transparent 70%), rgb(var(--bg));
+  border: 1px solid rgb(var(--line));
+}
+.photo-frame:has(.photo-mannequin-guide)::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  border: 1px solid rgb(var(--accent) / 0.18);
+  border-radius: 22px;
+  mask-image: linear-gradient(black, transparent 30%, transparent 70%, black);
+}
+.review-reading-note {
+  margin-top: 20px;
+  color: rgb(var(--muted));
+  font-size: 13px;
+  line-height: 1.5;
+}
+.review-reading-note summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.review-reading-note p + p {
+  margin-top: 8px;
+}
+.review-scan .review-loading-photo {
+  border-radius: 22px;
+  animation: review-photo-enter 350ms ease both;
+}
+.checkin-story-art {
+  position: relative;
+  min-height: 300px;
+  margin-top: 12px;
+}
+.checkin-story-art .focus-model {
+  height: 290px;
+}
+.checkin-story-photos {
+  position: absolute;
+  bottom: 20px;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  transform: rotate(4deg);
+}
+.checkin-story-photos img {
+  height: 140px;
+  width: 80px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+}
+@keyframes review-photo-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-scan .review-loading-photo {
+    animation: none;
+  }
+}
+.tally-reduce-motion .review-loading-photo {
+  animation: none;
 }

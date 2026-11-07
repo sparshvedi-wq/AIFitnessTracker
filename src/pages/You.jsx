@@ -132,9 +132,6 @@ export default function You({ nav }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold">Photo check-ins</span>
-          <span className="mt-1 block text-[13px] text-muted">
-            {state.checkins.length ? 'Your photos and reviews' : 'Your starting photos'}
-          </span>
         </span>
         <Icon name="chevronRight" size={16} className="text-faint" />
       </button>
@@ -159,7 +156,6 @@ export default function You({ nav }) {
           ) : (
             <AddRow
               label="Set a strength goal"
-              detail="Optional · your lift, your target"
               onClick={() => setSheet('lift')}
             />
           )}
@@ -212,9 +208,7 @@ export default function You({ nav }) {
                 </div>
               )}
             </>
-          ) : (
-            <p className="mt-2 text-[14px] text-muted">Log your weight now and then to see a trend.</p>
-          )}
+          ) : null}
         </section>
       )}
 
@@ -225,7 +219,6 @@ export default function You({ nav }) {
             <RowIcon name="settings" />
             <span className="min-w-0 flex-1">
               <span className="block text-[15px]">Training preferences</span>
-              <span className="mt-0.5 block text-[12px] text-muted">Setup, equipment, comfort, display</span>
             </span>
             <Icon name="chevronRight" size={15} className="text-faint" />
           </button>
@@ -261,16 +254,19 @@ export default function You({ nav }) {
             />
           </div>
           {[
+            ['phone', 'Haptics', 'vibrate'],
             ['volume', 'Sounds', 'sound'],
-            ['mic', 'Voice cues', 'voice'],
-            ['phone', 'Vibration', 'vibrate'],
             ['sun', 'Keep screen on', 'keepAwake'],
-          ].map(([icon, label, key]) => (
+            ['mic', 'Spoken cues', 'voice', 'Accessibility'],
+          ].map(([icon, label, key, group]) => (
             <div key={key} className="list-row min-h-[60px] border-t border-line">
               <RowIcon name={icon} />
-              <span className="min-w-0 flex-1 text-[15px]">{label}</span>
+              <span className="min-w-0 flex-1 text-[15px]">
+                {group && <span className="block text-[12px] font-semibold text-muted">{group}</span>}
+                {label}
+              </span>
               <Toggle
-                checked={settings.workout[key]}
+                checked={Boolean(settings.workout[key])}
                 onChange={(v) => updateWorkout({ [key]: v })}
                 label={label}
               />

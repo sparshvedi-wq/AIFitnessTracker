@@ -1,0 +1,195 @@
+.first-workout-dialog {
+  background: rgb(var(--bg));
+}
+.first-workout-body {
+  display: flex;
+  flex-direction: column;
+}
+.first-workout {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 0 20px;
+  text-align: center;
+}
+.first-workout-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+.first-workout-stage {
+  position: relative;
+  height: clamp(230px, 36dvh, 350px);
+  width: 100%;
+  max-width: 330px;
+  margin-block: 14px;
+}
+.first-workout-stage > img {
+  position: absolute;
+  height: 100%;
+  width: 80%;
+  left: -3%;
+  object-fit: contain;
+}
+.first-workout-floor {
+  position: absolute;
+  left: 10%;
+  bottom: 2%;
+  width: 70%;
+  height: 10%;
+}
+.first-workout-mark {
+  position: absolute;
+  height: 65%;
+  width: 30%;
+  right: 7%;
+  top: 15%;
+  color: rgb(var(--accent));
+  transform: rotate(3deg);
+}
+.first-workout-mark path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 14;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: first-mark-draw 850ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.first-workout-title {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(32px, 9vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.first-workout-copy {
+  margin-top: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+}
+.first-workout-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+  max-width: 270px;
+  margin-top: 28px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 20px;
+  padding: 16px 0;
+  background: rgb(var(--surface));
+}
+.first-workout-stats > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: rgb(var(--muted));
+}
+.first-workout-stats > span + span {
+  border-left: 1px solid rgb(var(--line));
+}
+.first-workout-stats strong {
+  font-size: 25px;
+  color: rgb(var(--ink));
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+@keyframes first-mark-draw {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0.3;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-workout-mark path {
+    animation: none;
+  }
+}
+.tally-reduce-motion .first-workout-mark path {
+  animation: none;
+}
+
+/* First-session intro: one calm screen before set one. */
+.first-intro {
+  display: flex;
+  min-height: calc(100dvh - 38px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  flex: 1;
+  flex-direction: column;
+}
+.first-intro-stage {
+  position: relative;
+  height: clamp(220px, 40dvh, 380px);
+  margin: 8px auto 0;
+  width: 100%;
+  max-width: 340px;
+}
+.first-intro-stage > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  animation: first-intro-arrive 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.first-intro-floor {
+  position: absolute;
+  left: 15%;
+  bottom: -2%;
+  width: 70%;
+  height: 12%;
+}
+.first-intro-eyebrow {
+  margin-top: 28px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgb(var(--accent-ink));
+}
+.first-intro-title {
+  margin-top: 6px;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(32px, 9vw, 42px);
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.first-intro-copy {
+  margin-top: 12px;
+  margin-bottom: 28px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+}
+.first-intro-start {
+  margin-top: auto;
+  margin-bottom: 6px;
+}
+@keyframes first-intro-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .first-intro-stage > img {
+    animation: none;
+  }
+}
+.tally-reduce-motion .first-intro-stage > img {
+  animation: none;
+}

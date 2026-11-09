@@ -28,13 +28,19 @@ function isolateTopDialog() {
 }
 export default function useDialogAccessibility(dialog, open, onClose) {
   const close = useRef(onClose)
+  // The control that opened the dialog, read while rendering: a field inside
+  // the dialog may take focus (autoFocus or an effect) before effects here run.
+  const opener = useRef(null)
+  const wasOpen = useRef(false)
+  if (open && !wasOpen.current && typeof document !== 'undefined') opener.current = document.activeElement
+  wasOpen.current = open
   useEffect(() => {
     close.current = onClose
   }, [onClose])
   useEffect(() => {
     if (!open || !dialog.current) return
     const node = dialog.current
-    const previousFocus = document.activeElement
+    const previousFocus = opener.current && !node.contains(opener.current) ? opener.current : null
     registered.add(node)
     if (count++ === 0) previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -78,8 +84,14 @@ export default function useDialogAccessibility(dialog, open, onClose) {
       registered.delete(node)
       isolateTopDialog()
       if (--count === 0) document.body.style.overflow = previousOverflow
-      if (previousFocus?.isConnected && !previousFocus.closest('[inert]'))
+      // After this update settles: not when the same dialog is set up again
+      // (development re-runs effects), nor when another dialog has taken focus.
+      queueMicrotask(() => {
+        if (registered.has(node) || !previousFocus?.isConnected || previousFocus.closest('[inert]')) return
+        const top = topDialog()
+        if (top && !top.contains(previousFocus)) return
         previousFocus.focus({ preventScroll: true })
+      })
     }
   }, [dialog, open])
 }

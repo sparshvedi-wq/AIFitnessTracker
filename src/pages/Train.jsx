@@ -12,8 +12,7 @@ import Modal from '../components/Modal.jsx'
 import { PageTitle, SectionHead } from '../components/Ink.jsx'
 import RoutineEditor from '../components/workout/RoutineEditor.jsx'
 import useStartWorkout from '../components/workout/useStartWorkout.js'
-import { buildDailyPlan, profileOf, todayChoice } from '../lib/planner.js'
-import { resolvePlace } from '../lib/places.js'
+import { buildDailyPlan, todayChoice } from '../lib/planner.js'
 import { sportById } from '../lib/sports.js'
 import usePlanningTime, { lastRecordedAt } from '../components/training/usePlanningTime.js'
 import { sportScheduleContext } from '../lib/sport-schedule.js'
@@ -131,12 +130,7 @@ export default function Train({ nav }) {
           {/* While a workout runs, the mini bar above the tabs is its one live entry. */}
           {!state.activeWorkout && (
             <div className="mt-4">
-              <TrainingCard
-                compact
-                plan={next}
-                place={resolvePlace(profileOf(state), next.location)}
-                onStart={() => start(next)}
-              />
+              <TrainingCard compact plan={next} onStart={() => start(next)} />
             </div>
           )}
           <div className="mt-3 grid grid-cols-2 gap-3">

@@ -18,7 +18,7 @@ import { eligibilityContext, planningContext } from './recommend.js'
 import { ineligibility } from './eligibility.js'
 import { rankSubstitutes } from './substitute.js'
 import { extraSetSeconds, itemSeconds } from './session-time.js'
-import { enterWork, finish, makeSessionExercise } from '../workout.js'
+import { enterWork, finish, makeSessionExercise, openRest } from '../workout.js'
 
 /** Fingerprint of everything logged or planned in a session; ignores timers and the cursor. */
 export function sessionFingerprint(session) {
@@ -166,6 +166,7 @@ export function previewReplan(state, session, change, { now = Date.now(), today,
  * @returns {{ status: 'applied' | 'already-applied' | 'stale', session }}
  */
 export function applyReplan(current, preview, now = Date.now()) {
+  if (current.phase === 'rest') current = openRest(current)
   const print = sessionFingerprint(current)
   if (print === preview.result) return { status: 'already-applied', session: current }
   if (print !== preview.base) return { status: 'stale', session: current }
@@ -181,7 +182,9 @@ export function applyReplan(current, preview, now = Date.now()) {
   return {
     status: 'applied',
     session: sameCursor
-      ? { ...next, phase: current.phase, phaseEndsAt: current.phaseEndsAt, phaseLeft: current.phaseLeft, phaseTotal: current.phaseTotal }
+      ? current.phase === 'rest'
+        ? openRest(next)
+        : { ...next, phase: current.phase, phaseEndsAt: current.phaseEndsAt, phaseLeft: current.phaseLeft, phaseTotal: current.phaseTotal }
       : enterWork({ ...next, phase: 'work' }, now),
   }
 }

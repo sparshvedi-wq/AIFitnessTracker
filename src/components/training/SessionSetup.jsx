@@ -27,7 +27,12 @@ import usePlanningTime from './usePlanningTime.js'
 import { planSummary, count } from '../../lib/presentation.js'
 import EnvironmentFields from './EnvironmentFields.jsx'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
-import { SHORT_DURATIONS } from '../../lib/flexible-training.js'
+import {
+  customDurationAllowed,
+  customDurationOptions,
+  durationChoices,
+  fitDuration,
+} from '../../lib/flexible-training.js'
 import { PlanRibbon } from './SetupVisuals.jsx'
 import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import WorkoutSwitchDialog from '../workout/WorkoutSwitchDialog.jsx'
@@ -55,14 +60,20 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     ['sport', 'adaptive', 'pump'].includes(routine.kind) ? routine.kind : 'routine',
   )
   const shortSession = Boolean(routine.shortSession && kind === 'adaptive')
-  const [minutes, setMinutes] = useState(
-    routine.shortSession
-      ? routine.minutes || 10
-      : routine.kind === 'pump'
-        ? 10
-        : routine.kind === 'sport'
-          ? p.lastSportMinutes || 10
-          : todayChoice(state, today).minutes || p.minutes,
+  const quickDurations = durationChoices(kind, shortSession)
+  // Opens on a visible choice: a requested custom time stays, otherwise the nearest quick choice.
+  const [minutes, setMinutes] = useState(() =>
+    fitDuration(
+      routine.shortSession
+        ? routine.minutes || 10
+        : routine.kind === 'pump'
+          ? 10
+          : routine.kind === 'sport'
+            ? p.lastSportMinutes || 10
+            : todayChoice(state, today).minutes || p.minutes,
+      kind,
+      shortSession,
+    ),
   )
   const [location, setLocationState] = useState(todayChoice(state, today).location || p.location)
   const place = resolvePlace(p, location)
@@ -91,7 +102,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
   const changeKind = (value) => {
     if (value === kind) return
     setKind(value)
-    setMinutes(value === 'sport' || (routine.shortSession && value === 'adaptive') ? 10 : p.minutes)
+    const short = Boolean(routine.shortSession && value === 'adaptive')
+    setMinutes(fitDuration(value === 'sport' || short ? 10 : p.minutes, value, short))
     setStep(0)
     setReturnToPlan(false)
     setPanel(null)
@@ -314,6 +326,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   } else setStep(step + 1)
                 }}
                 disabled={
+                  (step === 0 && !(minutes > 0)) ||
                   (kind === 'sport' && !sport) ||
                   (lastStep &&
                     (!equipmentValid || !plan.items.length) &&
@@ -360,14 +373,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                 </Field>
               )}
               <div className="mt-8 grid grid-cols-2 gap-3">
-                {(shortSession
-                  ? SHORT_DURATIONS
-                  : kind === 'pump'
-                    ? [5, 10, 15]
-                    : kind === 'sport'
-                      ? [5, 10, 15, 20]
-                      : [15, 20, 30, 45]
-                ).map((v) => (
+                {quickDurations.map((v) => (
                   <button
                     key={v}
                     aria-label={`${v} minutes`}
@@ -385,14 +391,15 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   </button>
                 ))}
               </div>
-              {!shortSession && !['sport', 'pump'].includes(kind) && (
+              {customDurationAllowed(kind, shortSession) && (
                 <div className="custom-duration">
                   <span>Custom time</span>
                   <Select
                     label="Workout duration"
-                    value={minutes}
+                    value={quickDurations.includes(minutes) ? '' : minutes}
+                    placeholder="Choose"
                     onChange={setMinutes}
-                    options={[10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 75, 90].map((v) => [v, `${v} min`])}
+                    options={customDurationOptions(minutes, kind, shortSession).map((v) => [v, `${v} min`])}
                   />
                 </div>
               )}
@@ -457,7 +464,9 @@ export default function SessionSetup({ routine, onClose, onStart }) {
                   ['high', 'High', 3],
                 ].map(([value, label, bars]) => {
                   const on =
-                    value === 'unwell' ? Boolean(readiness.unwell) : !readiness.unwell && readiness.energy === value
+                    value === 'unwell'
+                      ? Boolean(readiness.unwell)
+                      : !readiness.unwell && readiness.energy === value
                   return (
                     <button
                       key={value}

@@ -9,6 +9,7 @@ import {
   findRecords,
   fmtClock,
   fmtNum,
+  routineLoad,
   setCounts,
   toWorkoutRecord,
   totals,
@@ -16,6 +17,8 @@ import {
 import Icon from '../Icon.jsx'
 import ConfirmDialog from '../ConfirmDialog.jsx'
 import { isNativeApp, nativeRequest } from '../../lib/native.js'
+import { WorkoutInfo } from './SetControls.jsx'
+import useFreshTapGuard from '../useFreshTapGuard.js'
 
 // Keep historical effort values; labels do not change saved intensity.
 export const EFFORT = [
@@ -35,6 +38,8 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [logDate, setLogDate] = useState(session.summaryDraft?.logDate || session.logDate || today)
   const [includeTime, setIncludeTime] = useState(false)
+  // Save sits near the player's last button; a double tap must not skip the review.
+  const guard = useFreshTapGuard()
   const keepDraft = (patch) =>
     dispatch({
       type: 'SET_ACTIVE_WORKOUT',
@@ -63,7 +68,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
     const record = toWorkoutRecord(
       { ...session, finishReason, ...(session.kind === 'manual' ? { logDate } : {}) },
       state.workouts,
-      { now, effort, note },
+      { now: Date.now(), effort, note },
     )
     if (saveRoutine && !isSaved) {
       const id = `r-${session.id}`
@@ -79,7 +84,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
               e.sets.filter((s) => (session.kind === 'manual' ? s.status === 'done' : s.status !== 'skipped'))
                 .length || e.sets.length,
             ...(e.type === 'time' ? { sec: e.sets[0].sec } : { reps: e.sets[0].reps }),
-            weight: e.weighted ? Math.max(0, ...e.sets.map((s) => s.weight || 0)) || null : null,
+            weight: routineLoad(e),
             restSec: e.restSec,
           })),
         },
@@ -125,7 +130,8 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
 
   const cells = [
     t.volume > 0 ? { l: 'Volume', v: fmtNum(t.volume), u: session.unit } : { l: 'Reps', v: fmtNum(t.reps) },
-    { l: 'Sets logged', v: done },
+    // Working sets, as on the rest screen and the Saved sheet; warm-ups are shown apart.
+    { l: 'Sets logged', v: t.sets, u: t.warmupSets ? `+ ${count(t.warmupSets, 'warm-up')}` : null },
   ]
 
   return (
@@ -142,19 +148,6 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
         <h1 className="mt-4 font-display text-[32px] leading-tight">
           {session.kind === 'manual' ? 'Your workout' : remaining > 0 ? 'Save session' : 'Session complete'}
         </h1>
-        <p className="mt-2 text-[15px] text-muted">
-          {session.kind === 'manual'
-            ? 'Review your sets, then save whenever you’re ready.'
-            : remaining > 0
-              ? 'Save what you did. Every set counts.'
-              : session.kind === 'sport'
-                ? 'Your sport warmup is complete.'
-                : session.kind === 'recovery'
-                  ? 'Your light movement session is complete.'
-                  : session.kind === 'pump'
-                    ? 'Your short focused session is complete.'
-                    : 'Your logged sets are ready to save.'}
-        </p>
       </div>
 
       <div className="mt-7 grid grid-cols-2 gap-2.5">
@@ -195,6 +188,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
           return (
             <button
               key={o.value}
+              aria-pressed={on}
               onClick={() => {
                 setEffort(on ? null : o.value)
                 keepDraft({ effort: on ? null : o.value })
@@ -223,7 +217,8 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
           keepDraft({ note: e.target.value })
         }}
         rows={2}
-        placeholder="Notes for next time (optional)"
+        aria-label="Workout notes"
+        placeholder="Add a note"
         className="input mt-3 resize-none"
       />
       <details className="mt-3 border-t border-line">
@@ -255,7 +250,13 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
       {session.kind !== 'manual' &&
         session.exercises.some((e) => e.sets.some((s) => s.status !== 'done')) && (
           <div className="mt-4 text-[14px]">
-            Anything to consider next time?
+            <div className="flex min-h-11 items-center justify-between">
+              <h2 className="font-semibold">Finished early</h2>
+              <WorkoutInfo title="Finishing early">
+                You can leave this blank. Your reason helps the next plan distinguish a time limit from
+                discomfort. Stopping for pain or soreness does not create catch-up work.
+              </WorkoutInfo>
+            </div>
             <span
               className="mt-2 flex flex-wrap gap-2"
               role="radiogroup"
@@ -284,7 +285,6 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
                 </button>
               ))}
             </span>
-            <span className="mt-2 block text-[12px] text-muted">Optional. Shapes your next plan.</span>
           </div>
         )}
 
@@ -312,7 +312,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
           <Icon name="share" size={16} />
         </button>
         <button
-          onClick={save}
+          onClick={guard(save)}
           disabled={!logDate || logDate > today}
           className="btn-primary min-h-[54px] flex-1 text-[16px]"
         >

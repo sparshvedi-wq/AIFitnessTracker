@@ -1,7 +1,7 @@
 import { findExercise } from './exercises.js'
 import { profileOf, readinessOf } from './planner.js'
 import { availableLoads, fitAvailableLoad, DUMBBELL_MOVES } from './preferences.js'
-import { currentSet, lastPerformance, makeSessionExercise, enterWork, finish } from './workout.js'
+import { currentSet, lastPerformance, makeSessionExercise, enterWork, finish, openRest } from './workout.js'
 import { movementAllowed, movementPreferences, movementSummary } from './movement-preferences.js'
 import { sportScheduleContext } from './sport-schedule.js'
 import { todayKey } from './date.js'
@@ -244,6 +244,7 @@ export function shortenSession(session, minutes, now = Date.now()) {
   if (!keptPending) return finish(next, now)
   const ex = exercises.findIndex((e) => e.sets.some((s) => s.status === 'todo'))
   const cursor = { ex, set: exercises[ex].sets.findIndex((s) => s.status === 'todo') }
-  if (session.cursor?.ex === cursor.ex && session.cursor?.set === cursor.set) return next
+  if (session.cursor?.ex === cursor.ex && session.cursor?.set === cursor.set)
+    return next.phase === 'rest' ? openRest(next) : next
   return session.phase === 'prepared' ? { ...next, cursor } : enterWork({ ...next, cursor }, now)
 }

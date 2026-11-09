@@ -1,6 +1,7 @@
 import { convertWeight } from './units.js'
 import { findRecords, totals } from './workout.js'
 import { correctedOutcome } from './engine/ledger.js'
+import { SET_LIMITS } from './set-entry.js'
 
 // A daily recommendation is ephemeral. Repeat the actual logged session instead.
 export function routineFromWorkout(workout, unit = workout.unit) {
@@ -42,11 +43,11 @@ export function correctWorkout(workout, { date, note, exercises }, today) {
         weight = Number(s.weight)
       if (
         e.type === 'time'
-          ? !Number.isFinite(sec) || sec <= 0 || sec > 86400
-          : !Number.isInteger(reps) || reps <= 0 || reps > 10000
+          ? !Number.isFinite(sec) || sec <= 0 || sec > SET_LIMITS.sec
+          : !Number.isInteger(reps) || reps <= 0 || reps > SET_LIMITS.reps
       )
         throw new Error('Enter a positive duration or whole number of reps for every set.')
-      if (e.weighted && (!Number.isFinite(weight) || weight < 0 || weight > 10000))
+      if (e.weighted && (!Number.isFinite(weight) || weight < 0 || weight > SET_LIMITS.weight))
         throw new Error('Enter a valid weight for every weighted set.')
       return {
         ...s,

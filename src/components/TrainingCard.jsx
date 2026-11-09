@@ -11,17 +11,14 @@ const WIDE = new Set(['movement', 'sports', 'rhythm'])
 
 export default function TrainingCard({
   plan,
-  place,
   onStart,
   compact = false,
   customExercises = [],
-  showContext = true,
   title,
   scene = 'neutral',
   hideStart = false,
 }) {
   const [expanded, setExpanded] = useState(false)
-  const sets = plan.items.reduce((n, it) => n + it.sets, 0)
   const wide = WIDE.has(scene)
   return (
     <section className={`training-card ${compact ? 'training-card--compact' : ''}`}>
@@ -38,15 +35,6 @@ export default function TrainingCard({
         >
           {plan.name}
         </h2>
-        <p className="mt-2 text-[14px] font-semibold text-ink2">
-          {showContext && (
-            <>
-              {plan.requestedMinutes} min · {plan.placeName || place?.name} ·{' '}
-            </>
-          )}
-          {plan.items.length} {plan.items.length === 1 ? 'exercise' : 'exercises'}
-          {!showContext && ` · ${sets} ${sets === 1 ? 'set' : 'sets'}`}
-        </p>
       </div>
       {planSummary(plan) && <p className="training-card-why">{planSummary(plan)}</p>}
       {!compact && <ExerciseThumbs items={plan.items} customExercises={customExercises} className="mt-4" />}

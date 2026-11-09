@@ -9,6 +9,7 @@ import { restoreNativeState } from './lib/native.js'
 import { loadState } from './lib/storage.js'
 import { openPreviews } from './lib/photo-store.js'
 import BootSkeleton from './components/Skeleton.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
 
 // Every image shows a shimmer until it has loaded (or failed), so artwork and
 // photos never pop into an empty box. Capture-phase: load events don't bubble.
@@ -44,9 +45,11 @@ restoreNativeState()
   .then(({ state, previews }) =>
     root.render(
       <React.StrictMode>
-        <AppProvider initialState={state} initialPreviews={previews}>
-          <App />
-        </AppProvider>
+        <ErrorBoundary>
+          <AppProvider initialState={state} initialPreviews={previews}>
+            <App />
+          </AppProvider>
+        </ErrorBoundary>
       </React.StrictMode>,
     ),
   )

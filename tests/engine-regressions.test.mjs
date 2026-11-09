@@ -26,7 +26,7 @@ const missed = () => train(makeUser({ experience: 'Some experience' }), plan(), 
 const root = (state) => `${state.workouts[0].id}:db-row`
 const rolls = (state) => rolloverCandidates(state.workouts, { today, now: at(today, 20) })
 
-test('applying an older prepared preview preserves a newly started session and current rest timing', () => {
+test('applying an older prepared preview preserves a newly started session and user-paced rest', () => {
   const state = makeUser()
   const prepared = prepareSession(buildSession(plan(), { now: 1000 }))
   const preview = previewReplan(state, prepared, { minutes: 10 }, { today, now: 1000 })
@@ -37,8 +37,9 @@ test('applying an older prepared preview preserves a newly started session and c
   assert.equal(result.session.phase, 'work')
   const rest = { ...started, phase: 'rest', phaseEndsAt: 15000, phaseLeft: null, phaseTotal: 10000 }
   const same = applyReplan(rest, preview, 7000)
-  assert.equal(same.session.phaseEndsAt, 15000)
-  assert.equal(same.session.phaseTotal, 10000)
+  assert.equal(same.session.phase, 'rest')
+  assert.equal(same.session.phaseEndsAt, null)
+  assert.equal(same.session.phaseTotal, 0)
 })
 
 test('partial and mixed-load sessions cannot claim a load increase from hitting only the completed targets', () => {

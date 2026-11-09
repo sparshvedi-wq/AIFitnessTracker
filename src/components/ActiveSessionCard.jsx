@@ -1,18 +1,10 @@
-import { useEffect, useState } from 'react'
 import Icon from './Icon.jsx'
 import { ONBOARDING_ART } from '../lib/onboarding-art.js'
 import { sessionStatus, setCounts } from '../lib/workout.js'
 
 // Home's view of the workout in progress. It shows the same live status as
-// the mini bar on other tabs, including the rest countdown.
+// the mini bar on other tabs. Rest always waits for the person.
 export default function ActiveSessionCard({ session, onOpen }) {
-  const [now, setNow] = useState(Date.now)
-  const ticking = Boolean(session.phaseEndsAt && !session.pausedAt)
-  useEffect(() => {
-    if (!ticking) return
-    const id = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(id)
-  }, [ticking])
   const { done, total } = setCounts(session)
   const prepared = session.phase === 'prepared'
   const share = total ? done / total : 0
@@ -29,7 +21,7 @@ export default function ActiveSessionCard({ session, onOpen }) {
         <span className="mt-2 block font-display text-[30px] leading-[1.04]">{session.name}</span>
         {!prepared && (
           <span className="mt-2 block truncate text-[14px] font-semibold text-ink2">
-            {sessionStatus(session, now)}
+            {sessionStatus(session)}
           </span>
         )}
       </span>

@@ -25,7 +25,35 @@ export async function exportData(state) {
 
 export async function pickNativeBackup() {
   const raw = await nativeRequest('backup.pick', {}, 300_000)
-  return raw === null ? null : validateSnapshot(raw)
+  return raw === null ? null : validateBackup(validateSnapshot(raw))
+}
+
+const isRecord = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+const listOf = (value, check) => value === undefined || (Array.isArray(value) && value.every(check))
+const readableSession = (w) =>
+  isRecord(w) &&
+  Array.isArray(w.exercises) &&
+  w.exercises.every((e) => isRecord(e) && Array.isArray(e.sets) && e.sets.every(isRecord))
+const readableWorkout = (w) =>
+  readableSession(w) && typeof w.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(w.date)
+
+/**
+ * The snapshot check only looks at the top level. A restore replaces everything
+ * on the device, so every record the screens read must have its expected shape;
+ * otherwise nothing is replaced.
+ */
+export function validateBackup(data) {
+  const readable =
+    listOf(data.workouts, readableWorkout) &&
+    listOf(data.routines, (r) => isRecord(r) && Array.isArray(r.items) && r.items.every(isRecord)) &&
+    listOf(data.customExercises, (e) => isRecord(e) && typeof e.id === 'string') &&
+    listOf(data.checkins, isRecord) &&
+    (data.metrics === undefined || isRecord(data.metrics)) &&
+    (data.activeWorkout == null || readableSession(data.activeWorkout)) &&
+    (data.settings?.training == null || isRecord(data.settings.training)) &&
+    (data.settings?.workout == null || isRecord(data.settings.workout))
+  if (!readable) throw new Error('This backup has records Tally can’t read. Nothing was changed.')
+  return data
 }
 
 // Read & validate an imported JSON file. Resolves with the parsed state.
@@ -34,7 +62,7 @@ export function importData(file) {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const data = validateSnapshot(String(reader.result))
+        const data = validateBackup(validateSnapshot(String(reader.result)))
         resolve(data)
       } catch (err) {
         reject(err)

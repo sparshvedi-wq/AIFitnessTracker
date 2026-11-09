@@ -5,15 +5,14 @@ import { useApp } from '../store/AppContext.jsx'
 import { MONTHS, fromKey, shortLabel, addDays } from '../lib/date.js'
 import { avgSessionMin, weekVolume } from '../lib/derive.js'
 import { scoreSeries } from '../lib/score.js'
-import { buildDailyPlan, profileOf, readinessOf, todayChoice } from '../lib/planner.js'
-import { placesOf, resolvePlace } from '../lib/places.js'
+import { buildDailyPlan, readinessOf, todayChoice } from '../lib/planner.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
 import { returnMessage, shortSessionRequest } from '../lib/flexible-training.js'
 import { fmtNum, muscleSets } from '../lib/workout.js'
 import Icon from '../components/Icon.jsx'
 import { LineChart, SectionHead, TallyLogo } from '../components/Ink.jsx'
 import TrainingCard, { planScene } from '../components/TrainingCard.jsx'
-import AdjustSheet from '../components/AdjustSheet.jsx'
+import AskAdjust from '../components/AskAdjust.jsx'
 import { TallyCard, WeekStrip, WinCard, useNewMarks } from '../components/HomeOverview.jsx'
 import { latestWin, tallySessions } from '../lib/milestones.js'
 import { ONBOARDING_ART } from '../lib/onboarding-art.js'
@@ -38,8 +37,6 @@ export default function Home({ nav }) {
   const display = displayOf(state)
   const start = useStartWorkout(nav)
   const [detail, setDetail] = useState(null)
-  const [adjusting, setAdjusting] = useState(false)
-  const choice = todayChoice(state, today)
   const readiness = readinessOf(state, today)
   const next = useMemo(
     () => buildDailyPlan(state, { today, now, ...todayChoice(state, today) }),
@@ -56,10 +53,6 @@ export default function Home({ nav }) {
   const active = state.activeWorkout
   const welcomeBack = returnMessage(workouts, today)
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
-  const minutes = choice.minutes || settings.training.minutes || 30
-
-  const places = placesOf(profileOf(state))
-  const location = choice.location || settings.training.location
   const scene = planScene(next, settings.training.goal)
   const setupPending = settings.training.onboardingVersion !== ONBOARDING_VERSION
 
@@ -88,9 +81,7 @@ export default function Home({ nav }) {
           win={win}
           fresh={freshMarks}
           onOpen={
-            win.workoutId
-              ? () => setDetail(state.workouts.find((w) => w.id === win.workoutId) || null)
-              : null
+            win.workoutId ? () => setDetail(state.workouts.find((w) => w.id === win.workoutId) || null) : null
           }
         />
       </div>
@@ -128,20 +119,13 @@ export default function Home({ nav }) {
             <TrainingCard
               title="Your training"
               plan={next}
-              place={resolvePlace(profileOf(state), next.location)}
               customExercises={state.customExercises}
               scene={scene}
               hideStart
             />
-            <div className="mt-4 flex gap-3">
-              <button className="btn-secondary shrink-0 !px-4" onClick={() => setAdjusting(true)}>
-                <Icon name="sliders" size={18} />
-                Adjust
-              </button>
-              <button className="btn-primary min-w-0 flex-1" onClick={() => start(next)}>
-                Start training
-              </button>
-            </div>
+            <button className="btn-primary mt-4 w-full" onClick={() => start(next)}>
+              Start training
+            </button>
             {next.alternatives?.length > 0 && (
               <div
                 className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px]"
@@ -183,19 +167,6 @@ export default function Home({ nav }) {
         )}
       </div>
 
-      <AdjustSheet
-        open={adjusting}
-        onClose={() => setAdjusting(false)}
-        plan={next}
-        minutes={minutes}
-        location={location}
-        places={places}
-        readiness={readiness}
-        onChange={setToday}
-        nav={nav}
-        scene={scene}
-      />
-
       {setupPending && (
         <button className="list-row mt-3" onClick={nav.openProfile}>
           <span className="icon-tile">
@@ -209,6 +180,7 @@ export default function Home({ nav }) {
         </button>
       )}
       <EventShortcut state={state} today={today} now={now} nav={nav} hideEmpty />
+      <AskAdjust nav={nav} plan={next} />
       {hasLogged && <WeeklyRecap state={state} today={today} now={now} nav={nav} />}
 
       {workouts.length > 0 && (

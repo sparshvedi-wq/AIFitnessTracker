@@ -1,6 +1,6 @@
 // Home's top band: this week at a glance, the running tally, and the latest win.
 // Everything here is counted from real saved sessions; samples and future dates never count.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { weekOverview } from '../lib/week.js'
 import { fromKey } from '../lib/date.js'
 import { weekStart } from '../lib/workout.js'
@@ -100,39 +100,29 @@ export function useNewMarks(total, prefs) {
 }
 
 // Tally strokes in groups of five; `fresh` trailing strokes draw themselves in.
-function Strokes({ count, fresh = 0, height = 22 }) {
-  const marks = Math.max(0, Math.min(count, 15))
-  const ghost = marks === 0
-  const shown = ghost ? 4 : marks
-  const groups = Math.ceil(shown / 5)
-  const width = Math.max(groups * 34 - 8, 26)
-  const firstFresh = marks - Math.min(fresh, marks)
+function Strokes({ count, fresh = 0 }) {
+  const groups = Math.ceil(count / 5)
+  const firstFresh = count - Math.min(fresh, count)
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
-      className={`tally-strokes ${ghost ? 'is-ghost' : ''}`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: shown }, (_, i) => {
-        const group = Math.floor(i / 5),
-          slot = i % 5,
-          x0 = group * 34
-        const d =
-          slot === 4 ? `M${x0 - 2} ${height - 6}L${x0 + 26} 5` : `M${x0 + 3 + slot * 6.5} 3V${height - 3}`
-        const isFresh = !ghost && i >= firstFresh
-        return (
-          <path
-            key={`${i}-${isFresh ? 'fresh' : 'set'}`}
-            d={d}
-            pathLength="1"
-            className={isFresh ? 'tally-stroke is-fresh' : 'tally-stroke'}
-            style={isFresh ? { animationDelay: `${(i - firstFresh) * 140 + 220}ms` } : undefined}
-          />
-        )
-      })}
-    </svg>
+    <span className="tally-mark-groups" aria-hidden="true">
+      {Array.from({ length: groups }, (_, group) => (
+        <svg key={group} width="30" height="36" viewBox="-3 0 32 36" className="tally-strokes">
+          {Array.from({ length: Math.min(5, count - group * 5) }, (_, slot) => {
+            const i = group * 5 + slot
+            const isFresh = i >= firstFresh
+            return (
+              <path
+                key={`${slot}-${isFresh ? 'fresh' : 'set'}`}
+                d={slot === 4 ? 'M-1 30L26 5' : `M${3 + slot * 6.5} 3V33`}
+                pathLength="1"
+                className={isFresh ? 'tally-stroke is-fresh' : 'tally-stroke'}
+                style={isFresh ? { animationDelay: `${(i - firstFresh) * 140 + 220}ms` } : undefined}
+              />
+            )
+          })}
+        </svg>
+      ))}
+    </span>
   )
 }
 
@@ -140,19 +130,34 @@ export function TallyCard({ workouts, today, fresh = 0 }) {
   const sessions = tallySessions(workouts, today)
   const total = sessions.length
   const thisWeek = sessions.filter((w) => w.date >= weekStart(today)).length
+  const marks = useRef(null)
+  useEffect(() => {
+    // Show the newest marks after a session; earlier groups remain scrollable.
+    if (marks.current) marks.current.scrollTop = marks.current.scrollHeight
+  }, [total, fresh])
   return (
     <div
       className={`stat-card tally-card ${fresh ? 'is-celebrating' : ''}`}
       aria-label={`Your tally: ${total} ${total === 1 ? 'session' : 'sessions'}, ${thisWeek} this week`}
     >
       <span className="stat-card-label">Your tally</span>
-      <span key={`${total}-${fresh}`} className={`stat-card-number ${fresh ? 'is-bumped' : ''}`}>
-        {total}
-      </span>
-      <span className="flex items-center gap-2 text-ink">
-        <Strokes count={total} fresh={fresh} height={18} />
-        {total > 15 && <span className="text-[12px] text-muted">+{total - 15}</span>}
-      </span>
+      <div
+        ref={marks}
+        className="tally-mark-window"
+        tabIndex={total > 10 ? 0 : undefined}
+        role={total > 10 ? 'region' : 'img'}
+        aria-label={
+          total > 10
+            ? `Your tally: ${total} sessions. Scroll for earlier marks.`
+            : `${total} ${total === 1 ? 'tally mark' : 'tally marks'}`
+        }
+      >
+        {total ? (
+          <Strokes count={total} fresh={fresh} />
+        ) : (
+          <span className="text-[15px] text-muted">No marks yet</span>
+        )}
+      </div>
     </div>
   )
 }

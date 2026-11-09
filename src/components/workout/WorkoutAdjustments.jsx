@@ -6,6 +6,7 @@ import { replacementOptions, replaceCurrentExercise, shortenSession } from '../.
 import { applyReplan, previewReplan } from '../../lib/engine/replan.js'
 import { profileOf } from '../../lib/planner.js'
 import { placeSummary, placesOf } from '../../lib/places.js'
+import { finishForTime } from '../../lib/workout-quick-actions.js'
 
 export default function WorkoutAdjustments({ mode, session, onClose, onApply }) {
   const { state, dispatch, toast } = useApp()
@@ -36,15 +37,20 @@ export default function WorkoutAdjustments({ mode, session, onClose, onApply }) 
       subtitle={mode === 'swap' ? cur?.ex.name : 'Keep what you logged. Shorten only what is left.'}
       footer={
         mode === 'shorten' ? (
-          <button
-            className="btn-primary min-h-12 w-full"
-            onClick={() => {
-              onApply((s, now) => shortenSession(s, minutes, now))
-              toast('Remaining work shortened · reassessed next time, not owed', 'info')
-            }}
-          >
-            Fit remaining work to {minutes} min
-          </button>
+          <div className="grid gap-1">
+            <button
+              className="btn-primary min-h-12 w-full"
+              onClick={() => {
+                onApply((s, now) => shortenSession(s, minutes, now))
+                toast('Remaining work shortened · reassessed next time, not owed', 'info')
+              }}
+            >
+              Fit remaining work to {minutes} min
+            </button>
+            <button className="btn-ghost min-h-11 w-full" onClick={() => onApply(finishForTime)}>
+              Finish now
+            </button>
+          </div>
         ) : null
       }
     >
@@ -87,9 +93,6 @@ export default function WorkoutAdjustments({ mode, session, onClose, onApply }) 
         </>
       ) : (
         <>
-          <p className="mt-3 text-[14px] leading-relaxed text-muted">
-            Only the work that’s left changes. Your logged sets stay as they are.
-          </p>
           <fieldset className="mt-5">
             <legend className="mb-3 text-[14px] font-semibold">Time you have left</legend>
             <div className="grid grid-cols-3 gap-2">
@@ -157,7 +160,11 @@ function PlaceChange({ session, onClose }) {
           <button className="btn-secondary min-h-12 flex-1" onClick={onClose}>
             Keep as is
           </button>
-          <button className="btn-primary min-h-12 flex-1" disabled={!preview.ok || !preview.changed} onClick={apply}>
+          <button
+            className="btn-primary min-h-12 flex-1"
+            disabled={!preview.ok || !preview.changed}
+            onClick={apply}
+          >
             Apply
           </button>
         </div>
@@ -190,7 +197,9 @@ function PlaceChange({ session, onClose }) {
       {d && (
         <section className="mt-5" aria-live="polite">
           <h3 className="text-[14px] font-semibold">What changes</h3>
-          {!preview.changed && <p className="mt-2 text-[13px] text-muted">Everything left already fits here.</p>}
+          {!preview.changed && (
+            <p className="mt-2 text-[13px] text-muted">Everything left already fits here.</p>
+          )}
           <ul className="mt-2 space-y-2 text-[13px] text-ink2">
             {d.replaced.map((r) => (
               <li key={`r-${r.from}`}>

@@ -1,4 +1,4 @@
-import Fastify from 'fastify'
+import Fastify, { type FastifyReply } from 'fastify'
 import rateLimit from '@fastify/rate-limit'
 import {
   assessmentRequest,
@@ -16,6 +16,21 @@ import {
 import { preparePhotos, PhotoInputError } from './photo/images.js'
 import { activityRequest, activityImpact, createActivityAnalyzer, type ActivityAnalyzer } from './activity.js'
 import { assistRequest, createAssistService, createInterpreter } from './assistant.js'
+
+/**
+ * Aborts paid model work when the person cancels or leaves. The request body is
+ * already read by the time a handler runs, so watch the response instead: it
+ * also closes after a normal reply, which has then already ended.
+ */
+export function cancelOnDisconnect(reply: FastifyReply) {
+  const controller = new AbortController()
+  const response = reply.raw
+  if (response.destroyed && !response.writableEnded) controller.abort()
+  else response.once('close', () => {
+    if (!response.writableEnded) controller.abort()
+  })
+  return controller.signal
+}
 
 export function buildApp(
   options: {
@@ -80,7 +95,7 @@ export function buildApp(
     if (!parsed.success) return reply.code(400).send({error:'Describe the activity in 8–700 characters and allow AI interpretation.'})
     if (active>=2) return reply.code(503).send({error:'AI service is busy. You can set the activity details manually.'})
     active++
-    try { return { ...activityImpact.parse(await activity(parsed.data.description)), model:'gpt-6-luna' } }
+    try { return { ...activityImpact.parse(await activity(parsed.data.description, cancelOnDisconnect(reply))), model:'gpt-6-luna' } }
     catch { return reply.code(502).send({error:'AI could not interpret this activity. Try again or choose the involved areas yourself.'}) }
     finally { active-- }
   })
@@ -91,11 +106,7 @@ export function buildApp(
       if (!assist) return reply.code(503).send({ code: 'disabled', error: 'Language help is off. Common requests still work.' })
       const parsed = assistRequest.safeParse(request.body)
       if (!parsed.success) return reply.code(400).send({ code: 'invalid', error: 'That request could not be read.' })
-      const controller = new AbortController()
-      request.raw.on('close', () => {
-        if (!reply.sent) controller.abort()
-      })
-      const result = await assist.interpret(parsed.data, controller.signal)
+      const result = await assist.interpret(parsed.data, cancelOnDisconnect(reply))
       if (result.status === 'ok') return { ...result.output, cached: result.cached, schemaVersion: 1 }
       const status = { budget: 429, timeout: 504, cancelled: 499, error: 502 }[result.status]
       return reply.code(status).send({
@@ -126,8 +137,9 @@ export function buildApp(
           .send({ error: 'Photo service is busy. Please try again.' })
       active++
       try {
+        const signal = cancelOnDisconnect(reply)
         const [image] = await preparePhotos([parsed.data.photo])
-        return photoQuality.parse(await quality(image, parsed.data.ageGroup))
+        return photoQuality.parse(await quality(image, parsed.data.ageGroup, signal))
       } catch (err) {
         return reply.code(err instanceof PhotoInputError ? 400 : 502).send({
           error:
@@ -159,6 +171,7 @@ export function buildApp(
           .send({ error: 'Photo service is busy. Please try again.' })
       active++
       try {
+        const signal = cancelOnDisconnect(reply)
         const photos = await preparePhotos(parsed.data.photos)
         const result = modelAssessment.parse(
           await analyze(
@@ -166,6 +179,7 @@ export function buildApp(
             parsed.data.goal,
             parsed.data.ageGroup,
             parsed.data.focusPreferences,
+            signal,
           ),
         )
         return {

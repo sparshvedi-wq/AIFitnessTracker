@@ -12,6 +12,7 @@ import { useApp } from '../../store/AppContext.jsx'
 import { firstSessionAchievement, warmupSetCount, workingSetCount } from '../../lib/milestones.js'
 import { feel } from '../../lib/coach.js'
 import FirstWorkoutCelebration from './FirstWorkoutCelebration.jsx'
+import useFreshTapGuard from '../useFreshTapGuard.js'
 
 export default function SessionSaved({ workout, onClose, onPreview }) {
   const { state, dispatch, today } = useApp()
@@ -19,6 +20,8 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
   const [celebrating, setCelebrating] = useState(Boolean(achievement))
   // The sheet replaces the full-screen milestone in place, without a fresh slide-in.
   const [fromCelebration, setFromCelebration] = useState(false)
+  // Done sits where Save (or the milestone's continue button) just was.
+  const guard = useFreshTapGuard(celebrating)
   const felt = useRef(false)
   useEffect(() => {
     if (felt.current) return
@@ -102,7 +105,7 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
       onClose={close}
       title="Saved"
       footer={
-        <button className="btn-primary min-h-12 w-full" onClick={close}>
+        <button className="btn-primary min-h-12 w-full" onClick={guard(close)}>
           Done
         </button>
       }

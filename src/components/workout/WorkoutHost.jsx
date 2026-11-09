@@ -30,8 +30,8 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
   useEffect(() => {
     sessionRef.current = session
   }, [session])
-  // Timers keep running when the phone locks or another app opens: rest is
-  // still rest. Expo Go gets a notification when that timer ends. Only a long
+  // Exercise timers keep running when the phone locks or another app opens.
+  // Rest is open-ended and never schedules a notification. Only a long
   // unattended gap pauses, and the time after the last tap is not counted.
   useEffect(() => {
     if (!running) return
@@ -47,18 +47,13 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
     const scheduleCue = () => {
       const s = sessionRef.current
       const cur = s && currentSet(s)
-      if (!isNativeApp() || cue || !cur || s.pausedAt || !s.phaseEndsAt) return
+      if (!isNativeApp() || cue || !cur || s.pausedAt || s.phase === 'rest' || !s.phaseEndsAt) return
       const seconds = (s.phaseEndsAt - Date.now()) / 1000
       if (seconds < 1) return
       const text =
-        s.phase === 'rest'
-          ? {
-              title: 'Rest is over',
-              body: `Next: ${cur.ex.name}, set ${s.cursor.set + 1} of ${cur.ex.sets.length}`,
-            }
-          : s.phase === 'ready'
-            ? { title: 'Time to start', body: cur.ex.name }
-            : { title: 'Time’s up', body: `${cur.ex.name} is done. Log it when you’re back.` }
+        s.phase === 'ready'
+          ? { title: 'Time to start', body: cur.ex.name }
+          : { title: 'Time’s up', body: `${cur.ex.name} is done. Log it when you’re back.` }
       cue = nativeRequest('timer.schedule', { seconds, ...text }).catch(() => null)
     }
     const check = () => {
@@ -92,11 +87,12 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
       cancelCue()
     }
   }, [running, dispatch])
+  const clockRunning = running && session?.phase !== 'rest'
   useEffect(() => {
-    if (!running) return
+    if (!clockRunning) return
     const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
-  }, [running])
+  }, [clockRunning])
 
   // Advance when a timer runs out, with 3-2-1 beeps before it does.
   const lastBeep = useRef(null)

@@ -160,6 +160,11 @@ function reducer(state, action) {
 
 export function AppProvider({ children, initialState, initialPreviews = {} }) {
   const [state, dispatch] = useReducer(reducer, initialState, (saved) => saved || loadState())
+  // Toast actions can outlive the player that created them (for example after
+  // saving). Read the live session rather than a stale, unmounted component.
+  const activeWorkoutRef = useRef(state.activeWorkout)
+  activeWorkoutRef.current = state.activeWorkout
+  const getActiveWorkout = useCallback(() => activeWorkoutRef.current, [])
   const [photoPreviews, setPhotoPreviews] = useState(initialPreviews)
 
   // Store the images first, then record the check-in, so a saved check-in never
@@ -239,6 +244,7 @@ export function AppProvider({ children, initialState, initialPreviews = {} }) {
     () => ({
       state,
       dispatch,
+      getActiveWorkout,
       toast,
       toasts,
       dismissToast,
@@ -248,7 +254,18 @@ export function AppProvider({ children, initialState, initialPreviews = {} }) {
       photoPreviews,
       saveCheckin,
     }),
-    [state, toast, toasts, dismissToast, today, storageError, retrySave, photoPreviews, saveCheckin],
+    [
+      state,
+      toast,
+      toasts,
+      dismissToast,
+      today,
+      storageError,
+      retrySave,
+      photoPreviews,
+      saveCheckin,
+      getActiveWorkout,
+    ],
   )
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

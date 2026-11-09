@@ -7,11 +7,11 @@ export const PHOTO_QUALITY_MODEL = 'gpt-6-luna';
 
 export class AnalysisUnavailableError extends Error {}
 
-export type Analyzer = (photos: PreparedPhoto[], goal: string, ageGroup: AgeGroup, focusPreferences?: string[]) => Promise<ModelAssessment>;
-export type QualityAnalyzer = (photo: PreparedPhoto, ageGroup: AgeGroup) => Promise<PhotoQuality>;
+export type Analyzer = (photos: PreparedPhoto[], goal: string, ageGroup: AgeGroup, focusPreferences?: string[], signal?: AbortSignal) => Promise<ModelAssessment>;
+export type QualityAnalyzer = (photo: PreparedPhoto, ageGroup: AgeGroup, signal?: AbortSignal) => Promise<PhotoQuality>;
 
 export function createQualityAnalyzer(client?: OpenAI, model?: string): QualityAnalyzer {
-  return async (photo, ageGroup) => {
+  return async (photo, ageGroup, signal) => {
     if (!process.env.OPENAI_API_KEY?.trim()) throw new AnalysisUnavailableError('API key is missing.');
     const api = client ?? new OpenAI({ timeout: 75_000, maxRetries: 0 });
     const response = await api.responses.parse({
@@ -29,14 +29,14 @@ Do not provide body-fat, measurements, diagnoses, gender guesses, body ratings o
         { type: 'input_text', text: `Required view: ${photo.angle}. Self-reported age band: ${ageGroup}.` },
         { type: 'input_image', image_url: `data:image/jpeg;base64,${photo.base64}`, detail: 'high' },
       ] }], text: { format: zodTextFormat(photoQuality, 'photo_quality') },
-    });
+    }, { signal });
     if (response.status !== 'completed' || !response.output_parsed) throw new AnalysisUnavailableError('No quality check was returned.');
     return photoQuality.parse(response.output_parsed);
   };
 }
 
 export function createAnalyzer(client?: OpenAI, model?: string): Analyzer {
-  return async (photos, goal, ageGroup, focusPreferences = []) => {
+  return async (photos, goal, ageGroup, focusPreferences = [], signal) => {
     if (!process.env.OPENAI_API_KEY?.trim()) throw new AnalysisUnavailableError('API key is missing.');
     const api = client ?? new OpenAI({ timeout: 75_000, maxRetries: 0 });
     const response = await api.responses.parse({
@@ -99,7 +99,7 @@ Summary is one short sentence. Use plain, supportive language.`,
         ],
       }],
       text: { format: zodTextFormat(modelAssessment, 'photo_assessment') },
-    });
+    }, { signal });
     if (response.status !== 'completed' || !response.output_parsed) {
       throw new AnalysisUnavailableError('No usable assessment was returned.');
     }

@@ -2,9 +2,11 @@ import Modal from '../Modal.jsx'
 import { TallyLogo } from '../Ink.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import Icon from '../Icon.jsx'
+import useFreshTapGuard from '../useFreshTapGuard.js'
 import './first-workout.css'
 
 export default function FirstWorkoutCelebration({ achievement, onContinue, onClose }) {
+  const guard = useFreshTapGuard()
   return (
     <Modal
       open
@@ -25,7 +27,7 @@ export default function FirstWorkoutCelebration({ achievement, onContinue, onClo
       className="first-workout-dialog"
       bodyClassName="first-workout-body"
       footer={
-        <button className="btn-primary min-h-12 w-full" onClick={onContinue}>
+        <button className="btn-primary min-h-12 w-full" onClick={guard(onContinue)}>
           See my session
         </button>
       }

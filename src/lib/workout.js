@@ -15,6 +15,27 @@ import { outcomeFromSession } from './engine/ledger.js'
 
 // Assisted machines log assistance: less is harder, and it is not lifted load.
 const assisted = (exId) => metaOf(exId)?.load === 'assist'
+export const isAssisted = assisted
+
+// Whether a set has the load it needs before it can be logged. Zero
+// assistance is a real (the hardest) setting; any other load must be above 0.
+export function loadReady(exercise, set) {
+  if (!exercise?.weighted) return true
+  const w = set?.weight
+  return Number.isFinite(w) && (w > 0 || (w === 0 && assisted(exercise.exId)))
+}
+
+// The load a saved routine starts from: the heaviest working load, or for an
+// assisted move the least assistance, which is its hardest setting.
+export function routineLoad(exercise) {
+  if (!exercise.weighted) return null
+  const loads = exercise.sets
+    .filter((s) => s.kind !== 'warmup')
+    .map((s) => s.weight)
+    .filter((w) => Number.isFinite(w) && w >= 0)
+  if (assisted(exercise.exId)) return loads.length ? Math.min(...loads) : null
+  return Math.max(0, ...loads) || null
+}
 
 export const WEIGHT_STEP = { lb: 5, kg: 2.5 }
 
@@ -50,6 +71,25 @@ export function suggestTarget(def, item, last, unit) {
   }
 
   const hitAll = done.every((s) => (s.reps || 0) >= (s.targetReps ?? item.reps ?? 0))
+  if (def.weighted && assisted(def.id)) {
+    // Assistance: the least used is the hardest, and progress means less help.
+    const used = done.map((s) => s.weight).filter((w) => Number.isFinite(w) && w >= 0)
+    if (!used.length) return { target, note: null, up: false }
+    const least = Math.min(...used)
+    if (hitAll && least > 0) {
+      const less = Math.max(0, least - (WEIGHT_STEP[unit] || 5))
+      return {
+        target: { ...target, weight: less },
+        note: `${fmtNum(least - less)} ${unit} less assistance: you hit every rep last time`,
+        up: true,
+      }
+    }
+    return {
+      target: { ...target, weight: least },
+      note: `Same assistance: aim for all ${item.reps} reps this time`,
+      up: false,
+    }
+  }
   if (def.weighted) {
     const lastWeight = Math.max(0, ...done.map((s) => s.weight || 0))
     if (lastWeight <= 0) return { target, note: null, up: false }
@@ -256,6 +296,21 @@ export function beginPrepared(session, now = Date.now()) {
   return { ...session, startedAt: now, phase: 'work', phaseEndsAt: null, pausedAt: null, lastActivityAt: now }
 }
 
+// Leaving the first-session intro starts the clock afresh. Time spent reading
+// it, including an idle pause that began there, is not training time.
+export function startAfterIntro(session, now = Date.now()) {
+  if (!session.startedAt) return { ...session, introSeen: true }
+  return {
+    ...session,
+    introSeen: true,
+    startedAt: now,
+    pausedAt: null,
+    pausedMs: 0,
+    pauseReason: null,
+    lastActivityAt: now,
+  }
+}
+
 // Phase changes. Each returns a new session; the store just saves it.
 // Timers are stored as an absolute end time so they stay right even if the
 // tab sleeps or the app is minimized.
@@ -292,7 +347,7 @@ export function enterWork(session, now = Date.now()) {
   if (session.phase === 'prepared') return session
   const cur = currentSet(session)
   if (!cur) return finish(session, now)
-  // Each timed set needs an explicit Start, including after a rest/get-ready countdown.
+  // Each timed set needs an explicit Start, including after rest/get-ready.
   return { ...session, phase: 'work', phaseEndsAt: null, phaseLeft: null, phaseTotal: 0 }
 }
 
@@ -336,8 +391,20 @@ export function completeSet(session, now = Date.now(), patch = {}) {
   if (!to) return session.kind === 'manual' ? { ...finish(next, now), phase: 'between' } : finish(next, now)
   next = { ...next, cursor: to }
   const rest = ex.restSec || 0
-  if (rest > 0) return timed(next, 'rest', rest, now)
+  if (rest > 0) return openRest(next)
   return enterWork(next, now)
+}
+
+// Rest has no deadline. This also clears timers on sessions saved by older versions.
+export function openRest(session) {
+  if (
+    session.phase === 'rest' &&
+    session.phaseEndsAt == null &&
+    session.phaseLeft == null &&
+    !session.phaseTotal
+  )
+    return session
+  return { ...session, phase: 'rest', phaseEndsAt: null, phaseLeft: null, phaseTotal: 0 }
 }
 
 export function skipRest(session, now = Date.now()) {
@@ -352,6 +419,7 @@ export function undoLastSet(session, now = Date.now()) {
 }
 
 export function adjustTimer(session, deltaSec, now = Date.now()) {
+  if (session.phase === 'rest') return openRest(session)
   if (session.pausedAt) {
     const left = Math.max(1000, (session.phaseLeft || 0) + deltaSec * 1000)
     return { ...session, phaseLeft: left, phaseTotal: Math.max(session.phaseTotal, left) }
@@ -362,12 +430,14 @@ export function adjustTimer(session, deltaSec, now = Date.now()) {
 }
 
 export function pause(session, now = Date.now()) {
+  if (session.phase === 'rest') session = openRest(session)
   if (session.pausedAt) return session
   const phaseLeft = session.phaseEndsAt ? Math.max(0, session.phaseEndsAt - now) : null
   return { ...session, pausedAt: now, phaseLeft, phaseEndsAt: null }
 }
 
 export function resume(session, now = Date.now()) {
+  if (session.phase === 'rest') session = openRest(session)
   if (!session.pausedAt) return session
   const phaseEndsAt = session.phaseLeft != null ? now + session.phaseLeft : null
   return {
@@ -456,8 +526,9 @@ export function jumpTo(session, c, now = Date.now()) {
 
 // Advance when a timer runs out. Returns the same object when nothing changed.
 export function tick(session, now = Date.now()) {
+  if (session.phase === 'rest') return openRest(session)
   if (session.pausedAt || !session.phaseEndsAt || now < session.phaseEndsAt) return session
-  if (session.phase === 'ready' || session.phase === 'rest') return enterWork(session, now)
+  if (session.phase === 'ready') return enterWork(session, now)
   if (session.phase === 'work') {
     const cur = currentSet(session)
     return completeSet(session, now, { sec: cur?.set.sec || cur?.set.targetSec })
@@ -892,11 +963,10 @@ export function describeItem(item, def, unit) {
 }
 
 // One line describing where the workout stands; shared by the mini bar and Home.
-export function sessionStatus(session, now = Date.now()) {
+export function sessionStatus(session) {
   const cur = currentSet(session)
   if (session.pausedAt) return 'Paused'
-  if (session.phase === 'rest' && session.phaseEndsAt)
-    return `Rest ${fmtClock(Math.max(0, session.phaseEndsAt - now))} · next ${cur?.ex.name}`
+  if (session.phase === 'rest') return cur ? `Resting · next ${cur.ex.name}` : 'Resting'
   if (session.phase === 'prepared') return 'Plan ready · start when you are'
   if (session.phase === 'ready') return 'Starting…'
   if (session.phase === 'done') return 'Ready to save'

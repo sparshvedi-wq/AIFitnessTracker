@@ -173,6 +173,16 @@ export function scoreCandidate(meta, ctx) {
       ? 1
       : 0
 
+  // How well this exercise suits the person today, from the strength model:
+  // outgrown (too easy even at the top of the range), or too hard even at the
+  // lightest option, makes it a poorer pick than a variation that fits.
+  const strength = ctx.strengthFit?.get(meta.id)
+  const flags = strength?.flags || []
+  f.fit = flags.includes('outgrown') || flags.includes('lightest-is-heavy') ? -1 : flags.includes('below-range') ? -0.6 : 0
+  // Muscles still recovering from earlier sessions (1 = as tired as it gets).
+  const readiness = ctx.readiness?.get(meta.id) ?? strength?.readiness ?? 1
+  f.fatigue = clamp((1 - readiness) / 0.1)
+
   const w = WEIGHTS
   let score =
     w.goal * f.goal +
@@ -189,7 +199,9 @@ export function scoreCandidate(meta, ctx) {
     w.staple * f.staple +
     w.setup * f.setup +
     w.replacement * f.replacement +
-    w.placeAffinity * f.placeAffinity -
+    w.placeAffinity * f.placeAffinity +
+    w.fit * f.fit -
+    w.fatigue * f.fatigue -
     w.muscleOverlap * f.muscleOverlap -
     w.similarRepeat * f.similarRepeat -
     w.patternRepeat * f.patternRepeat -

@@ -1,7 +1,7 @@
 // Focused workout player: one exercise, its dose and the next action.
 // The full plan, editing tools and session stats live in the workout menu.
 
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
 import {
   WEIGHT_STEP,
@@ -31,7 +31,6 @@ import {
   suggestTarget,
   totals,
   unskipExercise,
-  updateSet,
   undoLastSet,
   beginPrepared,
   isAssisted,
@@ -62,6 +61,25 @@ import { SetNumberCard, SetNumberField, WorkoutInfo } from './SetControls.jsx'
 import { loggedSetStats, setEntryPatch } from '../../lib/set-entry.js'
 import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import useFreshTapGuard from '../useFreshTapGuard.js'
+import { profileOf } from '../../lib/planner.js'
+import { strengthNote, strengthTarget } from '../../lib/strength/index.js'
+import {
+  adaptExercise,
+  applyManualEntry,
+  correctLoggedReps,
+  logShortSet,
+  markTooHeavy,
+  setWorkingWeight,
+} from '../../lib/strength/session.js'
+import {
+  AdjustedNote,
+  CouldntSheet,
+  FeelPrompt,
+  StrengthFacts,
+  WorkingWeightSheet,
+  exerciseMode,
+  useStrengthContext,
+} from './StrengthControls.jsx'
 
 export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
   const { state, dispatch, today, toast, getActiveWorkout } = useApp()
@@ -75,6 +93,10 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
   const [editingAt, setEditingAt] = useState(null)
   const [editingField, setEditingField] = useState(null)
   const [adjustment, setAdjustment] = useState(null)
+  // "I couldn't do this": { coord, step } for the set it is about.
+  const [couldnt, setCouldnt] = useState(null)
+  const [workingWeight, setWorkingWeightOpen] = useState(false)
+  const strengthCtx = useStrengthContext(session)
   const update = (fn) => {
     unlockAudio()
     dispatch({
@@ -96,18 +118,49 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
     }
     item.unilateral = Boolean(metaOf(def.id)?.perSide && def.type === 'reps')
     const last = lastPerformance(state.workouts, def.id, session.unit)
-    const { target, note, up } = session.schedule?.lighter
-      ? {
-          target: {
-            reps: item.reps,
-            sec: item.sec,
-            weight:
-              def.weighted && last ? Math.max(...last.sets.map((s) => s.weight || 0)) * 0.85 || null : null,
-          },
-          note: 'Lighter around your activity.',
-          up: false,
-        }
-      : suggestTarget(def, item, last, session.unit)
+    // The same adaptive weights as planned exercises; simple rules only for
+    // timed and assisted movements the model doesn't cover.
+    const p = { ...profileOf(state), ...(session.equipmentProfile || {}) }
+    const live = strengthCtx()
+    const adaptive = strengthTarget({
+      exId: def.id,
+      def,
+      workouts: state.workouts,
+      customExercises: state.customExercises,
+      learning: state.learning,
+      unit: session.unit,
+      today,
+      now: live.now,
+      goal: p.goal,
+      experience: p.experience,
+      easy: Boolean(session.schedule?.lighter || live.easy),
+      sizes: live.sizes,
+      sets: item.sets,
+    })
+    if (adaptive && def.type === 'reps') {
+      item.reps = adaptive.reps
+      item.repRange = adaptive.range
+      item.targetRir = adaptive.rir
+    }
+    const { target, note, up } =
+      adaptive && (adaptive.weight !== null || adaptive.mode === 'reps')
+        ? {
+            target: { reps: adaptive.reps, sec: null, weight: adaptive.weight },
+            note: session.schedule?.lighter ? 'Lighter around your activity.' : strengthNote(adaptive, session.unit),
+            up: adaptive.up,
+          }
+        : session.schedule?.lighter
+          ? {
+              target: {
+                reps: item.reps,
+                sec: item.sec,
+                weight:
+                  def.weighted && last ? Math.max(...last.sets.map((s) => s.weight || 0)) * 0.85 || null : null,
+              },
+              note: 'Lighter around your activity.',
+              up: false,
+            }
+          : suggestTarget(def, item, last, session.unit)
     if (DUMBBELL_MOVES.includes(def.id))
       target.weight = fitAvailableLoad(
         target.weight,
@@ -117,6 +170,22 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
         ),
       )
     update((s) => appendExercise(s, makeSessionExercise(def, item, target, { last, note, up })))
+  }
+
+  // Skips the rest of the current exercise with a reason, with Undo.
+  function skipWithReason(reason) {
+    const live = getActiveWorkout()
+    if (!live) return
+    const change = skipWithUndo(live, Date.now(), reason)
+    update(() => change.after)
+    toast('Exercise skipped', 'info', {
+      label: 'Undo',
+      onClick: () => {
+        const restored = undoQuickSkip(getActiveWorkout(), change)
+        if (restored) dispatch({ type: 'SET_ACTIVE_WORKOUT', session: restored })
+        else toast('Your workout has changed. Nothing was undone.', 'info')
+      },
+    })
   }
 
   if (session.phase === 'done') {
@@ -274,6 +343,8 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
         <Rest
           session={session}
           update={update}
+          strengthCtx={strengthCtx}
+          onShort={(coord) => setCouldnt({ coord, step: 'reps' })}
           onQuick={() => setQuickOpen(true)}
           onForm={() => setFormOpen(true)}
           onEdit={(field) => {
@@ -286,6 +357,8 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
           session={session}
           now={now}
           update={update}
+          strengthCtx={strengthCtx}
+          onCouldnt={() => setCouldnt({ coord: session.cursor, step: 'why' })}
           onForm={() => setFormOpen(true)}
           onEdit={(field) => {
             setEditingField(field)
@@ -294,25 +367,64 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
           onQuick={() => setQuickOpen(true)}
         />
       )}
+      {couldnt && (
+        <CouldntSheet
+          key={`${couldnt.coord?.ex}:${couldnt.coord?.set}:${couldnt.step}`}
+          open
+          session={session}
+          coord={couldnt.coord}
+          initialStep={couldnt.step}
+          mode={exerciseMode(session.exercises[couldnt.coord?.ex], state.customExercises)}
+          onClose={() => setCouldnt(null)}
+          onTooHeavy={() => {
+            const live = getActiveWorkout() || session
+            const at = Date.now()
+            const next = markTooHeavy(live, strengthCtx(at), at)
+            dispatch({ type: 'SET_ACTIVE_WORKOUT', session: next })
+            if (currentSet(next)?.set.weight === currentSet(live)?.set.weight)
+              toast('That’s the lightest weight here. Try fewer reps, or swap it.', 'info')
+          }}
+          onReps={(reps) =>
+            update((s, n) => {
+              const c = couldnt.coord
+              return s.exercises[c.ex]?.sets[c.set]?.status === 'done'
+                ? correctLoggedReps(s, c, reps, strengthCtx(n))
+                : logShortSet(s, reps, strengthCtx(n), n)
+            })
+          }
+          onPain={() => skipWithReason('pain')}
+          onSwap={() => setAdjustment('swap')}
+          onType={() => {
+            setEditingField(null)
+            setEditing(true)
+          }}
+        />
+      )}
+      {workingWeight && cur && (
+        <WorkingWeightSheet
+          open
+          exercise={cur.ex}
+          mode={exerciseMode(cur.ex, state.customExercises)}
+          unit={session.unit}
+          onClose={() => setWorkingWeightOpen(false)}
+          onSave={(numbers) => {
+            const now = Date.now()
+            const { session: next, event } = setWorkingWeight(getActiveWorkout() || session, session.cursor.ex, numbers, strengthCtx(now), now)
+            if (event) dispatch({ type: 'LEARNING_EVENT', event })
+            dispatch({ type: 'SET_ACTIVE_WORKOUT', session: next })
+            setWorkingWeightOpen(false)
+            toast(numbers.reps ? 'Got it. Tally starts from your numbers.' : 'Tally will find your weight again from the next set.', 'info')
+          }}
+        />
+      )}
 
       {quickOpen && (
         <QuickWorkoutActions
           session={session}
           onClose={() => setQuickOpen(false)}
           onSkip={(reason) => {
-            const live = getActiveWorkout()
-            if (!live) return
-            const change = skipWithUndo(live, Date.now(), reason)
-            update(() => change.after)
             setQuickOpen(false)
-            toast('Exercise skipped', 'info', {
-              label: 'Undo',
-              onClick: () => {
-                const restored = undoQuickSkip(getActiveWorkout(), change)
-                if (restored) dispatch({ type: 'SET_ACTIVE_WORKOUT', session: restored })
-                else toast('Your workout has changed. Nothing was undone.', 'info')
-              },
-            })
+            skipWithReason(reason)
           }}
           onSwap={() => {
             setQuickOpen(false)
@@ -370,6 +482,7 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
           update(completeSet)
         }}
         canFinish={done > 0}
+        onWorkingWeight={() => setWorkingWeightOpen(true)}
         onFinish={() => {
           setMenuOpen(false)
           update(finish)
@@ -410,18 +523,9 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
             setEditingAt(null)
           }}
           onSave={(patch) => {
-            update((s) =>
-              editingAt
-                ? {
-                    ...s,
-                    exercises: s.exercises.map((e, i) =>
-                      i === editingAt.ex
-                        ? { ...e, sets: e.sets.map((v, j) => (j === editingAt.set ? { ...v, ...patch } : v)) }
-                        : e,
-                    ),
-                  }
-                : updateSet(s, patch),
-            )
+            // Typed numbers are marked so the app never overwrites them.
+            const coord = editingAt || session.cursor
+            update((s) => applyManualEntry(s, coord, patch))
             setEditing(false)
             setEditingAt(null)
           }}
@@ -555,7 +659,7 @@ function Countdown({ title, sub, ms, total, onSkip, skipLabel, children, calm = 
   )
 }
 
-function Rest({ session, update, onQuick, onEdit, onForm }) {
+function Rest({ session, update, strengthCtx, onShort, onQuick, onEdit, onForm }) {
   const cur = currentSet(session)
   const stats = loggedSetStats(session)
   const planned = session.exercises.reduce(
@@ -595,6 +699,7 @@ function Rest({ session, update, onQuick, onEdit, onForm }) {
           Adjust
         </button>
       </div>
+      <RestClock session={session} />
       <div className="workout-rest-stats my-5 flex flex-1 flex-col items-center justify-center rounded-hero border border-line bg-surface px-5 py-6">
         <div className="workout-rest-ring relative h-[164px] w-[164px]">
           <svg viewBox="0 0 164 164" className="h-full w-full -rotate-90" aria-hidden="true">
@@ -643,6 +748,7 @@ function Rest({ session, update, onQuick, onEdit, onForm }) {
           </div>
         </div>
       </div>
+      <FeelPrompt session={session} update={update} strengthCtx={strengthCtx} onShort={onShort} />
       {cur && (
         <div className="flex items-center gap-3 rounded-[20px] bg-surface px-4 py-2">
           {thumb && (
@@ -693,8 +799,33 @@ function Rest({ session, update, onQuick, onEdit, onForm }) {
   )
 }
 
-function Work({ session, now, update, onForm, onEdit, onQuick }) {
+// How long this rest has lasted, next to the suggested rest. Rest never ends
+// on its own; this only helps judge when to go again.
+function RestClock({ session }) {
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(id)
+  }, [])
+  const started = session.restStartedAt
+  if (!Number.isFinite(started)) return null
+  const paused = (session.pausedMs || 0) - (session.restPausedMs || 0) + (session.pausedAt ? now - session.pausedAt : 0)
+  const elapsed = Math.max(0, now - started - paused)
+  const lastEx = session.exercises[session.lastLogged?.ex]
+  const suggested = (lastEx?.restSec || 0) * 1000
+  return (
+    <p className="mt-1 text-[14px] text-muted" aria-live="off">
+      <span className="num text-ink2">Rested {fmtClock(elapsed)}</span>
+      {suggested > 0 && (elapsed < suggested ? ` · about ${fmtClock(suggested)} suggested` : ' · ready when you are')}
+    </p>
+  )
+}
+
+function Work({ session, now, update, strengthCtx, onCouldnt, onForm, onEdit, onQuick }) {
   const { state } = useApp()
+  // Simple (default): the app sets the numbers; tap one to change it.
+  // Advanced: +/− buttons under each number too.
+  const steppers = state.settings.workout?.weightControls === 'advanced'
   const { ex, set } = currentSet(session)
   const unit = session.unit
   const timed = ex.type === 'time'
@@ -724,7 +855,8 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
       )
     : []
   const weightLabel = `${unit}${metaOf(ex.exId)?.load === 'assist' ? ' assistance' : metaOf(ex.exId)?.load === 'hand' ? ' / hand' : ''}`
-  const editValue = (patch) => update((s) => updateSet(s, patch))
+  // Stepped numbers are the person's own, like typed ones.
+  const editValue = (patch) => update((s) => applyManualEntry(s, s.cursor, patch))
   // The main button changes meaning in place (Start → Done early, or the next set).
   const guard = useFreshTapGuard(`${session.cursor.ex}:${session.cursor.set}:${running ? 'run' : 'idle'}`)
 
@@ -735,7 +867,8 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
           sec: Math.max(1, Math.round((session.phaseTotal - left) / 1000)),
         }),
       )
-    else update((s, n) => completeSet(s, n))
+    // A plain Done changes nothing; typed reps above or below the plan re-plan the rest.
+    else update((s, n) => adaptExercise(completeSet(s, n), s.cursor.ex, strengthCtx(n), { reason: 'logged' }))
   }
 
   return (
@@ -764,6 +897,7 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
         <h2 className="min-w-0 font-display text-[clamp(32px,11vw,48px)] leading-[1.08]">{ex.name}</h2>
       </div>
       {ex.phaseLabel && <p className="mt-2 text-[13px] text-accent">{ex.phaseLabel}</p>}
+      <AdjustedNote ex={ex} unit={unit} onEdit={() => onEdit(timed ? 'sec' : ex.weighted ? 'weight' : 'reps')} />
       {ex.last && (
         <p className="mt-2 text-[13px] leading-relaxed text-muted">
           Last: {describeSets({ ...ex, sets: ex.last.sets }, unit)}
@@ -796,6 +930,7 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
             <SetNumberCard
               label={timed ? 'seconds' : ex.unilateral ? 'reps / side' : 'reps'}
               value={timed ? set.sec : set.reps}
+              steppers={steppers}
               onEdit={() => onEdit(timed ? 'sec' : 'reps')}
               onChange={(value) => editValue(timed ? { sec: value } : { reps: value })}
               stepTo={(value, direction) => Math.max(1, Math.round(value + direction * (timed ? 5 : 1)))}
@@ -804,6 +939,7 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
               <SetNumberCard
                 label={weightLabel}
                 value={set.weight}
+                steppers={steppers}
                 display={loadReady(ex, set) ? fmtNum(set.weight) : '—'}
                 onEdit={() => onEdit('weight')}
                 onChange={(weight) => editValue({ weight })}
@@ -838,6 +974,14 @@ function Work({ session, now, update, onForm, onEdit, onQuick }) {
                 : isLast
                   ? 'Log last set'
                   : 'Log set'}
+          </button>
+        )}
+        {loadReady(ex, set) && set.kind !== 'warmup' && !running && (
+          <button
+            onClick={onCouldnt}
+            className="btn-ghost mt-1 min-h-11 w-full shrink-0 text-[15px] font-semibold text-ink2"
+          >
+            I couldn’t do this
           </button>
         )}
         <button
@@ -965,6 +1109,7 @@ function More({
   onLog,
   onFinish,
   onDiscard,
+  onWorkingWeight,
   canFinish,
 }) {
   const { state, dispatch } = useApp()
@@ -1030,6 +1175,37 @@ function More({
                 ))}
               </div>
             </details>
+            <details className="py-1">
+              <summary className="min-h-12 cursor-pointer py-3 text-[15px] font-semibold">
+                Weight controls
+              </summary>
+              <div className="flex flex-wrap gap-2 pb-2">
+                {[
+                  ['Simple', 'simple'],
+                  ['Show + and −', 'advanced'],
+                ].map(([label, value]) => {
+                  const on = (state.settings.workout.weightControls || 'simple') === value
+                  return (
+                    <button
+                      key={value}
+                      className={`chip ${on ? 'chip-active' : 'bg-surface2'}`}
+                      aria-pressed={on}
+                      onClick={() =>
+                        dispatch({
+                          type: 'UPDATE_SETTINGS',
+                          patch: { workout: { ...state.settings.workout, weightControls: value } },
+                        })
+                      }
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="pb-3 text-[12px] leading-relaxed text-muted">
+                Tally picks your weights and reps. Tap any number to change it yourself.
+              </p>
+            </details>
             {session.phase !== 'prepared' &&
               (canFinish ? (
                 <MenuRow label="Finish & review" onClick={onFinish} />
@@ -1087,6 +1263,16 @@ function More({
                     onClick={onLog}
                   />
                 )}
+              {ex && exerciseMode(ex, state.customExercises) && (
+                <MenuRow
+                  label="Set your working weight"
+                  detail="Numbers feel off? Tally starts again from yours."
+                  onClick={() => {
+                    close()
+                    onWorkingWeight()
+                  }}
+                />
+              )}
             </div>
             <details className="mt-3 rounded-tuck bg-surface2 px-4">
               <summary className="cursor-pointer py-4 text-[14px] font-semibold">
@@ -1115,6 +1301,7 @@ function More({
                     }
                   />
                   <InfoRow label="Rest between sets" value={`${ex.restSec}s`} />
+                  {open && panel !== 'main' && <StrengthFacts ex={ex} unit={session.unit} now={Date.now()} />}
                 </>
               )}
               <InfoRow label="Sets completed" value={String(t.sets)} />
@@ -1164,7 +1351,12 @@ function EditSet({ exercise, set, unit, loads = [], focusField, onSave, onClose 
   const [setKind, setSetKind] = useState(set.kind || 'work')
   const dumbbell = DUMBBELL_MOVES.includes(exercise.exId)
   const ownLoads = dumbbell ? loads : []
-  const choices = !loadReady(exercise, set) ? startingLoadChoices(exercise.exId, unit, ownLoads) : []
+  // Choices estimated from related exercises win over the generic defaults.
+  const choices = !loadReady(exercise, set)
+    ? exercise.startChoices?.length
+      ? exercise.startChoices
+      : startingLoadChoices(exercise.exId, unit, ownLoads)
+    : []
   const patch = setEntryPatch(exercise, { reps, sec, weight }, setKind)
   const weightLabel = `${metaOf(exercise.exId)?.load === 'assist' ? 'Assistance' : 'Weight'} · ${unit}${metaOf(exercise.exId)?.load === 'hand' ? ' / hand' : ''}`
   const loadInfo =

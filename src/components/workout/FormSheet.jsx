@@ -9,6 +9,7 @@ import { useApp } from '../../store/AppContext.jsx'
 import { atPlace, exerciseNote, withExerciseNote } from '../../lib/exercise-notes.js'
 import { metaOf } from '../../lib/catalog/index.js'
 import { exerciseSignals, learnedSummary, resetEvent, retryEvent } from '../../lib/engine/learning.js'
+import { ExerciseLibrary } from './StrengthControls.jsx'
 
 const TABS = ['Technique', 'Muscles', 'Mistakes']
 
@@ -105,6 +106,7 @@ function GuideContent({
           </li>
         ))}
       </ol>
+      {tab === 1 && <ExerciseLibrary exId={exercise.exId} place={location || null} />}
       {exercise.note && (
         <details className="mt-4 border-t border-line text-[13px] text-muted">
           <summary className="min-h-11 cursor-pointer py-3">Why this exercise</summary>

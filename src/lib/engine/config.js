@@ -3,18 +3,18 @@
 // they are not measurements of physiology, recovery or fatigue.
 // See docs/RECOMMENDATION_ENGINE.md for the reasoning behind each group.
 
-export const ENGINE_VERSION = 'daily-3.2'
+export const ENGINE_VERSION = 'daily-4.0'
 export const RULES = {
   eligibility: 'elig-2',
   exposure: 'expo-1',
   rollover: 'roll-2',
   learning: 'learn-1',
-  scoring: 'score-3',
+  scoring: 'score-4',
   photoFocus: 'photo-1',
   exploration: 'explore-1',
   selection: 'select-4',
   dose: 'dose-2',
-  progression: 'prog-3',
+  progression: 'strength-graph-1',
   feedback: 'ask-1',
   explanation: 'why-1',
 }
@@ -117,7 +117,8 @@ export const WEIGHTS = {
   preference: 1.6,
   comfort: 1.2,
   confidence: 0.4,
-  progression: 0.6,
+  // Kept small so lifts that are progressing don't crowd out everything else.
+  progression: 0.3,
   familiarity: 0.5,
   staple: 0.9,
   setup: 0.5,
@@ -128,6 +129,10 @@ export const WEIGHTS = {
   sameDay: 2.5,
   replacement: 1.2,
   placeAffinity: 0.4,
+  // From the strength model (src/lib/strength): suits today's level here, and
+  // how recovered its muscles are.
+  fit: 1.0,
+  fatigue: 1.5,
 }
 export const SPORT_PRIORITY_SCALE = { sport: 1, balanced: 0.5, goal: 0 }
 

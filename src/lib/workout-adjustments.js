@@ -4,7 +4,8 @@ import { availableLoads, fitAvailableLoad, DUMBBELL_MOVES } from './preferences.
 import { currentSet, lastPerformance, makeSessionExercise, enterWork, finish, openRest } from './workout.js'
 import { movementAllowed, movementPreferences, movementSummary } from './movement-preferences.js'
 import { sportScheduleContext } from './sport-schedule.js'
-import { todayKey } from './date.js'
+import { todayKey, toKey } from './date.js'
+import { strengthTarget } from './strength/index.js'
 import { quietAt, resolvePlace } from './places.js'
 import { metaOf } from './catalog/index.js'
 import { eligibilityContext, planningContext } from './engine/recommend.js'
@@ -151,7 +152,19 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
         item.weight = baseline > 0 ? Math.floor(baseline * 0.85 * 2) / 2 || null : null
       }
     }
-    if (DUMBBELL_MOVES.includes(def.id)) item.weight = fitAvailableLoad(item.weight, availableLoads(p, location))
+    if (DUMBBELL_MOVES.includes(def.id)) {
+      const loads = availableLoads(p, location)
+      const planned = item.weight
+      item.weight = fitAvailableLoad(planned, loads)
+      // A lighter day can plan below the lightest dumbbell here. Use the
+      // lightest one when it is no heavier than the person has lifted
+      // before, rather than losing the weight entirely.
+      if (item.weight === null && planned > 0 && loads.length) {
+        const lifted = lastPerformance(state.workouts, def.id, state.settings.weightUnit)
+        const best = lifted ? Math.max(...lifted.sets.map((s) => s.weight || 0)) : 0
+        if (best > 0 && loads[0] <= best) item.weight = loads[0]
+      }
+    }
     used.add(def.id)
     adapted.push(item)
   }
@@ -167,22 +180,38 @@ export function replaceCurrentExercise(session, def, state, now = Date.now()) {
     state.workouts.filter((w) => w.unit === session.unit),
     def.id,
   )
+  const p = { ...profileOf(state), ...session.equipmentProfile }
+  const location = session.location || p.location
+  // A different movement never inherits the old movement's load or progression:
+  // its own history (or, carefully, a close relative's) sets the numbers.
+  const adaptive = strengthTarget({
+    exId: def.id,
+    def,
+    workouts: state.workouts,
+    customExercises: state.customExercises,
+    learning: state.learning,
+    unit: session.unit,
+    today: toKey(new Date(now)),
+    now,
+    goal: p.goal,
+    experience: p.experience,
+    easy: Boolean(session.schedule?.lighter),
+    sizes: availableLoads(p, location),
+    sets: pending.length,
+  })
   const item = {
     sets: pending.length,
-    reps: def.type === 'reps' ? (cur.ex.type === 'reps' ? cur.set.reps : 10) : null,
+    reps: def.type === 'reps' ? (adaptive?.reps ?? (cur.ex.type === 'reps' ? cur.set.reps : 10)) : null,
     sec: def.type === 'time' ? (cur.ex.type === 'time' ? cur.set.sec : 30) : null,
     restSec: cur.ex.restSec,
+    ...(adaptive ? { repRange: adaptive.range, targetRir: adaptive.rir } : {}),
   }
-  // A different movement never inherits the old movement's load or progression.
   const previousWeight =
     def.weighted && last
       ? (last.sets.at(-1)?.weight ?? 0) * (session.schedule?.lighter ? 0.85 : 1) || null
       : null
-  const p = { ...profileOf(state), ...session.equipmentProfile }
-  const location = session.location || p.location
-  const weight = DUMBBELL_MOVES.includes(def.id)
-    ? fitAvailableLoad(previousWeight, availableLoads(p, location))
-    : previousWeight
+  const chosen = adaptive && adaptive.mode === 'load' ? adaptive.weight : previousWeight
+  const weight = DUMBBELL_MOVES.includes(def.id) ? fitAvailableLoad(chosen, availableLoads(p, location)) : chosen
   const replacement = makeSessionExercise(
     def,
     item,

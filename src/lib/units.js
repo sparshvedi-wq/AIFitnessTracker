@@ -21,6 +21,9 @@ export function convertStateUnits(state, to) {
       ...e,
       sets: sets(e.sets, source),
       ...(e.last ? { last: { ...e.last, sets: sets(e.last.sets, source) } } : {}),
+      // Strength-model notes and evidence carry weights too.
+      ...(e.adjusted && Number.isFinite(e.adjusted.weight) ? { adjusted: { ...e.adjusted, weight: weight(e.adjusted.weight, source) } } : {}),
+      ...(Array.isArray(e.startChoices) ? { startChoices: e.startChoices.map((v) => weight(v, source)) } : {}),
     }))
   const label = (text, source) =>
     text?.replace(

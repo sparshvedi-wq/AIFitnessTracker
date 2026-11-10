@@ -12,6 +12,7 @@ import { DUMBBELL_MOVES, fitAvailableLoad } from './preferences.js'
 import { trainingTitle } from './training-copy.js'
 import { metaOf } from './catalog/index.js'
 import { outcomeFromSession } from './engine/ledger.js'
+import { strengthNote, strengthTarget } from './strength/index.js'
 
 // Assisted machines log assistance: less is harder, and it is not lifted load.
 const assisted = (exId) => metaOf(exId)?.load === 'assist'
@@ -117,24 +118,69 @@ export function suggestTarget(def, item, last, unit) {
 
 export const LOGGED_WORKOUT = 'Logged workout'
 
+/**
+ * A starting weight typed into a routine beats a guess borrowed from another
+ * exercise: it only gives way once this exercise has its own history.
+ */
+function routineStartWins(item, adaptive) {
+  return Number.isFinite(item.weight) && item.weight > 0 && ['estimated-start', 'no-history'].includes(adaptive.code)
+}
+
+/**
+ * @param strength optional { learning, goal, experience, today } — when given,
+ *   saved routines get their weights from the adaptive strength model (the
+ *   same rules as daily plans), keeping each routine's own rep count.
+ */
 export function buildSession(
   routine,
-  { workouts = [], customExercises = [], unit = 'lb', now = Date.now(), dumbbellWeights = [] } = {},
+  { workouts = [], customExercises = [], unit = 'lb', now = Date.now(), dumbbellWeights = [], strength = null } = {},
 ) {
+  const strengthCache = new Map()
   const exercises = routine.items
     .map((item) => {
       const def = findExercise(item.exId, customExercises)
       if (!def) return null
       const last = lastPerformance(workouts, item.exId, unit)
+      const adaptive =
+        !routine.lockedTargets && strength
+          ? strengthTarget({
+              exId: def.id,
+              def,
+              workouts,
+              customExercises,
+              learning: strength.learning,
+              unit,
+              today: strength.today || toKey(new Date(now)),
+              now,
+              goal: strength.goal,
+              experience: strength.experience,
+              sizes: dumbbellWeights,
+              sets: item.sets,
+              fixedReps: item.reps,
+              cache: strengthCache,
+            })
+          : null
       const { target, note, up } = routine.lockedTargets
         ? {
             target: { reps: item.reps ?? null, sec: item.sec ?? null, weight: item.weight ?? null },
             note: item.note,
             up: false,
           }
-        : suggestTarget(def, item, last, unit)
+        : adaptive && (adaptive.weight !== null || adaptive.mode === 'reps') && !routineStartWins(item, adaptive)
+          ? {
+              target: {
+                // A first guess keeps the routine's own rep count.
+                reps: adaptive.code === 'estimated-start' && isFinite(item.reps) ? item.reps : adaptive.reps,
+                sec: null,
+                weight: adaptive.weight,
+              },
+              note: strengthNote(adaptive, unit),
+              up: adaptive.up,
+            }
+          : suggestTarget(def, item, last, unit)
       if (DUMBBELL_MOVES.includes(def.id)) target.weight = fitAvailableLoad(target.weight, dumbbellWeights)
-      return makeSessionExercise(def, item, target, { last, note, up })
+      const planned = adaptive ? { ...item, repRange: adaptive.range, targetRir: adaptive.rir } : item
+      return makeSessionExercise(def, planned, target, { last, note, up })
     })
     .filter(Boolean)
   const kind =
@@ -221,6 +267,11 @@ export function makeSessionExercise(def, item, target, { last = null, note = nul
     phaseLabel: item.phaseLabel,
     sideExtra: item.sideExtra,
     unilateral: item.unilateral,
+    // The rep range and reps-in-reserve the plan aimed for (strength model).
+    ...(Array.isArray(item.repRange) ? { repRange: item.repRange } : {}),
+    ...(Number.isFinite(item.targetRir) ? { targetRir: item.targetRir } : {}),
+    // First-weight choices estimated from related exercises (strength model).
+    ...(Array.isArray(item.startChoices) && item.startChoices.length ? { startChoices: item.startChoices } : {}),
     up,
   }
 }
@@ -391,7 +442,8 @@ export function completeSet(session, now = Date.now(), patch = {}) {
   if (!to) return session.kind === 'manual' ? { ...finish(next, now), phase: 'between' } : finish(next, now)
   next = { ...next, cursor: to }
   const rest = ex.restSec || 0
-  if (rest > 0) return openRest(next)
+  // When rest began (and pause time so far), for the rest screen's clock.
+  if (rest > 0) return { ...openRest(next), restStartedAt: now, restPausedMs: next.pausedMs || 0 }
   return enterWork(next, now)
 }
 
@@ -645,6 +697,10 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
       type: e.type,
       weighted: e.weighted,
       ...(e.swappedFrom ? { swappedFrom: e.swappedFrom } : {}),
+      // Strength-model evidence (src/lib/strength): "too heavy" attempts and a
+      // mid-workout "set my working weight" point.
+      ...(Array.isArray(e.attempts) && e.attempts.length ? { attempts: e.attempts } : {}),
+      ...(Number.isInteger(e.calibratedFrom) && e.calibratedFrom > 0 ? { calibratedFrom: e.calibratedFrom } : {}),
       sets: e.sets
         .filter((s) => s.status === 'done')
         .map((s) => ({
@@ -654,6 +710,10 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
           weight: e.weighted ? s.weight || 0 : null,
           targetReps: s.targetReps,
           targetSec: s.targetSec,
+          // How the set felt (one tap) and whether the numbers were typed in.
+          ...(s.feel ? { feel: s.feel } : {}),
+          ...(s.feel === 'easy' && [3, 5, 8].includes(s.reserve) ? { reserve: s.reserve } : {}),
+          ...(s.manual ? { manual: true } : {}),
         })),
     }))
     .filter((e) => e.sets.length > 0)

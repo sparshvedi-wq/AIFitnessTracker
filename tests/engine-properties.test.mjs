@@ -51,7 +51,9 @@ test('every generated plan satisfies hard constraints, time, laterality and load
       const def = findExercise(item.exId)
       const meta = metaOf(item.exId)
       assert.ok(def && meta?.reviewed, `seed ${sc.seed}: ${item.exId} resolvable and reviewed`)
-      assert.equal(ineligibility(meta, elig), null, `seed ${sc.seed}: ${item.exId} breaks a hard rule`)
+      // A "step up" (one level above, only when a main movement had nothing) is the one allowed exception.
+      const stepUp = plan.decision.items.find((d) => d.exId === item.exId)?.codes.includes('step-up')
+      assert.equal(ineligibility(meta, stepUp ? { ...elig, level: elig.level + 1 } : elig), null, `seed ${sc.seed}: ${item.exId} breaks a hard rule`)
       assert.ok(!meta.areas.some((a) => elig.blockedAreas.has(a)), `seed ${sc.seed}: avoided area`)
       assert.ok(item.sets >= 1 && item.sets <= 4, `seed ${sc.seed}: sets`)
       assert.ok(item.restSec >= (MIN_REST[meta.role] ?? 10), `seed ${sc.seed}: ${item.exId} rest below minimum`)

@@ -43,6 +43,7 @@ import ManualBaselineFields from './ManualBaselineFields.jsx'
 import PhotoCheckins from './PhotoCheckins.jsx'
 import { Choice, Field } from './Fields.jsx'
 import { hasTrainingTarget } from '../../lib/preferences.js'
+import { experienceSuggestion } from '../../lib/strength/index.js'
 export { Choice, Field } from './Fields.jsx'
 
 const TITLES = {
@@ -104,6 +105,10 @@ export default function TrainingProfile({ onClose }) {
   )
   const returning =
     state.settings.training.completed && state.settings.training.onboardingVersion === ONBOARDING_VERSION
+  // After enough consistent training, suggest the next level (never automatic).
+  const suggestedLevel = returning
+    ? experienceSuggestion({ workouts: state.workouts, experience: state.settings.training.experience, today })
+    : null
   const [current, setCurrent] = useState(draft?.step || (returning ? 'review' : 'welcome'))
   const [responseFor, setResponseFor] = useState(() =>
     returning ? null : restoredOnboardingResponse(draft, p),
@@ -569,7 +574,8 @@ export default function TrainingProfile({ onClose }) {
                   [15, 'Keep it short'],
                   [30, 'Half an hour'],
                   [45, 'A little longer'],
-                  ...(![15, 30, 45].includes(p.minutes) && !p.flexibleTime
+                  [60, 'About an hour'],
+                  ...(![15, 30, 45, 60].includes(p.minutes) && !p.flexibleTime
                     ? [[p.minutes, 'My usual session']]
                     : []),
                   ['flexible', 'It changes'],
@@ -657,6 +663,8 @@ export default function TrainingProfile({ onClose }) {
                 <div className="checklist mt-5">
                   {[
                     ['goal', p.goal],
+                    // Experience changes sets, exercise options and targets, so it stays one tap away.
+                    ['experience', p.experience],
                     [
                       'time',
                       `${p.flexibleTime ? 'Time varies' : `${p.minutes} min`} · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
@@ -700,6 +708,17 @@ export default function TrainingProfile({ onClose }) {
                     )
                   })}
                 </div>
+                {returning && suggestedLevel && suggestedLevel !== p.experience && (
+                  <div className="mt-4 rounded-2xl border border-accent/30 p-3 text-[14px] leading-relaxed">
+                    <p>
+                      You’ve trained consistently for a while. “{suggestedLevel}” would add more sets and unlock more
+                      exercises.
+                    </p>
+                    <button type="button" className="btn-secondary mt-2 min-h-11 w-full" onClick={() => set({ experience: suggestedLevel })}>
+                      Switch to {suggestedLevel}
+                    </button>
+                  </div>
+                )}
                 {returning && (
                   <button
                     className="btn-ghost mt-4 min-h-11 w-full"
@@ -722,6 +741,7 @@ export default function TrainingProfile({ onClose }) {
 }
 const CHECK_LABEL = {
   goal: 'Goal',
+  experience: 'Level',
   time: 'Time',
   location: 'Place',
   sports: 'Sports',

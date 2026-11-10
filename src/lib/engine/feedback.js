@@ -87,7 +87,9 @@ export function chooseQuestion(state, record, { now = Date.now(), today } = {}) 
   for (const p of planned) {
     if (!p.codes?.includes('progression')) continue
     const o = outcome.exercises.find((x) => x.exId === p.exId)
-    if (o?.doneWork) consider(p.exId, 'effort', 0.45, 'progression-change')
+    // Already answered during the workout ("how did that set feel?"): don't ask again.
+    const answered = (record.exercises || []).some((e) => e.exId === p.exId && (e.sets || []).some((s) => s.feel))
+    if (o?.doneWork && !answered) consider(p.exId, 'effort', 0.45, 'progression-change')
   }
   candidates.sort((a, b) => b.value - a.value || a.exId.localeCompare(b.exId))
   const best = candidates[0]

@@ -16,7 +16,8 @@ import {
 } from '../../lib/planner.js'
 import { buildSportWarmup, orderedSports } from '../../lib/sports.js'
 import { findExercise, MUSCLES } from '../../lib/exercises.js'
-import { buildSession, prepareSession, beginPrepared, fmtClock } from '../../lib/workout.js'
+import { buildSession, prepareSession, beginPrepared, fmtClock, fmtNum } from '../../lib/workout.js'
+import { metaOf } from '../../lib/catalog/index.js'
 import { Choice, Field } from './Fields.jsx'
 import { availableLoads } from '../../lib/preferences.js'
 import { adaptRoutineItems } from '../../lib/workout-adjustments.js'
@@ -95,6 +96,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
   const [replace, setReplace] = useState(false)
   const [exerciseIndex, setExerciseIndex] = useState(0)
   const [exerciseReturn, setExerciseReturn] = useState(null)
+  // Exercises taken out of this session before starting ("Not today").
+  const [skipToday, setSkipToday] = useState([])
   const movement = useMemo(() => movementPreferences(p, location, onTheGo), [p, location, onTheGo])
   const schedule = sportScheduleContext(p, { today, now, minutes })
   const steps = ['Time', 'Place', 'Feel', 'Plan']
@@ -131,11 +134,12 @@ export default function SessionSetup({ routine, onClose, onStart }) {
         now,
         minutes,
         location,
-        readiness,
+        // The plan picks something else for anything taken out today.
+        readiness: skipToday.length ? { ...readiness, avoidToday: [...(readiness.avoidToday || []), ...skipToday] } : readiness,
         movement: onTheGo || undefined,
         shortSession,
       })
-    const adapted = adaptRoutineItems(planningState, routine.items, location, readiness, {
+    const adapted = adaptRoutineItems(planningState, routine.items.filter((it) => !skipToday.includes(it.exId)), location, readiness, {
       today,
       now,
       minutes,
@@ -191,6 +195,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     onTheGo,
     focusAreas,
     shortSession,
+    skipToday,
   ])
   const start = (confirmed = false) => {
     if (!plan.items.length && !(kind === 'routine' && !routine.items.length)) return
@@ -244,6 +249,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
               customExercises: state.customExercises,
               unit: state.settings.weightUnit,
               dumbbellWeights: availableLoads(p, location),
+              // Saved routines use the same adaptive weights as daily plans.
+              strength: { learning: state.learning, goal: p.goal, experience: p.experience, today },
             },
           ),
         ),
@@ -274,8 +281,16 @@ export default function SessionSetup({ routine, onClose, onStart }) {
           : 'How are you feeling?'
   const selectedExercise = plan.items[exerciseIndex]
   const exerciseDef = selectedExercise && findExercise(selectedExercise.exId, state.customExercises)
+  // Sets × reps, plus the planned weight so the equipment can be set up first.
+  const loadText = (it) => {
+    if (!Number.isFinite(it.weight)) return ''
+    const load = metaOf(it.exId)?.load
+    const unit = state.settings.weightUnit
+    if (load === 'assist') return ` · ${fmtNum(it.weight)} ${unit} assistance`
+    return it.weight > 0 ? ` · ${fmtNum(it.weight)} ${unit}${load === 'hand' ? ' each' : ''}` : ''
+  }
   const dose = (it) =>
-    `${it.sets} × ${it.sec ? (it.sec >= 60 ? fmtClock(it.sec * 1000) : `${it.sec}s`) : `${it.reps}${it.unilateral ? ' / side' : ' reps'}`}`
+    `${it.sets} × ${it.sec ? (it.sec >= 60 ? fmtClock(it.sec * 1000) : `${it.sec}s`) : `${it.reps}${it.unilateral ? ' / side' : ' reps'}`}${loadText(it)}`
   const back = () => {
     if (panel) setPanel(panel === 'exercise' ? exerciseReturn : null)
     else if (returnToPlan) {
@@ -755,6 +770,20 @@ export default function SessionSetup({ routine, onClose, onStart }) {
               <li key={cue}>{cue}</li>
             ))}
           </ol>
+          {['adaptive', 'routine'].includes(kind) && plan.items.length > 1 && (
+            <button
+              type="button"
+              className="btn-secondary mt-5 min-h-12 w-full"
+              onClick={() => {
+                // Today only: the plan swaps in something else (a routine just drops it).
+                setSkipToday((list) => [...new Set([...list, selectedExercise.exId])])
+                setExerciseIndex(0)
+                setPanel(exerciseReturn)
+              }}
+            >
+              {kind === 'adaptive' ? 'Not today: swap it' : 'Skip it today'}
+            </button>
+          )}
         </>
       )}
       {panel === 'reasons' && (

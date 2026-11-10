@@ -4,16 +4,24 @@ import { useApp } from '../../store/AppContext.jsx'
 import { buildSession, prepareSession } from '../../lib/workout.js'
 import { unlockAudio } from '../../lib/coach.js'
 import { resolvePlace } from '../../lib/places.js'
+import { profileOf } from '../../lib/planner.js'
+import { availableLoads } from '../../lib/preferences.js'
+import { todayKey } from '../../lib/date.js'
 
 export default function useStartWorkout(nav) {
   const { state, dispatch } = useApp()
 
   function begin(routine) {
     unlockAudio()
+    const profile = profileOf(state)
+    const location = routine.location || profile.location
     const session = buildSession(routine, {
       workouts: state.workouts,
       customExercises: state.customExercises,
       unit: state.settings.weightUnit,
+      dumbbellWeights: availableLoads(profile, location),
+      // Saved routines use the same adaptive weights as daily plans.
+      strength: { learning: state.learning, goal: profile.goal, experience: profile.experience, today: todayKey() },
     })
     const ready = prepareSession(session)
     dispatch({ type: 'SET_ACTIVE_WORKOUT', session: ready })

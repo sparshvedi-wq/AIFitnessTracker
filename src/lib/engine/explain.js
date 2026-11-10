@@ -119,6 +119,19 @@ export function itemNote(entry, ctx) {
     parts.push('The dumbbells here are lighter than last time; aim for clean reps.')
   if (entry.progression?.code === 'missed-twice') parts.push('A little lighter after two tough sessions.')
   if (entry.progression?.code === 'less-assistance') parts.push('A little less assistance than last time.')
+  // From the strength model (src/lib/strength).
+  const pr = entry.progression || {}
+  const flags = pr.flags || []
+  if (codes.includes('step-up')) parts.push('A small step up from your level: start light and focus on form.')
+  if (pr.code === 'deload') parts.push('A lighter session to reset after some tough ones.')
+  if (pr.code === 'estimated-start')
+    parts.push(pr.facts?.source ? `A careful first guess from your ${pr.facts.source.toLowerCase()}.` : 'A careful first guess from a similar exercise.')
+  else if (flags.includes('outgrown')) parts.push(entry.weighted ? 'You’ve outgrown the weights here; add weight if you can.' : 'This is getting easy; a harder version is next.')
+  else if (flags.includes('lightest-is-heavy') || (flags.includes('below-range') && !entry.weighted)) parts.push('Hard for now: do the reps you can, with good form.')
+  else if (pr.code === 'load-up') parts.push('Up a step: you’re ready for it.')
+  else if (pr.code === 'load-down') parts.push('A little lighter, based on your last sets.')
+  else if (flags.includes('more-reps-before-jump')) parts.push('A few more reps before the next weight up.')
+  else if ((pr.facts?.readiness ?? 1) < 0.95) parts.push('Slightly lighter: these muscles are still recovering.')
   if (entry.side) parts.push(`Last set: one extra ${entry.side}-side rep if it feels fine.`)
   return parts.join(' ')
 }

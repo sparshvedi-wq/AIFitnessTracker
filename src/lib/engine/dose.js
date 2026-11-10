@@ -6,6 +6,7 @@
 import { MIN_REST } from './config.js'
 import { comparableSessions, historyIndex, planTarget, progressionTrend } from './progression.js'
 import { extraSetSeconds, planSeconds } from './session-time.js'
+import { strengthTarget } from '../strength/index.js'
 
 export function baseDose(meta, def, ctx) {
   const loaded = def.weighted && !['bw', 'band'].includes(meta.load)
@@ -36,6 +37,53 @@ export function withTarget(item, meta, def, ctx) {
     index: ctx.historyIndex,
   })
   const signal = ctx.signals.get(meta.id)
+  const trend = progressionTrend(sessions, meta, def.type)
+  // Weight and reps from the adaptive strength model, when it applies.
+  ctx.strengthCache ||= new Map()
+  const adaptive = strengthTarget({
+    exId: meta.id,
+    def,
+    meta,
+    workouts: ctx.workouts,
+    learning: ctx.state.learning,
+    unit: ctx.unit,
+    today: ctx.today,
+    now: ctx.now,
+    goal: ctx.goal,
+    experience: ctx.experience,
+    easy: ctx.easy,
+    highEffort: ctx.highEffort,
+    returning: ctx.returning,
+    sizes: ['hand', 'one'].includes(meta.load) && ctx.caps.has('db') ? ctx.dumbbellSizes : [],
+    sets: ctx.setCap,
+    // Reported discomfort or "harder than expected" holds the load.
+    noIncrease: signal?.comfort.status === 'some' || signal?.difficulty === 'hard',
+    place: ctx.place?.id ?? null,
+    metrics: ctx.state.metrics,
+    customExercises: ctx.state.customExercises,
+    cache: ctx.strengthCache,
+  })
+  // What the strength model thinks of this exercise today feeds selection:
+  // does it suit this person's level here, and how fresh are its muscles.
+  ctx.strengthFit ||= new Map()
+  ctx.strengthFit.set(meta.id, adaptive ? { flags: adaptive.flags || [], readiness: adaptive.facts?.readiness ?? 1, code: adaptive.code } : null)
+  if (adaptive) {
+    const next = { ...item, reps: adaptive.reps, repRange: adaptive.range, targetRir: adaptive.rir }
+    if (def.weighted) next.weight = adaptive.weight
+    if (Array.isArray(adaptive.choices)) next.startChoices = adaptive.choices
+    return {
+      item: next,
+      progression: {
+        code: adaptive.code,
+        up: adaptive.up,
+        facts: adaptive.facts,
+        flags: adaptive.flags,
+        rule: adaptive.rule,
+        confidence: adaptive.confidence,
+      },
+      trend,
+    }
+  }
   const target = planTarget({
     meta,
     def,
@@ -55,7 +103,7 @@ export function withTarget(item, meta, def, ctx) {
   return {
     item: next,
     progression: { code: target.code, up: target.up, facts: target.facts, rule: target.rule },
-    trend: progressionTrend(sessions, meta, def.type),
+    trend,
   }
 }
 

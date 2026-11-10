@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
 import { correctWorkout } from '../../lib/workout-history.js'
 import Modal from '../Modal.jsx'
+import Icon from '../Icon.jsx'
 
 export default function EditWorkout({ workout, onClose, onSaved }) {
   const { dispatch, today, toast } = useApp()
@@ -17,7 +18,30 @@ export default function EditWorkout({ workout, onClose, onSaved }) {
       ),
     )
   }
+  // A set logged by mistake can be removed; the last set removes the exercise.
+  const removeSet = (i, j) => {
+    setError('')
+    setExercises((all) =>
+      all
+        .map((e, n) => (n === i ? { ...e, sets: e.sets.filter((_, m) => m !== j) } : e))
+        .filter((e) => e.sets.length > 0),
+    )
+  }
+  const removeExercise = (i) => {
+    setError('')
+    setExercises((all) => all.filter((_, n) => n !== i))
+  }
+  const toggleWarmup = (i, j) =>
+    setExercises((all) =>
+      all.map((e, n) =>
+        n === i ? { ...e, sets: e.sets.map((s, m) => (m === j ? { ...s, kind: s.kind === 'warmup' ? 'work' : 'warmup' } : s)) } : e,
+      ),
+    )
   const save = () => {
+    if (!exercises.length) {
+      setError('Keep at least one exercise, or delete the whole workout instead.')
+      return
+    }
     try {
       const updated = correctWorkout(workout, { date, note, exercises }, today)
       dispatch({ type: 'UPDATE_WORKOUT', workout: updated })
@@ -58,7 +82,18 @@ export default function EditWorkout({ workout, onClose, onSaved }) {
       </label>
       {exercises.map((e, i) => (
         <section key={`${e.exId}-${i}`} className="mt-6">
-          <h3 className="text-[16px] font-semibold">{e.name}</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="min-w-0 text-[16px] font-semibold">{e.name}</h3>
+            {exercises.length > 1 && (
+              <button
+                type="button"
+                className="min-h-11 shrink-0 px-2 text-[13px] text-danger"
+                onClick={() => removeExercise(i)}
+              >
+                Remove exercise
+              </button>
+            )}
+          </div>
           <div className="mt-2 space-y-2">
             {e.sets.map((s, j) => (
               <div key={j} className="flex items-end gap-3 rounded-2xl bg-surface2 p-3">
@@ -89,6 +124,25 @@ export default function EditWorkout({ workout, onClose, onSaved }) {
                     />
                   </label>
                 )}
+                <div className="flex shrink-0 flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={s.kind === 'warmup'}
+                    aria-label={`${e.name} set ${j + 1}: ${s.kind === 'warmup' ? 'warm-up, tap to make it a working set' : 'working set, tap to make it a warm-up'}`}
+                    className={`chip min-h-8 px-2 text-[11px] ${s.kind === 'warmup' ? 'chip-active' : 'bg-bg'}`}
+                    onClick={() => toggleWarmup(i, j)}
+                  >
+                    Warm-up
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${e.name} set ${j + 1}`}
+                    className="icon-btn !h-9 !w-9 text-muted"
+                    onClick={() => removeSet(i, j)}
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>

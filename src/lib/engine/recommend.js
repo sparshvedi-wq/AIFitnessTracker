@@ -45,6 +45,10 @@ import { allocateSets, baseDose, withTarget } from './dose.js'
 import { planSeconds } from './session-time.js'
 import { headline, itemNote, reasonLines } from './explain.js'
 import { PHOTO_AREAS, photoFocusEvidence } from './photo-focus.js'
+import { exerciseReadiness } from '../strength/index.js'
+
+// Main movements every plan pool should be able to cover.
+const COVERAGE_PATTERNS = ['push-h', 'pull-h', 'squat', 'hinge']
 
 export const DEFAULT_PROFILE_FIELDS = { variety: 'balanced' }
 const STRENGTH = (w) => !['sport', 'recovery', 'pump'].includes(w.kind)
@@ -275,6 +279,26 @@ export function recommendStrength(state, options) {
   const movementMode = ctx.unwell || options.mode === 'movement'
   const kind = ctx.movement?.position === 'seated' ? 'seated' : 'strength'
   const screen = movementMode ? { eligible: [], excluded: {} } : screenCatalog(eligibilityContext(ctx, kind))
+  // Coverage: when a main movement has nothing at this experience level (for
+  // example rows with dumbbells but no bench, for someone starting out), allow
+  // the gentlest exercises one level up for that movement only.
+  ctx.stepUp = new Set()
+  if (!movementMode && ctx.level < 2) {
+    const present = new Set(screen.eligible.map((m) => m.pattern))
+    const missing = COVERAGE_PATTERNS.filter((pattern) => !present.has(pattern))
+    if (missing.length) {
+      const stepCtx = { ...eligibilityContext(ctx, kind), level: ctx.level + 1 }
+      for (const pattern of missing) {
+        const options = allMeta().filter((m) => m.pattern === pattern && m.level === ctx.level + 1 && !ineligibility(m, stepCtx))
+        // Prefer dumbbells, machines and bodyweight over a barbell when stepping up.
+        const gentle = options.filter((m) => m.equipmentClass !== 'barbell')
+        for (const m of gentle.length ? gentle : options) {
+          screen.eligible.push(m)
+          ctx.stepUp.add(m.id)
+        }
+      }
+    }
+  }
   ctx.siblingDiscomfort = siblingDiscomfort(ctx)
   ctx.familiesToLearn = familiesToLearn(screen.eligible, ctx.signals)
   // A family counts as familiar only if a familiar member can be done here;
@@ -285,6 +309,20 @@ export function recommendStrength(state, options) {
       .map((m) => m.family),
   )
   ctx.trends = new Map()
+  // How recovered each candidate's muscles are, from the shared fatigue model.
+  ctx.readiness = new Map()
+  const strengthArgs = {
+    workouts: ctx.workouts,
+    learning: state.learning,
+    metrics: state.metrics,
+    unit: ctx.unit,
+    today: ctx.today,
+    now: ctx.now,
+    experience: ctx.experience,
+    customExercises: state.customExercises,
+    place: ctx.place.id,
+  }
+  for (const meta of screen.eligible) ctx.readiness.set(meta.id, exerciseReadiness(strengthArgs, meta.id))
   const exploreBudget =
     ctx.easy || ctx.returning || ctx.shortSession ? 0 : (EXPLORATION.maxPerSession[ctx.variety] ?? 1)
   ctx.maxExplore = ctx.exploration === 'off' ? 0 : exploreBudget
@@ -317,7 +355,10 @@ export function recommendStrength(state, options) {
 
   // Validation: everything chosen must still pass every hard rule and fit the time.
   const eligibilityCheck = eligibilityContext(ctx, kind)
-  const violations = chosen.filter((c) => ineligibility(c.meta, eligibilityCheck)).map((c) => c.meta.id)
+  const stepCheck = { ...eligibilityCheck, level: ctx.level + 1 }
+  const violations = chosen
+    .filter((c) => ineligibility(c.meta, ctx.stepUp.has(c.meta.id) ? stepCheck : eligibilityCheck))
+    .map((c) => c.meta.id)
   if (violations.length || planSeconds(items) + ctx.easeIn > ctx.budget)
     throw new Error(`Recommendation failed validation: ${violations.join(', ') || 'time'}`)
 
@@ -353,6 +394,7 @@ function codesFor(c, ctx) {
   if (f.muscleOverlap > 0.4) codes.push('recent-overlap')
   if (c.sample.exploratory && ctx.maxExplore && c.explorable) codes.push('exploring')
   if (c.progression?.up) codes.push('progression')
+  if (ctx.stepUp?.has(c.meta.id)) codes.push('step-up')
   return codes
 }
 
@@ -391,6 +433,7 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     const entry = {
       exId: c.meta.id,
       codes,
+      weighted: Boolean(c.def.weighted),
       unilateral: item.unilateral,
       progression: c.progression,
       side,

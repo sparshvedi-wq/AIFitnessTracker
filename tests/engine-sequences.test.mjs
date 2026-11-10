@@ -11,7 +11,7 @@ import { chooseQuestion } from '../src/lib/engine/feedback.js'
 import { exposureFrom } from '../src/lib/engine/exposure.js'
 import { recordOutcome } from '../src/lib/engine/ledger.js'
 import { correctWorkout, rebuildRecords } from '../src/lib/workout-history.js'
-import { ROLLOVER_MAX_IN_PLAN } from '../src/lib/engine/config.js'
+import { ROLLOVER_MAX_IN_PLAN, ROLLOVER_MAX_OFFERS } from '../src/lib/engine/config.js'
 
 const fam = (id) => metaOf(id)?.family
 const region = (id) => metaOf(id)?.region
@@ -120,9 +120,13 @@ test('repeatedly shortening sessions never accumulates unlimited debt', () => {
   // Candidates are bounded by families and expire with age: no growth over the week.
   assert.ok(Math.max(...sizes) <= 8, `active candidates stayed bounded: ${sizes}`)
   assert.ok(sizes.at(-1) <= sizes.reduce((a, b) => Math.max(a, b), 0))
-  // Work that was carried and missed again is not carried a second time.
-  const carriedTwice = state.workouts.flatMap((w) => w.planning?.carriedFrom || [])
-  assert.equal(new Set(carriedTwice).size, carriedTwice.length)
+  // Missed work is offered at most ROLLOVER_MAX_OFFERS times (then expires),
+  // and every offer points back to a real earlier session.
+  const carried = state.workouts.flatMap((w) => w.planning?.carriedFrom || [])
+  const counts = carried.reduce((m, s) => m.set(s, (m.get(s) || 0) + 1), new Map())
+  assert.ok([...counts.values()].every((n) => n <= ROLLOVER_MAX_OFFERS), JSON.stringify([...counts]))
+  const ids = new Set(state.workouts.map((w) => w.id))
+  assert.ok(carried.every((s) => ids.has(s.split(':')[0])))
 })
 
 test('switching equipment between sessions: home plans use home gear, and missed gym work maps to a home variant', () => {

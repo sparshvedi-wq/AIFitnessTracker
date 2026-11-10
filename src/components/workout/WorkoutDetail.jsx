@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
 import { TEMPLATES } from '../../lib/exercises.js'
-import { describeSets, fmtDuration, fmtNum } from '../../lib/workout.js'
+import { describeSets, fmtDuration, fmtNum, totals } from '../../lib/workout.js'
 import { DAYS_LONG, MONTHS_LONG, fromKey } from '../../lib/date.js'
 import Icon from '../Icon.jsx'
 import Modal from '../Modal.jsx'
@@ -27,7 +27,8 @@ export default function WorkoutDetail({ workout: initialWorkout, onClose, onRepe
     routineFromWorkout(workout, state.settings.weightUnit)
   const effort = EFFORT.find((e) => e.value === workout.effort)
   const d = fromKey(workout.date)
-  const t = workout.totals
+  // Older or restored records may lack stored totals: work them out instead.
+  const t = workout.totals || totals(workout.exercises || [])
   const cells = [
     { l: 'Time', v: fmtDuration(workout.durationSec) },
     { l: 'Sets', v: t.sets },

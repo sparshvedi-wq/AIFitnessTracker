@@ -51,6 +51,9 @@ export function defaultState() {
         vibrate: true,
         cuesVersion: 2,
         keepAwake: true, // hold a screen wake lock while the player is open
+        // 'simple': the app sets weights and reps (tap a number to change it);
+        // 'advanced': +/− buttons on every set as well.
+        weightControls: 'simple',
       },
     },
     createdAt: todayKey(),

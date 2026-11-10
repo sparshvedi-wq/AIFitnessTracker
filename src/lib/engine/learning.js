@@ -61,7 +61,20 @@ export const QUESTIONS = {
   },
 }
 const VALID_VALUES = Object.fromEntries(Object.entries(QUESTIONS).map(([k, q]) => [k, q.answers.map((a) => a[0])]))
-const EVENT_KINDS = ['answer', 'retry', 'reset', 'dismiss']
+// 'anchor' is "this is my working weight" (or, without numbers, "recalibrate"):
+// the strength model starts again from it (src/lib/strength/model.js).
+const EVENT_KINDS = ['answer', 'retry', 'reset', 'dismiss', 'anchor']
+
+// An anchor keeps its numbers only when they are sane; broken numbers drop the event.
+function anchorFields(e) {
+  const hasNumbers = e.reps !== undefined || e.weight !== undefined
+  if (!hasNumbers) return {}
+  const reps = Number(e.reps)
+  if (!Number.isInteger(reps) || reps < 1 || reps > 100) return null
+  if (e.weight !== undefined && !(Number.isFinite(e.weight) && e.weight > 0 && e.weight <= 10000)) return null
+  if (e.weight !== undefined && !['lb', 'kg'].includes(e.unit)) return null
+  return { reps, ...(e.weight !== undefined ? { weight: e.weight, unit: e.unit } : {}) }
+}
 
 /** Whitelists and bounds saved learning data; corrupt entries are dropped. */
 export function normalizeLearning(raw) {
@@ -75,13 +88,15 @@ export function normalizeLearning(raw) {
         typeof e.exId === 'string' &&
         e.exId.length <= 120 &&
         Number.isFinite(e.at) &&
-        (e.kind !== 'answer' || VALID_VALUES[e.question]?.includes(e.value)),
+        (e.kind !== 'answer' || VALID_VALUES[e.question]?.includes(e.value)) &&
+        (e.kind !== 'anchor' || anchorFields(e) !== null),
     )
     .map((e) => ({
       id: typeof e.id === 'string' ? e.id.slice(0, 80) : `${e.kind}-${e.at}-${e.exId}`,
       kind: e.kind,
       exId: e.exId,
       at: e.at,
+      ...(e.kind === 'anchor' ? anchorFields(e) : {}),
       ...(e.question ? { question: e.question } : {}),
       ...(e.value ? { value: e.value } : {}),
       ...(typeof e.place === 'string' ? { place: e.place.slice(0, 80) } : {}),
@@ -116,6 +131,15 @@ export const dismissEvent = ({ exId, question, workoutId, at }) => ({
   at,
 })
 export const retryEvent = ({ exId, at }) => ({ id: eventId('retry', at), kind: 'retry', exId, at })
+/** "My working weight is W for R reps" (or, without numbers, start learning again). */
+export const anchorEvent = ({ exId, at, weight, reps, unit }) => ({
+  id: eventId('anchor', at),
+  kind: 'anchor',
+  exId,
+  at,
+  ...(reps !== undefined ? { reps } : {}),
+  ...(weight !== undefined ? { weight, unit } : {}),
+})
 export const resetEvent = ({ exId = '*', at }) => ({ id: eventId('reset', at), kind: 'reset', exId, at })
 
 /** Adds one event, replacing an earlier answer to the same question for the same workout. */

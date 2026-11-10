@@ -46,6 +46,7 @@ export function nextOnboardingStep(step, p, editingGroup = null) {
     next = steps[steps.indexOf(step) + 1]
   const finished =
     (editingGroup === 'goal' && step === 'physique') ||
+    (editingGroup === 'experience' && step === 'experience') ||
     (editingGroup === 'time' && step === 'rhythm') ||
     (editingGroup === 'sports' &&
       ((step === 'sports' && !p.wantsSport && !p.sports.length) || step === 'priority')) ||

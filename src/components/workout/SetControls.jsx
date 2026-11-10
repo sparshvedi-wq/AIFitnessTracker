@@ -24,8 +24,9 @@ export function WorkoutInfo({ title, children }) {
   )
 }
 
-// Reps and load can be changed with one tap. Tapping the number opens direct entry.
-export function SetNumberCard({ label, value, display, onEdit, onChange, stepTo }) {
+// The number is set by the app; tapping it opens direct entry. With
+// `steppers` (the Advanced weight controls) +/− buttons sit under it too.
+export function SetNumberCard({ label, value, display, onEdit, onChange, stepTo, steppers = true }) {
   const previous = stepTo(value || 0, -1)
   const next = stepTo(value || 0, 1)
   return (
@@ -44,19 +45,21 @@ export function SetNumberCard({ label, value, display, onEdit, onChange, stepTo 
           <Icon name="edit" size={12} />
         </span>
       </button>
-      <div className="mt-1 flex justify-between gap-[4px]">
-        <NumberStep
-          label={`Decrease ${label}`}
-          disabled={previous === (value || 0)}
-          onClick={() => onChange(previous)}
-        />
-        <NumberStep
-          label={`Increase ${label}`}
-          plus
-          disabled={next === (value || 0)}
-          onClick={() => onChange(next)}
-        />
-      </div>
+      {steppers && (
+        <div className="mt-1 flex justify-between gap-[4px]">
+          <NumberStep
+            label={`Decrease ${label}`}
+            disabled={previous === (value || 0)}
+            onClick={() => onChange(previous)}
+          />
+          <NumberStep
+            label={`Increase ${label}`}
+            plus
+            disabled={next === (value || 0)}
+            onClick={() => onChange(next)}
+          />
+        </div>
+      )}
     </div>
   )
 }

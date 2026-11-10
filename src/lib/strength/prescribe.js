@@ -95,7 +95,9 @@ export function prescribeLoad(belief, { range, rir, sets = 3, grid, last = null,
   const wLo = E * fractionAt(hi + rir + EXTRA_REPS_BEFORE_JUMP + 6, k)
   // Above the reference (or with no reference) a weight must be earned with
   // the cautious estimate; at or below it, the best estimate decides.
-  const repsAt = (w) => (ref === null || w > ref + 1e-6 || transfer ? repsAtCautious(w) : repsAtMean(w))
+  // After "5 or more left" the person has told us the margin is there: a step
+  // up is judged on the best estimate rather than the cautious one.
+  const repsAt = (w) => (ref === null || w > ref + 1e-6 || transfer ? (roomy && !transfer && ref !== null ? repsAtMean(w) : repsAtCautious(w)) : repsAtMean(w))
   const pool = new Set(grid.between(wLo, wHi))
   if (ref !== null) {
     pool.add(ref)
@@ -141,7 +143,8 @@ export function prescribeLoad(belief, { range, rir, sets = 3, grid, last = null,
     // Double progression: stay until the current weight passes the top of the
     // range or the next weight is comfortably inside it.
     const readyAtRef = repsAt(ref) > hi + 0.5
-    const heavier = options.filter((w) => w > ref + 1e-6 && inRange(w) && (readyAtRef || repsAt(w) >= lo + 1))
+    // After "5 or more left", any heavier weight inside the range is fair game.
+    const heavier = options.filter((w) => w > ref + 1e-6 && inRange(w) && (readyAtRef || roomy || repsAt(w) >= lo + 1))
     weight = heavier.length ? heavier.at(-1) : ref
   } else {
     const fits = options.filter(inRange)

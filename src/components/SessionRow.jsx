@@ -1,7 +1,7 @@
 import { count } from '../lib/presentation.js'
 import Icon from './Icon.jsx'
 import { DateTile } from './Ink.jsx'
-import { fmtNum } from '../lib/workout.js'
+import { fmtNum, workoutVolume } from '../lib/workout.js'
 import { recordPlaceLabel } from '../lib/places.js'
 
 export default function SessionRow({ workout, onClick, divider = false }) {
@@ -22,7 +22,7 @@ export default function SessionRow({ workout, onClick, divider = false }) {
         <span className="mt-1 block text-[13px] text-muted">
           {kind}
           {recordPlaceLabel(workout) ? ` · ${recordPlaceLabel(workout)}` : ''} · {count(sets, 'set')}
-          {workout.totals?.volume > 0 ? ` · ${fmtNum(workout.totals.volume)} ${workout.unit}` : ''}
+          {workoutVolume(workout) > 0 ? ` · ${fmtNum(workoutVolume(workout))} ${workout.unit}` : ''}
         </span>
       </span>
       {workout.sample ? (

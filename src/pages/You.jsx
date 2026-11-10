@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { MONTHS_LONG, addDays, fromKey, shortLabel } from '../lib/date.js'
 import { EXERCISES, findExercise } from '../lib/exercises.js'
-import { bestLifts, fmtNum } from '../lib/workout.js'
+import { bestLifts, fmtNum, workoutVolume } from '../lib/workout.js'
 import { exportData, importData, pickNativeBackup } from '../lib/backup.js'
 import { isNativeApp } from '../lib/native.js'
 import Icon from '../components/Icon.jsx'
@@ -48,7 +48,7 @@ export default function You({ nav }) {
     bw && weights.filter((w) => w.date <= addDays(bw.date, -5) && w.date >= addDays(bw.date, -14)).at(-1)
   const bwChange = earlier ? Math.round((bw.value - earlier.value) * 10) / 10 : null
 
-  const lifted = workouts.reduce((s, w) => s + (w.totals?.volume || 0), 0)
+  const lifted = workouts.reduce((s, w) => s + workoutVolume(w), 0)
   const totals = [
     { v: fmtNum(workouts.length), l: workouts.length === 1 ? 'Session' : 'Sessions' },
     {

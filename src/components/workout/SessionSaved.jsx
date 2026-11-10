@@ -40,9 +40,16 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
   const sets = workingSetCount(workout)
   const warmups = warmupSetCount(workout)
   // Pain or soreness means no push for more next time.
-  const next = ['pain', 'soreness', 'unwell'].includes(workout.finishReason)
-    ? []
-    : nextTimeNotes(workout, profileOf(state), workout.unit, state.customExercises)
+  // Worked out once when the sheet opens, from the same model as the next plan.
+  const [next] = useState(() =>
+    ['pain', 'soreness', 'unwell'].includes(workout.finishReason)
+      ? []
+      : nextTimeNotes(workout, profileOf(state), workout.unit, state.customExercises, {
+          workouts: state.workouts,
+          learning: state.learning,
+          metrics: state.metrics,
+        }),
+  )
   // At most one optional question, chosen once when the sheet opens.
   const [question] = useState(() => {
     const saved = state.workouts.find((w) => w.id === workout.id) || workout

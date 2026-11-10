@@ -149,7 +149,10 @@ function rawTarget({ meta, def, item, sessions, unit, sizes = [], easy, awayDays
   const holdCode = easy ? 'easy-day' : awayDays >= 7 ? 'returning' : comfort === 'some' ? 'comfort-hold' : effortAnswer === 'hard' ? 'felt-hard' : last.incomplete ? 'unfinished-dose' : 'mixed-loads'
 
   if (def.type === 'time') {
-    const goal = item.sec || Math.max(...last.sets.map((s) => s.targetSec || s.sec || 0))
+    // Progress continues from last time's target, not from the plan's default
+    // hold (someone holding 90 s is never planned 35 s again).
+    const lastGoal = Math.max(0, ...last.sets.map((s) => s.targetSec || s.sec || 0))
+    const goal = lastGoal || item.sec || 0
     const held = last.sets.every((s) => s.sec >= (s.targetSec ?? goal))
     if (hold) return { ...base, sec: Math.min(goal, Math.max(...last.sets.map((s) => s.sec))), up: false, code: holdCode, facts: {} }
     if (held && goal > 0 && goal + 5 <= capped)

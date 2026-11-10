@@ -1,5 +1,5 @@
 import { addDays, fromKey, MONTHS, toKey, WEEKDAY_INITIALS } from './date.js'
-import { weekStart } from './workout.js'
+import { weekStart, workoutVolume } from './workout.js'
 import { convertWeight } from './units.js'
 
 const dateAt = (year, month, day) =>
@@ -17,7 +17,7 @@ export function historyVolumeView(workouts, range, today, unit) {
         w.date >= start &&
         w.date <= end &&
         w.date <= today
-          ? sum + (convertWeight(w.totals?.volume || 0, w.unit || unit, unit) || 0)
+          ? sum + (convertWeight(workoutVolume(w), w.unit || unit, unit) || 0)
           : sum,
       0,
     )

@@ -9,7 +9,7 @@
 // and the whole session (one set each) within the time budget.
 import { MUSCLE_AREA } from '../catalog/vocabulary.js'
 import { SELECTION, TIMING } from './config.js'
-import { areaShares, pairOverlap } from './scoring.js'
+import { areaShares, mainAreas, pairOverlap } from './scoring.js'
 import { planSeconds } from './session-time.js'
 import { tiebreak } from './rng.js'
 
@@ -50,7 +50,7 @@ function extend(state, c, ctx, overlapWith = (x) => overlapOf(x.meta, c.meta)) {
   let focusGain = 0
   let direct = state.direct
   if (ctx.focusAreas?.size)
-    for (const a of primaryAreas(c.meta))
+    for (const a of mainAreas(c.meta))
       if (ctx.focusAreas.has(a) && !direct.includes(a)) {
         direct = [...direct, a]
         focusGain += SELECTION.focusBonus * (ctx.focusStrength?.[a] ?? 1)

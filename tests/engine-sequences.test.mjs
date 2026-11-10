@@ -276,11 +276,12 @@ test('editing an earlier workout updates what counts, without double counting', 
     {
       date: record.date,
       note: '',
-      exercises: [...record.exercises, { exId: row.exId, name: 'Row', type: 'reps', weighted: metaOf(row.exId).load !== 'bw', sets: [{ kind: 'work', reps: 10, weight: 30 }, { kind: 'work', reps: 10, weight: 30 }] }],
+      // Every planned set of the row, as actually done.
+      exercises: [...record.exercises, { exId: row.exId, name: 'Row', type: 'reps', weighted: metaOf(row.exId).load !== 'bw', sets: Array.from({ length: row.sets }, () => ({ kind: 'work', reps: 10, weight: 30 })) }],
     },
     '2026-11-03',
   )
-  assert.ok(edited.outcome.exercises.some((item) => item.exId === row.exId && item.doneWork === 2))
+  assert.ok(edited.outcome.exercises.some((item) => item.exId === row.exId && item.doneWork === row.sets))
   state = { ...state, workouts: rebuildRecords(state.workouts.map((w) => (w.id === edited.id ? edited : w))) }
   const exposure2 = exposureFrom(state.workouts, { now: at('2026-11-03'), today: '2026-11-03' })
   assert.ok(exposure2.area.Back.week > exposure1.area.Back.week)

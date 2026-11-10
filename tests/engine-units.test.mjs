@@ -1,3 +1,5 @@
+import { exerciseProfile } from '../src/lib/strength/library.js'
+import { involvementOf } from '../src/lib/strength/recovery.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { metaOf } from '../src/lib/catalog/index.js'
@@ -120,12 +122,17 @@ test('the ledger separates complete, partial, unreached, skipped and warm-up wor
   assert.equal(old.exercises.find((o) => o.exId === 'plank').status, 'skipped')
 })
 
-test('exposure counts primary, secondary and stabiliser work with documented contributions', () => {
+test('exposure counts each muscle by its share in the exercise library, and easy sets for less', () => {
   const workouts = [rec('a', '2026-10-01', 'db-bench', [set(10, 20), set(10, 20)])]
   const e = exposureFrom(workouts, { now: at('2026-10-01') + 3 * 3600000, today: '2026-10-01' })
+  const inv = involvementOf(exerciseProfile('db-bench'))
   assert.equal(e.muscle.chest.week, 2 * CONTRIBUTION.primary)
-  assert.equal(e.muscle.triceps.week, 2 * CONTRIBUTION.secondary)
+  assert.ok(Math.abs(e.muscle.triceps.week - 2 * Math.round(inv.triceps * 100) / 100) < 1e-9)
+  assert.ok(e.muscle.triceps.week < e.muscle.chest.week)
   assert.equal(e.area.Chest.week, 2)
+  // "Easy, 8 or more left" is real work but counts for about a third of a set.
+  const easy = exposureFrom([rec('b', '2026-10-01', 'db-bench', [{ ...set(10, 20), feel: 'easy', reserve: 8 }])], { now: at('2026-10-01') + 3 * 3600000, today: '2026-10-01' })
+  assert.ok(easy.area.Chest.week > 0.3 && easy.area.Chest.week < 0.4)
   assert.ok(e.area.Chest.recent < 2 && e.area.Chest.recent > 1.9, 'fades with time')
   const later = exposureFrom(workouts, { now: at('2026-10-04'), today: '2026-10-04' })
   assert.ok(later.area.Chest.recent < e.area.Chest.recent / 2)

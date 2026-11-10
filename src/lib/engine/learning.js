@@ -176,9 +176,20 @@ function blank(exId) {
     retryActive: false,
     explicitDislike: false,
     lastDoneAt: 0,
+    // When fully completed sessions happened (to let later, comfortable work
+    // outweigh an older "hard" or "uncomfortable" report).
+    completedAts: [],
+    difficultyAt: 0,
     sources: { explicit: 0, inferred: 0 },
   }
 }
+
+// An answer about how hard a weight felt is about that session's weight. The
+// next completed session's own logged sets are newer evidence, so the answer
+// stops holding the load after that, and after four weeks in any case.
+const DIFFICULTY_DAYS = 28
+// Two completed sessions after a soft comfort report (no new report) clear it.
+const COMFORT_CLEARING_SESSIONS = 2
 
 /**
  * Per-exercise signals for planning at `place`.
@@ -231,7 +242,10 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
         if (here) s.completionsHere++
         s.lastDoneAt = Math.max(s.lastDoneAt, at)
       }
-      if (o.status === 'complete') s.acceptance.accepted += here || !place ? 1 : 0.6
+      if (o.status === 'complete') {
+        s.acceptance.accepted += here || !place ? 1 : 0.6
+        s.completedAts.push(at)
+      }
       if (o.swappedFrom && o.doneWork > 0 && counts(o.swappedFrom, at)) {
         const from = get(o.swappedFrom)
         if (here) {
@@ -287,7 +301,10 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
         if (s.comfort.since && e.at > s.comfort.since) s.comfort.cleared = e.at
         if (s.comfort.status === 'unknown') s.comfort.status = 'ok'
       }
-      if (e.value === 'hard-fine') s.difficulty = 'hard'
+      if (e.value === 'hard-fine') {
+        s.difficulty = 'hard'
+        s.difficultyAt = e.at
+      }
     }
     if (e.question === 'setup') {
       if (e.value === 'setup') {
@@ -304,7 +321,10 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
         s.setup.awkwardHere = here ? false : s.setup.awkwardHere
       }
     }
-    if (e.question === 'effort' && e.value !== 'unsure') s.difficulty = e.value
+    if (e.question === 'effort' && e.value !== 'unsure') {
+      s.difficulty = e.value
+      s.difficultyAt = e.at
+    }
   }
 
   // Favourites are an explicit positive preference.
@@ -319,7 +339,23 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
     const reportedAfterRetry = s.comfort.since && s.comfort.since > retry
     const cleared = s.comfort.cleared && s.comfort.cleared > (s.comfort.since || 0)
     s.comfort.restricted = Boolean(s.comfort.reports && reportedAfterRetry && !cleared)
-    s.comfort.status = s.comfort.restricted ? 'restricted' : s.comfort.reports ? 'some' : s.comfort.status
+    // A "Good" answer, or a couple of complete sessions since the report with
+    // nothing new reported, settles a soft concern; the history stays.
+    const comfortableSince = s.completedAts.filter((t) => t > (s.comfort.since || 0)).length
+    const settled = cleared || comfortableSince >= COMFORT_CLEARING_SESSIONS
+    s.comfort.status = s.comfort.restricted
+      ? 'restricted'
+      : s.comfort.reports && !settled
+        ? 'some'
+        : s.comfort.reports
+          ? 'ok'
+          : s.comfort.status
+    // "Harder than expected" holds the load for the next session only.
+    if (
+      s.difficulty === 'hard' &&
+      (s.completedAts.some((t) => t > s.difficultyAt) || now - s.difficultyAt > DIFFICULTY_DAYS * DAY)
+    )
+      s.difficulty = null
     s.explicitDislike = s.enjoyment.explicit === 'no' && !s.retryActive
     // Counted by occurrence within the window; one skip stays weak.
     const inferred =

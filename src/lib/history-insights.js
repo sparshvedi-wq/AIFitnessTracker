@@ -1,6 +1,7 @@
 import { addDays } from './date.js'
 import { eventHistory } from './training-events.js'
 import { convertWeight } from './units.js'
+import { metaOf } from './catalog/index.js'
 const sets = (e) => (e.sets || []).filter((s) => s.kind !== 'warmup' && (!s.status || s.status === 'done'))
 export function historyTimeline(state, today, { days = 30, filter = 'all', query = '' } = {}) {
   const since = days ? addDays(today, -days + 1) : '2000-01-01'
@@ -58,25 +59,30 @@ export function historyTimeline(state, today, { days = 30, filter = 'all', query
   }
 }
 export function exerciseTrend(workouts, exId, unit, today) {
+  // Assisted machines log assistance: the best set is the one with the least.
+  const assisted = metaOf(exId)?.load === 'assist'
   return workouts
     .filter((w) => !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind) && w.date <= today)
     .map((w) => {
       const e = w.exercises.find((e) => e.exId === exId)
       const logged = e ? w.exercises.filter((x) => x.exId === exId).flatMap(sets) : []
       if (!logged.length) return null
+      const load = (s) => convertWeight(s.weight || 0, w.unit || unit, unit)
       const best = [...logged].sort((a, b) =>
         e.type === 'time'
           ? (b.sec || 0) - (a.sec || 0)
-          : e.weighted
-            ? convertWeight(b.weight || 0, w.unit || unit, unit) -
-                convertWeight(a.weight || 0, w.unit || unit, unit) || (b.reps || 0) - (a.reps || 0)
-            : (b.reps || 0) - (a.reps || 0),
+          : e.weighted && assisted
+            ? load(a) - load(b) || (b.reps || 0) - (a.reps || 0)
+            : e.weighted
+              ? load(b) - load(a) || (b.reps || 0) - (a.reps || 0)
+              : (b.reps || 0) - (a.reps || 0),
       )[0]
       return {
         id: w.id,
         date: w.date,
         type: e.type,
         weighted: e.weighted,
+        assisted: Boolean(e.weighted && assisted),
         value:
           e.type === 'time'
             ? best.sec || 0

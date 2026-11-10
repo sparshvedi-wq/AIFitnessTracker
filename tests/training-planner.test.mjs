@@ -1,3 +1,4 @@
+import { trainsAny } from '../src/lib/strength/index.js'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState, normalizeState } from '../src/lib/storage.js'
@@ -123,8 +124,20 @@ test('more time adds useful work; low energy, hard previous sessions and sport s
     readiness: { energy: 'low' },
   })
   assert.ok(easy.items.every((it) => it.sets <= 2))
+  // A very hard leg session: the muscles it worked are lighter for a few
+  // days, the rest of the body is not, and the reason says so.
+  const set = { kind: 'work', reps: 5, weight: 225 }
+  state.workouts = [
+    history({ effort: 4, endedAt: new Date('2026-10-23T13:00:00').getTime(), exercises: [{ exId: 'back-squat', name: 'Back squat', type: 'reps', weighted: true, sets: [set, set, set] }] }),
+  ]
+  const after = buildDailyPlan(state, { today, minutes: 60 })
+  assert.notEqual(after.decision.facts.mode, 'lighter')
+  const legs = after.items.filter((it) => trainsAny(it.exId, ['quads', 'glutes']))
+  assert.ok(after.reasons.some((r) => r.includes(legs.length ? 'same muscles is lighter' : 'get a break today')))
+  assert.ok(after.items.length >= 3, 'the rest of the body still trains')
+  // An empty "very hard" record worked no muscles: nothing to lighten.
   state.workouts = [history({ effort: 4 })]
-  assert.ok(buildDailyPlan(state, { today, minutes: 60 }).reasons.some((r) => r.includes('very hard')))
+  assert.ok(!buildDailyPlan(state, { today, minutes: 60 }).reasons.some((r) => r.includes('very hard')))
 })
 test('sore areas, pain, recent volume and pain-related skips change selection', () => {
   const state = makeState({ experience: 'Experienced' })

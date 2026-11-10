@@ -5,7 +5,7 @@ import { currentSet, lastPerformance, makeSessionExercise, enterWork, finish, op
 import { movementAllowed, movementPreferences, movementSummary } from './movement-preferences.js'
 import { sportScheduleContext } from './sport-schedule.js'
 import { todayKey, toKey } from './date.js'
-import { strengthTarget } from './strength/index.js'
+import { snapLoad, strengthNote, strengthTarget, trainsAny } from './strength/index.js'
 import { quietAt, resolvePlace } from './places.js'
 import { metaOf } from './catalog/index.js'
 import { eligibilityContext, planningContext } from './engine/recommend.js'
@@ -77,6 +77,7 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
   const eligNoAreas = { ...elig, blockedAreas: new Set() }
   const avoids = new Set([...(p.avoidMuscles || []), ...(readiness.pain || []), ...(readiness.sore || [])])
   const excluded = new Set(p.excludedExercises || [])
+  const unit = state.settings.weightUnit
   const used = new Set()
   const adapted = []
   const changes = []
@@ -142,14 +143,21 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
     }
     const finalMeta = metaOf(def.id)
     item.unilateral = Boolean(finalMeta?.perSide && def.type === 'reps')
-    if (schedule.lighter) {
-      item.sets = Math.min(item.sets || 1, schedule.muscles.includes(def.muscle) ? 1 : 2)
+    // A match or hard session nearby lightens everything; a normal practice
+    // only the exercises that rely on the muscles it uses.
+    const eventMuscles = schedule.muscles.includes(def.muscle) || trainsAny(def.id, ctx.lighterMuscles, def)
+    if (schedule.lighter && (schedule.systemic || eventMuscles)) {
+      item.sets = Math.min(item.sets || 1, eventMuscles ? 1 : 2)
       if (def.type === 'reps') item.reps = Math.min(item.reps || 8, 8)
-      const last = lastPerformance(state.workouts, def.id, state.settings.weightUnit)
-      if (def.weighted) {
+      const last = lastPerformance(state.workouts, def.id, unit)
+      if (def.weighted && finalMeta?.load !== 'assist') {
         const historical = last ? Math.max(...last.sets.map((s) => s.weight || 0)) : null
         const baseline = item.weight > 0 ? Math.min(item.weight, historical || Infinity) : historical
-        item.weight = baseline > 0 ? Math.floor(baseline * 0.85 * 2) / 2 || null : null
+        // Always a weight the equipment can hold (plates, a stack step, a listed dumbbell).
+        item.weight =
+          baseline > 0
+            ? snapLoad({ exId: def.id, weight: baseline * 0.85, unit, sizes: availableLoads(p, location), used: historical ? [historical] : [] })
+            : null
       }
     }
     if (DUMBBELL_MOVES.includes(def.id)) {
@@ -168,7 +176,30 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
     used.add(def.id)
     adapted.push(item)
   }
-  return { items: adapted, changes, movement, schedule }
+  // What the strength model needs to plan these items the way daily plans are:
+  // the day's lighter signals, muscles to go easy on, past activities, pace,
+  // and exercises whose load is held after a "felt hard" or discomfort report.
+  const holds = adapted
+    .map((i) => i.exId)
+    .filter((id) => {
+      const signal = ctx.signals.get(id)
+      return signal?.comfort.status === 'some' || signal?.difficulty === 'hard'
+    })
+  return {
+    items: adapted,
+    changes,
+    movement,
+    schedule,
+    context: {
+      easy: ctx.easy,
+      returning: ctx.returning,
+      highEffort: ctx.highEffort,
+      holds,
+      lighterMuscles: [...ctx.lighterMuscles],
+      activities: ctx.activities,
+      pace: ctx.pace,
+    },
+  }
 }
 
 export function replaceCurrentExercise(session, def, state, now = Date.now()) {
@@ -183,22 +214,9 @@ export function replaceCurrentExercise(session, def, state, now = Date.now()) {
   const p = { ...profileOf(state), ...session.equipmentProfile }
   const location = session.location || p.location
   // A different movement never inherits the old movement's load or progression:
-  // its own history (or, carefully, a close relative's) sets the numbers.
-  const adaptive = strengthTarget({
-    exId: def.id,
-    def,
-    workouts: state.workouts,
-    customExercises: state.customExercises,
-    learning: state.learning,
-    unit: session.unit,
-    today: toKey(new Date(now)),
-    now,
-    goal: p.goal,
-    experience: p.experience,
-    easy: Boolean(session.schedule?.lighter),
-    sizes: availableLoads(p, location),
-    sets: pending.length,
-  })
+  // its own history (or, carefully, a close relative's) sets the numbers, at
+  // this place, at today's bodyweight and after the sets already done today.
+  const adaptive = swapTarget(state, session, def, { now, location, profile: p, sets: pending.length })
   const item = {
     sets: pending.length,
     reps: def.type === 'reps' ? (adaptive?.reps ?? (cur.ex.type === 'reps' ? cur.set.reps : 10)) : null,
@@ -206,17 +224,20 @@ export function replaceCurrentExercise(session, def, state, now = Date.now()) {
     restSec: cur.ex.restSec,
     ...(adaptive ? { repRange: adaptive.range, targetRir: adaptive.rir } : {}),
   }
+  const lastWeight = def.weighted && last ? last.sets.at(-1)?.weight ?? null : null
   const previousWeight =
-    def.weighted && last
-      ? (last.sets.at(-1)?.weight ?? 0) * (session.schedule?.lighter ? 0.85 : 1) || null
+    lastWeight > 0
+      ? session.schedule?.systemic
+        ? snapLoad({ exId: def.id, weight: lastWeight * 0.85, unit: session.unit, sizes: availableLoads(p, location), used: [lastWeight] })
+        : lastWeight
       : null
-  const chosen = adaptive && adaptive.mode === 'load' ? adaptive.weight : previousWeight
+  const chosen = adaptive && adaptive.mode !== 'reps' && adaptive.weight != null ? adaptive.weight : previousWeight
   const weight = DUMBBELL_MOVES.includes(def.id) ? fitAvailableLoad(chosen, availableLoads(p, location)) : chosen
   const replacement = makeSessionExercise(
     def,
-    item,
+    { ...item, ...(Array.isArray(adaptive?.choices) ? { startChoices: adaptive.choices } : {}) },
     { reps: item.reps, sec: item.sec, weight },
-    { last, note: 'Swapped for today. Pick a comfortable weight.' },
+    { last, note: swapNote(def, weight, adaptive, session.unit) },
   )
   replacement.unilateral = Boolean(metaOf(def.id)?.perSide && def.type === 'reps')
   // Recorded so future plans can learn which substitutes are accepted, and where.
@@ -235,6 +256,38 @@ export function replaceCurrentExercise(session, def, state, now = Date.now()) {
     phaseTotal: 0,
   }
   return session.phase === 'prepared' ? { ...next, phase: 'prepared' } : enterWork(next, now)
+}
+
+/** Weight and reps for an exercise swapped in mid-workout, from the strength model. */
+export function swapTarget(state, session, def, { now = Date.now(), location, profile, sets = 3 } = {}) {
+  const p = profile || { ...profileOf(state), ...session.equipmentProfile }
+  const r = session.readiness || {}
+  const lighter = new Set(session.lighterMuscles || [])
+  return strengthTarget({
+    exId: def.id,
+    def,
+    workouts: state.workouts,
+    customExercises: state.customExercises,
+    learning: state.learning,
+    metrics: state.metrics,
+    unit: session.unit,
+    today: toKey(new Date(now)),
+    now,
+    goal: p.goal,
+    experience: p.experience,
+    easy: Boolean(session.schedule?.systemic || r.unwell || r.energy === 'low' || r.intensity === 'easy' || trainsAny(def.id, lighter, def)),
+    place: location || session.location || null,
+    sizes: availableLoads(p, location || session.location),
+    sets,
+    // Today's sets so far: muscles already worked are a little tired.
+    live: session,
+  })
+}
+
+function swapNote(def, weight, adaptive, unit) {
+  if (!def.weighted) return strengthNote(adaptive, unit) || 'Swapped for today.'
+  if (weight == null) return 'Swapped for today. Pick a comfortable weight.'
+  return strengthNote(adaptive, unit) || 'Swapped for today. Change the weight if it feels off.'
 }
 
 // Keep all completed sets and only remove work that has not been logged.

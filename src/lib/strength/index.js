@@ -23,7 +23,7 @@ import { loadGrid } from './loads.js'
 import { fractionAt, isNum, repsAtFraction } from './math.js'
 import { beliefAt, exerciseBelief, strengthMode } from './model.js'
 import { mappedGrid, prescribeAtLoad, prescribeLoad, prescribeReps, repRange, targetRir } from './prescribe.js'
-import { addSetFatigue, availability, readiness } from './recovery.js'
+import { addSetFatigue, availability, involvementOf, readiness, withActivityFatigue } from './recovery.js'
 
 export { STRENGTH_VERSION } from './config.js'
 export { strengthMode } from './model.js'
@@ -100,15 +100,52 @@ function incrementalBuild(args, workouts, metrics) {
 }
 const NO_CUSTOM = []
 
+// Sport and activities already done (sport-schedule.js pastActivityLoad)
+// add fatigue to the muscles they used.
+const activitiesOf = (args) => (Array.isArray(args.activities) ? args.activities : [])
+function withActivities(C, args) {
+  const activities = activitiesOf(args)
+  return activities.length ? { ...C, fatigue: withActivityFatigue(C.fatigue, activities, args.now) } : C
+}
+
 /** The graph moved to `now` (and, in a workout, with today's sets applied). */
 function graphNow(args) {
   const entry = strengthGraphFor(args)
-  if (args.live) return graphAt(entry.G, args.now, liveRecord(args.live, args.now))
-  if (!entry.at.has(args.now)) {
+  if (args.live) return withActivities(graphAt(entry.G, args.now, liveRecord(args.live, args.now)), args)
+  const key = `${args.now}|${activitiesOf(args).map((a) => `${a.at}:${a.sets}:${(a.areas || []).join('+')}`).join(',')}`
+  if (!entry.at.has(key)) {
     if (entry.at.size > 8) entry.at.clear()
-    entry.at.set(args.now, graphAt(entry.G, args.now))
+    entry.at.set(key, withActivities(graphAt(entry.G, args.now), args))
   }
-  return entry.at.get(args.now)
+  return entry.at.get(key)
+}
+
+/**
+ * Does this exercise rely on any of these muscles (as a main mover, at least
+ * half as involved as its prime mover)?
+ */
+export function trainsAny(exId, muscles, def = null) {
+  if (!muscles || !(muscles.size ?? muscles.length)) return false
+  const set = muscles instanceof Set ? muscles : new Set(muscles)
+  const profile = exerciseProfile(exId, def || findExercise(exId))
+  if (!profile) return false
+  return Object.entries(involvementOf(profile)).some(([m, v]) => v >= 0.5 && set.has(m))
+}
+
+/**
+ * A weight the equipment can actually hold, at or below `weight` (or the
+ * lightest one). Used where a simple rule scales a load, so the result is
+ * always something you can set up: plates, a stack step or a listed dumbbell.
+ */
+export function snapLoad({ exId, weight, unit = 'lb', sizes = [], used = [] }) {
+  if (!isNum(weight) || weight <= 0) return weight ?? null
+  const meta = metaOf(exId)
+  if (meta?.load === 'assist') {
+    const step = unit === 'kg' ? 2.5 : 5
+    return Math.max(0, Math.round(weight / step) * step)
+  }
+  const grid = loadGrid({ load: meta?.load, unit, sizes: ['hand', 'one'].includes(meta?.load) ? sizes : [], used })
+  return grid.atMost(weight)
 }
 
 // ── The single-exercise model (bands, drills, custom exercises) ──────────
@@ -200,7 +237,7 @@ function fixedGrid(w) {
 /** The graph for a workout in progress: history plus today's sets so far. */
 export function liveStrengthGraph(args, session) {
   const entry = strengthGraphFor(args)
-  return graphAt(entry.G, args.now, liveRecord(session, args.now))
+  return withActivities(graphAt(entry.G, args.now, liveRecord(session, args.now)), args)
 }
 
 /** Assistance settings on an assisted machine: none, then stack steps. */

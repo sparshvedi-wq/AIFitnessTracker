@@ -78,8 +78,11 @@ export function trainingEventContext(profile, { today, now = Date.now(), minutes
   const overlap = upcoming.find((e) => e.at < now + minutes * 60000 && e.endsAt > now) || null
   const before = protectedEvents[0],
     after = recent.at(-1)
+  const wholeBody = (e) => e.kind === 'competition' || e.effort === 'hard' || !e.impact.muscles.length
   const note = before
-    ? `Saving energy for ${before.title.toLowerCase()}.`
+    ? wholeBody(before)
+      ? `Saving energy for ${before.title.toLowerCase()}.`
+      : `Easier on your ${before.impact.muscles.join(', ').toLowerCase()} before ${before.title.toLowerCase()}.`
     : after
       ? `${after.status === 'done' ? 'You logged' : 'You had planned'} ${after.title.toLowerCase()}, so this one is lighter.`
       : preparation
@@ -92,6 +95,8 @@ export function trainingEventContext(profile, { today, now = Date.now(), minutes
     preparation,
     overlap,
     lighter: relevant.length > 0,
+    // Competitions and hard sessions tire the whole body, not just their muscles.
+    systemic: relevant.some(wholeBody),
     muscles: [...new Set(relevant.flatMap((e) => e.impact.muscles))],
     note,
     reasonEvent: before || after || null,

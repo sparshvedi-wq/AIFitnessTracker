@@ -82,7 +82,12 @@ export function reasonLines(decision) {
   if (f.pain?.length) lines.push(`Avoiding ${f.pain.join(', ').toLowerCase()}. Stop if anything hurts.`)
   if (f.recentAreas?.length)
     lines.push(`Recent work in ${f.recentAreas.join(', ').toLowerCase()} counts toward today’s balance.`)
-  if (f.tough) lines.push('Last session felt very hard, so this one is lighter.')
+  if (f.tough)
+    lines.push(
+      f.toughRested
+        ? 'Your last session felt very hard, so those muscles get a break today.'
+        : 'Your last session felt very hard, so work for the same muscles is lighter.',
+    )
   if (f.unwell) lines.push('You said you’re not feeling well, so nothing strenuous is planned.')
   if (f.recentUnwell && !f.unwell)
     lines.push('You stopped last time because you weren’t feeling well, so this starts lighter.')
@@ -122,7 +127,13 @@ export function itemNote(entry, ctx) {
   // From the strength model (src/lib/strength).
   const pr = entry.progression || {}
   const flags = pr.flags || []
-  if (codes.includes('step-up')) parts.push('A small step up from your level: start light and focus on form.')
+  if (codes.includes('harder-version'))
+    parts.push(
+      entry.harderThan
+        ? `A harder version: you’ve outgrown ${entry.harderThan.toLowerCase()}.`
+        : 'A harder version of something you’ve outgrown.',
+    )
+  else if (codes.includes('step-up')) parts.push('A small step up from your level: start light and focus on form.')
   if (pr.code === 'deload') parts.push('A lighter session to reset after some tough ones.')
   if (pr.code === 'estimated-start')
     parts.push(pr.facts?.source ? `A careful first guess from your ${pr.facts.source.toLowerCase()}.` : 'A careful first guess from a similar exercise.')

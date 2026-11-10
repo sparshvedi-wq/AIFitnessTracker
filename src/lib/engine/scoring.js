@@ -9,6 +9,9 @@ import { movementSimilarity, metaOf } from '../catalog/index.js'
 import { MUSCLE_AREA } from '../catalog/vocabulary.js'
 import { EXPLORATION, LEARNING, SPORT_PRIORITY_SCALE, WEIGHTS } from './config.js'
 import { rng, sampleBeta } from './rng.js'
+import { exerciseProfile } from '../strength/library.js'
+import { involvementOf } from '../strength/recovery.js'
+import { trainsAny } from '../strength/index.js'
 
 const clamp = (v, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v))
 
@@ -49,20 +52,88 @@ export function goalFit(meta, goal) {
 }
 
 const SHARES = new WeakMap()
+const INVOLVED = new WeakMap()
 /** Primary/secondary share of each broad area for one exercise (sums to 1). */
 export function areaShares(meta) {
   if (SHARES.has(meta)) return SHARES.get(meta)
-  const result = computeShares(meta)
+  const raw = areaInvolvement(meta)
+  const total = Object.values(raw).reduce((a, b) => a + b, 0) || 1
+  const result = Object.fromEntries(Object.entries(raw).map(([a, s]) => [a, s / total]))
   SHARES.set(meta, result)
   return result
 }
+
+/** How hard each broad area works in one exercise, relative to its main area (main = 1). */
+export function areaInvolvement(meta) {
+  if (INVOLVED.has(meta)) return INVOLVED.get(meta)
+  const result = computeShares(meta)
+  INVOLVED.set(meta, result)
+  return result
+}
+
+/**
+ * How much an exercise serves areas that still need work this week. An
+ * isolation move counts its one area; a compound move counts its main area
+ * plus part of what its helpers do, so a press for an under-trained chest
+ * also gets some credit for the triceps and shoulders it trains.
+ */
+export function needServed(meta, needs) {
+  const inv = areaInvolvement(meta)
+  let served = 0
+  let total = 0
+  for (const [a, v] of Object.entries(inv)) {
+    served += v * (needs[a] ?? 0)
+    total += v
+  }
+  return clamp(served / (1 + 0.5 * Math.max(0, total - 1)))
+}
 function computeShares(meta) {
   const shares = {}
-  for (const m of meta.primary) shares[MUSCLE_AREA[m]] = Math.max(shares[MUSCLE_AREA[m]] || 0, 1)
-  for (const m of meta.secondary) shares[MUSCLE_AREA[m]] = Math.max(shares[MUSCLE_AREA[m]] || 0, 0.5)
-  if (!meta.primary.length) for (const a of meta.areas) shares[a] = 0.5
-  const total = Object.values(shares).reduce((a, b) => a + b, 0) || 1
-  return Object.fromEntries(Object.entries(shares).map(([a, s]) => [a, s / total]))
+  // The exercise library's muscle shares (the same ones the strength model
+  // and weekly balance use); helpers below a fifth of the prime mover's
+  // involvement are left out here.
+  const inv = libraryInvolvement(meta)
+  if (inv) {
+    for (const [m, v] of Object.entries(inv))
+      if (v >= 0.2) shares[MUSCLE_AREA[m]] = Math.max(shares[MUSCLE_AREA[m]] || 0, v)
+  } else {
+    for (const m of meta.primary) shares[MUSCLE_AREA[m]] = Math.max(shares[MUSCLE_AREA[m]] || 0, 1)
+    for (const m of meta.secondary) shares[MUSCLE_AREA[m]] = Math.max(shares[MUSCLE_AREA[m]] || 0, 0.5)
+  }
+  if (!Object.keys(shares).length) for (const a of meta.areas) shares[a] = 0.5
+  return shares
+}
+
+function libraryInvolvement(meta) {
+  const profile = exerciseProfile(meta.id)
+  const inv = profile ? involvementOf(profile) : null
+  return inv && Object.keys(inv).length ? inv : null
+}
+
+/**
+ * How demanding an exercise is within its family: its experience level, then
+ * for bodyweight moves the share of bodyweight it moves (an incline push-up
+ * moves about 41%, a push-up 64%), then the catalog's own order.
+ */
+export function difficultyOf(meta) {
+  const profile = exerciseProfile(meta.id)
+  const bw = profile?.mode === 'bodyweight' ? profile.bw || 0 : 0
+  return (meta.level || 0) + Math.min(0.9, bw)
+}
+
+const MAIN = new WeakMap()
+/**
+ * Broad areas an exercise trains as a main mover: its primary muscles, plus
+ * any muscle the library says works at least half as hard as the prime mover
+ * (a close-grip bench press counts for the arms, a hip thrust for the glutes).
+ */
+export function mainAreas(meta) {
+  if (MAIN.has(meta)) return MAIN.get(meta)
+  const areas = new Set(meta.primary.map((m) => MUSCLE_AREA[m]))
+  for (const [m, v] of Object.entries(libraryInvolvement(meta) || {})) if (v >= 0.5) areas.add(MUSCLE_AREA[m])
+  const out = [...areas].filter(Boolean)
+  MAIN.set(meta, out)
+  return out
 }
 
 /**
@@ -75,8 +146,8 @@ export function scoreCandidate(meta, ctx) {
   const shares = areaShares(meta)
   const signal = ctx.signals.get(meta.id)
   f.goal = goalFit(meta, ctx.goal)
-  f.need = clamp(Object.entries(shares).reduce((n, [a, s]) => n + s * (ctx.needs[a] ?? 0), 0))
-  const primaryAreas = [...new Set(meta.primary.map((m) => MUSCLE_AREA[m]))]
+  f.need = needServed(meta, ctx.needs)
+  const primaryAreas = mainAreas(meta)
   const focusStrength = (a) => ctx.focusStrength?.[a] ?? (ctx.focusAreas.has(a) ? 1 : 0)
   f.focus = Math.max(
     0,
@@ -91,6 +162,8 @@ export function scoreCandidate(meta, ctx) {
     f.sport = Math.max(f.sport, 0.6)
   // Areas to keep fresh around a planned sport event: a strong soft penalty.
   f.eventProtect = primaryAreas.some((a) => ctx.protectedAreas.has(a)) ? 1 : 0
+  // Main muscles of a very hard recent session get a break when other work fits.
+  f.recovering = ctx.toughMuscles?.size && trainsAny(meta.id, ctx.toughMuscles) ? 1 : 0
 
   // Unfinished work from earlier sessions, reassessed now.
   f.rollover = 0
@@ -179,6 +252,10 @@ export function scoreCandidate(meta, ctx) {
   const strength = ctx.strengthFit?.get(meta.id)
   const flags = strength?.flags || []
   f.fit = flags.includes('outgrown') || flags.includes('lightest-is-heavy') ? -1 : flags.includes('below-range') ? -0.6 : 0
+  // The next step up in a family this person has outgrown.
+  const outgrown = ctx.outgrownFamilies?.get(meta.family)
+  f.harder = outgrown && outgrown.exId !== meta.id && difficultyOf(meta) > outgrown.difficulty ? 1 : 0
+  if (f.harder) f.fit = Math.max(f.fit, 0.6)
   // Muscles still recovering from earlier sessions (1 = as tired as it gets).
   const readiness = ctx.readiness?.get(meta.id) ?? strength?.readiness ?? 1
   f.fatigue = clamp((1 - readiness) / 0.1)
@@ -201,7 +278,10 @@ export function scoreCandidate(meta, ctx) {
     w.replacement * f.replacement +
     w.placeAffinity * f.placeAffinity +
     w.fit * f.fit -
-    w.fatigue * f.fatigue -
+    w.recovering * f.recovering -
+    // Recovery and recent overlap describe the same tiredness; recovery adds
+    // only what overlap hasn't already counted.
+    w.fatigue * f.fatigue * (1 - f.muscleOverlap) -
     w.muscleOverlap * f.muscleOverlap -
     w.similarRepeat * f.similarRepeat -
     w.patternRepeat * f.patternRepeat -

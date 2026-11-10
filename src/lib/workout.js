@@ -12,7 +12,8 @@ import { DUMBBELL_MOVES, fitAvailableLoad } from './preferences.js'
 import { trainingTitle } from './training-copy.js'
 import { metaOf } from './catalog/index.js'
 import { outcomeFromSession } from './engine/ledger.js'
-import { strengthNote, strengthTarget } from './strength/index.js'
+import { snapLoad, strengthNote, strengthTarget, trainsAny } from './strength/index.js'
+import { exerciseProfile } from './strength/library.js'
 
 // Assisted machines log assistance: less is harder, and it is not lifted load.
 const assisted = (exId) => metaOf(exId)?.load === 'assist'
@@ -127,15 +128,21 @@ function routineStartWins(item, adaptive) {
 }
 
 /**
- * @param strength optional { learning, goal, experience, today } — when given,
- *   saved routines get their weights from the adaptive strength model (the
- *   same rules as daily plans), keeping each routine's own rep count.
+ * @param strength optional { learning, goal, experience, today, metrics,
+ *   place } — when given, saved routines get their weights from the adaptive
+ *   strength model (the same rules as daily plans), keeping each routine's
+ *   own rep count. The routine's `strengthContext` (from adaptRoutineItems)
+ *   carries the day's lighter signals, muscles to go easy on, past activities
+ *   and held loads, so a routine is planned with everything a daily plan uses.
  */
 export function buildSession(
   routine,
   { workouts = [], customExercises = [], unit = 'lb', now = Date.now(), dumbbellWeights = [], strength = null } = {},
 ) {
   const strengthCache = new Map()
+  const day = routine.strengthContext || {}
+  const lighterMuscles = new Set(routine.lighterMuscles || day.lighterMuscles || [])
+  const holds = new Set(day.holds || [])
   const exercises = routine.items
     .map((item) => {
       const def = findExercise(item.exId, customExercises)
@@ -149,11 +156,18 @@ export function buildSession(
               workouts,
               customExercises,
               learning: strength.learning,
+              metrics: strength.metrics,
               unit,
               today: strength.today || toKey(new Date(now)),
               now,
               goal: strength.goal,
               experience: strength.experience,
+              place: strength.place ?? routine.location ?? null,
+              activities: strength.activities ?? day.activities,
+              easy: Boolean(day.easy) || trainsAny(def.id, lighterMuscles, def),
+              returning: Boolean(day.returning),
+              highEffort: Boolean(day.highEffort),
+              noIncrease: holds.has(def.id),
               sizes: dumbbellWeights,
               sets: item.sets,
               fixedReps: item.reps,
@@ -188,7 +202,7 @@ export function buildSession(
       ? 'recovery'
       : routine.kind || 'routine'
   if (!routine.circuit && !['sport', 'pump', 'recovery'].includes(kind))
-    addWarmupSet(exercises, dumbbellWeights)
+    addWarmupSet(exercises, dumbbellWeights, unit)
 
   const session = {
     id: uid(),
@@ -207,6 +221,8 @@ export function buildSession(
     equipmentProfile: routine.equipmentProfile || null,
     movement: routine.movement || null,
     schedule: routine.schedule || null,
+    // Muscles kept lighter today (a nearby practice, a very hard session).
+    ...(lighterMuscles.size ? { lighterMuscles: [...lighterMuscles] } : {}),
     circuit: Boolean(routine.circuit),
     unit,
     startedAt: now,
@@ -225,14 +241,15 @@ export function buildSession(
 // One lighter warm-up set before the first loaded lift, at about half the
 // working weight. It is saved as a warm-up and never counts toward records.
 export const WARMUP_SHARE = 0.5
-function addWarmupSet(exercises, dumbbellWeights = []) {
-  const first = exercises.find((e) => e.weighted && e.type !== 'time' && e.sets[0]?.weight > 0)
+function addWarmupSet(exercises, dumbbellWeights = [], unit = 'lb') {
+  const first = exercises.find((e) => e.weighted && e.type !== 'time' && e.sets[0]?.weight > 0 && !assisted(e.exId))
   if (!first) return
   const work = first.sets[0]
   const half = Math.round(work.weight * WARMUP_SHARE * 2) / 2
+  // A weight the equipment can hold: plates on a bar, a stack step, a listed dumbbell.
   const weight = DUMBBELL_MOVES.includes(first.exId)
     ? (fitAvailableLoad(half, dumbbellWeights) ?? dumbbellWeights[0] ?? half)
-    : half
+    : (snapLoad({ exId: first.exId, weight: half, unit }) ?? half)
   first.sets.unshift({
     ...work,
     targetWeight: weight,
@@ -424,7 +441,8 @@ export function completeSet(session, now = Date.now(), patch = {}) {
   const c = session.cursor
   if (!c) return session
   const ex = session.exercises[c.ex]
-  let next = { ...patchSet(session, c, { ...patch, status: 'done' }), lastLogged: { ...c } }
+  // When the set was logged: places it in time for recovery and learns pace.
+  let next = { ...patchSet(session, c, { doneAt: now, ...patch, status: 'done' }), lastLogged: { ...c } }
   // Carry a changed weight into the sets still to come, unless you've
   // already set those yourself.
   const weight = next.exercises[c.ex].sets[c.set].weight
@@ -607,13 +625,28 @@ export function totals(exercises) {
       if (e.type === 'time') seconds += s.sec || 0
       else {
         reps += s.reps || 0
-        // Logged load as recorded: one dumbbell's weight for per-hand moves,
-        // never doubled; assistance is not lifted weight.
-        if (e.weighted && !assisted(e.exId)) volume += (s.reps || 0) * (s.weight || 0)
+        // Weight actually lifted: both dumbbells for two-handed per-hand moves
+        // (from the exercise library); assistance is not lifted weight.
+        if (e.weighted && !assisted(e.exId)) volume += (s.reps || 0) * (s.weight || 0) * handsOf(e.exId)
       }
     }
   }
   return { sets, reps, volume: Math.round(volume), seconds, warmupSets }
+}
+
+// Two dumbbells logged "per hand" are both lifted.
+const HANDS = new Map()
+function handsOf(exId) {
+  if (!HANDS.has(exId)) {
+    const ext = exerciseProfile(exId)?.ext
+    HANDS.set(exId, ext === 2 && metaOf(exId)?.load === 'hand' ? 2 : 1)
+  }
+  return HANDS.get(exId)
+}
+
+/** Weight lifted in a saved workout, worked out from its sets (old records included). */
+export function workoutVolume(w) {
+  return Array.isArray(w?.exercises) ? totals(w.exercises).volume : w?.totals?.volume || 0
 }
 
 // Epley estimate of a one-rep max.
@@ -655,11 +688,16 @@ export function findRecords(session, workouts) {
   for (const e of session.exercises) {
     const done = e.sets.filter((s) => s.status === 'done' && s.kind !== 'warmup')
     if (!done.length) continue
-    const prior = workouts.some((w) =>
+    // Machine and cable stacks differ between gyms: their numbers are only
+    // compared with the same place.
+    const pool = exerciseProfile(e.exId)?.machine
+      ? workouts.filter((w) => (w.location || null) === (session.location || null))
+      : workouts
+    const prior = pool.some((w) =>
       w.exercises.some((x) => x.exId === e.exId && x.sets.some((s) => s.kind !== 'warmup')),
     )
     if (!prior) continue
-    const best = bestLifts(workouts, e.exId)
+    const best = bestLifts(pool, e.exId)
     const unit = session.unit
     if (e.type === 'time') {
       const sec = Math.max(...done.map((s) => s.sec || 0))
@@ -696,6 +734,9 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
       muscle: e.muscle,
       type: e.type,
       weighted: e.weighted,
+      // The rest it was planned with, so "Repeat" and pace keep it.
+      ...(Number.isFinite(e.restSec) ? { restSec: e.restSec } : {}),
+      ...(e.unilateral ? { unilateral: true } : {}),
       ...(e.swappedFrom ? { swappedFrom: e.swappedFrom } : {}),
       // Strength-model evidence (src/lib/strength): "too heavy" attempts and a
       // mid-workout "set my working weight" point.
@@ -714,6 +755,7 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
           ...(s.feel ? { feel: s.feel } : {}),
           ...(s.feel === 'easy' && [3, 5, 8].includes(s.reserve) ? { reserve: s.reserve } : {}),
           ...(s.manual ? { manual: true } : {}),
+          ...(Number.isFinite(s.doneAt) ? { at: s.doneAt } : {}),
         })),
     }))
     .filter((e) => e.sets.length > 0)
@@ -828,7 +870,7 @@ export function weekSummary(workouts, today = todayKey()) {
     start,
     count: list.length,
     minutes: Math.round(list.reduce((s, w) => s + w.durationSec, 0) / 60),
-    volume: list.reduce((s, w) => s + (w.totals?.volume || 0), 0),
+    volume: list.reduce((s, w) => s + workoutVolume(w), 0),
     days,
   }
 }

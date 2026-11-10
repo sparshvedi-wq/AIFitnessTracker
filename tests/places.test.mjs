@@ -218,22 +218,48 @@ test('excluded exercises are never suggested and saved routines swap them out', 
 
 test('the next-time note matches the planner’s progression and listed dumbbells', async () => {
   const { nextTimeNotes } = await import('../src/lib/next-time.js')
-  const set = (weight, reps, targetReps = 10) => ({ weight, reps, targetReps, status: 'done', kind: 'work' })
+  const { strengthTarget } = await import('../src/lib/strength/index.js')
+  const { findExercise } = await import('../src/lib/exercises.js')
+  const set = (weight, reps, targetReps = 10, feel) => ({ weight, reps, targetReps, status: 'done', kind: 'work', ...(feel ? { feel } : {}) })
+  const ended = new Date('2026-10-20T18:00:00').getTime()
   const workout = {
+    id: 'w1',
+    date: '2026-10-20',
+    startedAt: ended - 3600000,
+    endedAt: ended,
+    unit: 'lb',
     kind: 'adaptive',
     location: 'home',
     exercises: [
-      { exId: 'bench-press', sets: [set(95, 10), set(95, 10)] },
-      { exId: 'goblet-squat', sets: [set(25, 10), set(25, 10)] },
-      { exId: 'db-row', sets: [set(20, 8), set(20, 10)] },
+      { exId: 'bench-press', type: 'reps', weighted: true, sets: [set(95, 10, 10, 'hard'), set(95, 10, 10, 'hard')] },
+      { exId: 'goblet-squat', type: 'reps', weighted: true, sets: [set(25, 10), set(25, 10)] },
+      { exId: 'db-row', type: 'reps', weighted: true, sets: [set(20, 8), set(20, 10)] },
     ],
   }
-  const p = profileOf(withPlaces({ homeDumbbells: [15, 20, 25], equipment: ['Dumbbells'] }))
-  const notes = nextTimeNotes(workout, p, 'lb')
+  const p = profileOf(withPlaces({ homeDumbbells: [15, 20, 25], equipment: ['Dumbbells', 'Barbell & rack', 'Bench'] }))
+  const notes = nextTimeNotes(workout, p, 'lb', [], { workouts: [workout] })
   const by = Object.fromEntries(notes.map((n) => [n.exId, n]))
-  assert.equal(by['bench-press'].change, '100 lb')
-  assert.match(by['goblet-squat'].why, /isn’t listed/)
-  assert.equal(by['db-row'].change, '20 lb')
-  assert.match(by['db-row'].why, /aim for all 10 reps/)
+  // Each note is exactly what the planner's strength model gives a few days on.
+  for (const n of notes) {
+    const t = strengthTarget({
+      exId: n.exId,
+      def: findExercise(n.exId),
+      workouts: [workout],
+      unit: 'lb',
+      today: '2026-10-23',
+      now: ended + 3 * 86400000,
+      goal: p.goal,
+      experience: p.experience,
+      place: 'home',
+      sizes: ['goblet-squat', 'db-row'].includes(n.exId) ? [15, 20, 25] : [],
+      sets: p.experience === 'Starting out' ? 2 : 3,
+    })
+    assert.ok(n.change.startsWith(`${t.weight} lb`) && n.change.endsWith(`× ${t.reps}`), `${n.exId}: ${n.change} vs ${t.weight} × ${t.reps}`)
+  }
+  // "Hard" sets never earn a promised increase; a missed rep holds the weight;
+  // the heaviest listed dumbbell is never exceeded.
+  assert.ok(!by['bench-press'].up && Number(by['bench-press'].change.split(' ')[0]) <= 95)
+  assert.ok(!by['db-row'].up && by['db-row'].change.startsWith('20 lb'))
+  assert.ok(Number(by['goblet-squat'].change.split(' ')[0]) <= 25)
   assert.equal(nextTimeNotes({ ...workout, kind: 'sport' }, p, 'lb').length, 0)
 })

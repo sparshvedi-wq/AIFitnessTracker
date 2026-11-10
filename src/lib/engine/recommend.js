@@ -10,7 +10,7 @@ import { MUSCLE_AREA } from '../catalog/vocabulary.js'
 import { findExercise } from '../exercises.js'
 import { addDays } from '../date.js'
 import { sportById } from '../sports.js'
-import { sportScheduleContext } from '../sport-schedule.js'
+import { pastActivityLoad, sportScheduleContext } from '../sport-schedule.js'
 import { quietAt, resolvePlace } from '../places.js'
 import { availableLoads, breakDays } from '../preferences.js'
 import { movementPreferences, movementSummary } from '../movement-preferences.js'
@@ -39,13 +39,16 @@ import { exposureFrom, sessionAsRecord } from './exposure.js'
 import { exerciseSignals } from './learning.js'
 import { realHistory, recordOutcome } from './ledger.js'
 import { rolloverCandidates } from './rollover.js'
-import { familiesToLearn, scoreCandidate } from './scoring.js'
+import { difficultyOf, familiesToLearn, scoreCandidate } from './scoring.js'
 import { selectBeam, selectGreedy, selectionValue } from './select.js'
 import { allocateSets, baseDose, withTarget } from './dose.js'
 import { planSeconds } from './session-time.js'
 import { headline, itemNote, reasonLines } from './explain.js'
 import { PHOTO_AREAS, photoFocusEvidence } from './photo-focus.js'
-import { exerciseReadiness } from '../strength/index.js'
+import { exerciseReadiness, trainsAny } from '../strength/index.js'
+import { exerciseProfile } from '../strength/library.js'
+import { involvementOf } from '../strength/recovery.js'
+import { paceFactor } from './pace.js'
 
 // Main movements every plan pool should be able to cover.
 const COVERAGE_PATTERNS = ['push-h', 'pull-h', 'squat', 'hinge']
@@ -74,6 +77,14 @@ export function planningContext(state, options = {}) {
   const away = breakDays(strength, today)
   const returning = away >= 7
   const tough = [...strength].reverse().find((w) => w.date >= addDays(today, -3) && w.effort >= 4)
+  // A very hard session asks for less from the muscles it worked (for a few
+  // days, as they recover), not from the whole body.
+  const toughMuscles = new Set()
+  for (const w of strength.filter((x) => x.date >= addDays(today, -3) && x.effort >= 4))
+    for (const e of w.exercises || []) {
+      if (!(e.sets || []).some((s) => s.kind !== 'warmup')) continue
+      for (const [m, v] of Object.entries(involvementOf(exerciseProfile(e.exId)))) if (v >= 0.5) toughMuscles.add(m)
+    }
   const unwell = Boolean(r.unwell)
   // Stopping early because of feeling unwell makes the next day and a half lighter.
   const recentUnwell = strength.some(
@@ -84,10 +95,11 @@ export function planningContext(state, options = {}) {
     recentUnwell ||
     r.energy === 'low' ||
     r.intensity === 'easy' ||
-    Boolean(tough) ||
     returning ||
     r.sportSoon ||
-    schedule.lighter
+    // A match, competition or hard session nearby: lighter overall. A normal
+    // practice only protects its own muscles (below).
+    Boolean(schedule.systemic)
   const highEffort = r.intensity === 'challenging' && r.energy === 'high' && !easy
   const live = options.liveSession ? sessionAsRecord(options.liveSession, now) : null
   const exposure = exposureFrom(workouts, { now, today }, live ? [live] : [])
@@ -144,6 +156,13 @@ export function planningContext(state, options = {}) {
     const goalTarget = target * scale * (1 + (focusTargetBoost[area] || 0))
     needs[area] = Math.max(0, Math.min(1, (goalTarget - (exposure.area[area]?.week || 0)) / goalTarget))
   }
+  // Muscles to go easier on today, exercise by exercise: those a very hard
+  // session worked, and those a nearby practice or activity uses.
+  const protectedMuscles = Object.keys(MUSCLE_AREA).filter((m) => (schedule.muscles || []).includes(MUSCLE_AREA[m]))
+  const lighterMuscles = new Set([...toughMuscles, ...protectedMuscles])
+  const activities = pastActivityLoad(p, { today, now })
+  // How this person's sessions actually run compared with the estimate.
+  const pace = options.pace ?? paceFactor(workouts, { today })
   const caps = placeCapabilities(place)
   const variety = p.variety || 'balanced'
   const replacements = p.replacements || {}
@@ -173,6 +192,10 @@ export function planningContext(state, options = {}) {
     awayDays: away,
     returning,
     tough,
+    toughMuscles,
+    lighterMuscles,
+    activities,
+    pace,
     unwell,
     recentUnwell,
     easy,
@@ -206,7 +229,9 @@ export function planningContext(state, options = {}) {
     selection: options.selection || 'beam',
     exploration: options.exploration || 'on',
     easeIn: shortSession ? TIMING.easeInSec.short : TIMING.easeInSec.normal,
-    budget: minutes * 60,
+    // Plans are fitted with the standard estimate; someone who takes longer
+    // (longer rests, slower setup) gets a little less planned, and vice versa.
+    budget: (minutes * 60) / pace,
     replacements,
   }
 }
@@ -321,6 +346,7 @@ export function recommendStrength(state, options) {
     experience: ctx.experience,
     customExercises: state.customExercises,
     place: ctx.place.id,
+    activities: ctx.activities,
   }
   for (const meta of screen.eligible) ctx.readiness.set(meta.id, exerciseReadiness(strengthArgs, meta.id))
   const exploreBudget =
@@ -332,13 +358,40 @@ export function recommendStrength(state, options) {
   // Only the strongest unfinished candidates influence one plan.
   ctx.rollover = [...ctx.rollover].sort((a, b) => b.priority - a.priority).slice(0, ROLLOVER_MAX_IN_PLAN)
 
-  const candidates = screen.eligible.map((meta) => {
+  const candidateFor = (meta) => {
     const def = findExercise(meta.id)
     const scored = scoreCandidate(meta, ctx)
     const { item, progression, trend } = withTarget(baseDose(meta, def, ctx), meta, def, ctx)
     ctx.trends.set(meta.id, trend)
     return { meta, def, item, progression, ...scored, explorable: ctx.familiesToLearn.has(meta.family) }
-  })
+  }
+  const candidates = screen.eligible.map(candidateFor)
+  // Families this person has outgrown (a familiar exercise at the top of its
+  // range here): the next harder version gets a boost, and if none is open at
+  // this level, the gentlest harder one a level up is allowed, marked as a step up.
+  ctx.outgrownFamilies = new Map()
+  for (const c of candidates) {
+    const fit = ctx.strengthFit?.get(c.meta.id)
+    if (!fit?.flags?.includes('outgrown') || !(ctx.signals.get(c.meta.id)?.completions > 0)) continue
+    // Only a movement that got too easy (bodyweight reps, a timed hold). A
+    // loaded exercise "outgrown" here means the weights at this place ran
+    // out, which a different movement doesn't fix.
+    if (c.def.weighted && fit.code !== 'at-cap') continue
+    const known = ctx.outgrownFamilies.get(c.meta.family)
+    const difficulty = difficultyOf(c.meta)
+    if (!known || difficulty > known.difficulty) ctx.outgrownFamilies.set(c.meta.family, { exId: c.meta.id, difficulty })
+  }
+  if (!movementMode && ctx.level < 2)
+    for (const [family, outgrown] of ctx.outgrownFamilies) {
+      if (candidates.some((c) => c.meta.family === family && difficultyOf(c.meta) > outgrown.difficulty)) continue
+      const stepCtx = { ...eligibilityContext(ctx, kind), level: ctx.level + 1 }
+      const next = allMeta()
+        .filter((m) => m.family === family && m.level === ctx.level + 1 && difficultyOf(m) > outgrown.difficulty && !ineligibility(m, stepCtx))
+        .sort((a, b) => difficultyOf(a) - difficultyOf(b) || a.id.localeCompare(b.id))[0]
+      if (!next || candidates.some((c) => c.meta.id === next.id)) continue
+      ctx.stepUp.add(next.id)
+      candidates.push(candidateFor(next))
+    }
   // Progression trends feed a feature; rescore now that every trend is known.
   for (const c of candidates) Object.assign(c, scoreCandidate(c.meta, ctx))
 
@@ -395,6 +448,7 @@ function codesFor(c, ctx) {
   if (c.sample.exploratory && ctx.maxExplore && c.explorable) codes.push('exploring')
   if (c.progression?.up) codes.push('progression')
   if (ctx.stepUp?.has(c.meta.id)) codes.push('step-up')
+  if (f.harder) codes.push('harder-version')
   return codes
 }
 
@@ -438,6 +492,9 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
       progression: c.progression,
       side,
       areaLabel,
+      ...(codes.includes('harder-version') && ctx.outgrownFamilies?.get(c.meta.family)
+        ? { harderThan: findExercise(ctx.outgrownFamilies.get(c.meta.family).exId)?.name }
+        : {}),
     }
     return {
       item: {
@@ -487,7 +544,9 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     sore: ctx.r.sore,
     pain: ctx.r.pain,
     recentAreas,
-    tough: Boolean(ctx.tough),
+    // A very hard session that worked muscles: lighter if today uses them, or rested.
+    tough: Boolean(ctx.tough) && ctx.toughMuscles.size > 0,
+    toughRested: !planItems.some((i) => trainsAny(i.exId, ctx.toughMuscles)),
     unwell: ctx.unwell,
     recentUnwell: ctx.recentUnwell,
     sportSoon: ctx.r.sportSoon,
@@ -565,15 +624,18 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     focus: focusLine,
     items: planItems,
     requestedMinutes: ctx.minutes,
-    estimatedSeconds: planSeconds(planItems) + ctx.easeIn,
+    estimatedSeconds: Math.round((planSeconds(planItems) + ctx.easeIn) * ctx.pace),
     lockedTargets: true,
     location: ctx.place.id,
     placeName: ctx.place.name,
     readiness: ctx.r,
     movement: ctx.movement,
+    // For the live workout: muscles to keep lighter when it re-plans.
+    lighterMuscles: [...ctx.lighterMuscles],
     schedule: {
       next: ctx.schedule.next,
       lighter: ctx.schedule.lighter,
+      systemic: Boolean(ctx.schedule.systemic),
       muscles: ctx.schedule.muscles,
       overlap: Boolean(ctx.schedule.overlap),
       preparation: ctx.schedule.preparation,

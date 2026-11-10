@@ -1,7 +1,7 @@
 // Numbers the screens show, worked out from saved workouts.
 
 import { addDays, fromKey, todayKey, WEEKDAY_INITIALS } from './date.js'
-import { muscleSets, weekStart } from './workout.js'
+import { muscleSets, weekStart, workoutVolume } from './workout.js'
 
 export function greeting(now = new Date()) {
   const h = now.getHours()
@@ -25,7 +25,7 @@ export function volumeBetween(workouts, from, to) {
   return workouts.reduce(
     (s, w) =>
       !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind) && w.date >= from && w.date <= to
-        ? s + (w.totals?.volume || 0)
+        ? s + workoutVolume(w)
         : s,
     0,
   )
@@ -41,7 +41,11 @@ export function weekVolume(workouts, today = todayKey()) {
 }
 
 export function avgSessionMin(workouts, n = 10) {
-  const last = workouts.filter((w) => !w.sample).slice(-n)
+  // Timed training sessions only: sport warm-ups, movement breaks and quick
+  // after-the-fact logs (no real duration) would pull the average down.
+  const last = workouts
+    .filter((w) => !w.sample && !['sport', 'recovery', 'pump', 'manual'].includes(w.kind) && (w.durationSec || 0) >= 120)
+    .slice(-n)
   if (!last.length) return null
   return Math.round(last.reduce((s, w) => s + (w.durationSec || 0), 0) / last.length / 60)
 }
@@ -88,7 +92,7 @@ export function monthlyVolume(workouts, months = 6, today = todayKey()) {
       volume: workouts.reduce(
         (s, w) =>
           !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind) && w.date.startsWith(prefix)
-            ? s + (w.totals?.volume || 0)
+            ? s + workoutVolume(w)
             : s,
         0,
       ),

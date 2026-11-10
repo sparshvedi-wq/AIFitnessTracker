@@ -3,12 +3,35 @@ import { weekStart } from './workout.js'
 import { checkinSchedule } from './planner.js'
 import { sportOccurrences } from './sport-schedule.js'
 import { convertWeight } from './units.js'
+import { metaOf } from './catalog/index.js'
+import { exerciseProfile } from './strength/library.js'
+import { MUSCLE_AREA } from './catalog/vocabulary.js'
 
 const actual = (workout, today) => !workout.sample && workout.date <= today
 export const strengthSession = (w) => !['sport', 'recovery', 'pump'].includes(w.kind)
 const loggedSets = (e) =>
   (e.sets || []).filter((s) => s.kind !== 'warmup' && (!s.status || s.status === 'done'))
 const setCount = (w) => (w.exercises || []).reduce((n, e) => n + loggedSets(e).length, 0)
+
+// How one exercise's sets divide between broad areas (shares sum to 1).
+const SPLITS = new Map()
+function areaSplit(e) {
+  if (SPLITS.has(e.exId)) return SPLITS.get(e.exId)
+  const profile = exerciseProfile(e.exId)
+  let split
+  if (profile && Object.keys(profile.muscles || {}).length) {
+    const areas = new Map()
+    for (const [m, share] of Object.entries(profile.muscles)) {
+      const area = MUSCLE_AREA[m] || 'Other'
+      areas.set(area, (areas.get(area) || 0) + share)
+    }
+    split = [...areas].filter(([, v]) => v >= 0.1)
+    const total = split.reduce((n, [, v]) => n + v, 0) || 1
+    split = split.map(([a, v]) => [a, v / total])
+  } else split = [[e.muscle || 'Other', 1]]
+  SPLITS.set(e.exId, split)
+  return split
+}
 
 export function weekOverview(state, today, offset = 0) {
   const start = addDays(weekStart(today), offset * 7)
@@ -55,7 +78,20 @@ function exerciseProgress(current, earlier, unit) {
     const previousSets = loggedSets(old).filter((s) => s.reps > 0)
     if (!currentSets.length || !previousSets.length) continue
     const base = { exId: id, name: e.name || id, date: w.date, previousDate: prior.date, unit }
-    if (e.weighted) {
+    if (e.weighted && metaOf(id)?.load === 'assist') {
+      // Assisted machines: less assistance for the same reps is progress.
+      const load = (s, rec) => convertWeight(s.weight || 0, rec.unit || unit, unit)
+      const before = previousSets.reduce((best, s) => (!best || load(s, prior) < best.weight ? { weight: load(s, prior), reps: s.reps } : best), null)
+      for (const set of currentSets) {
+        const now = load(set, w)
+        if (before && now < before.weight - 0.05 && set.reps >= before.reps)
+          comparisons.push({ ...base, kind: 'assist', delta: before.weight - now, from: before.weight, to: now, reps: set.reps })
+        const same = previousSets.filter((s) => Math.abs(load(s, prior) - now) < 0.05)
+        const reps = same.length ? Math.max(...same.map((s) => s.reps)) : null
+        if (reps && set.reps > reps)
+          comparisons.push({ ...base, kind: 'reps', delta: set.reps - reps, load: now, from: reps, to: set.reps, assisted: true })
+      }
+    } else if (e.weighted) {
       // Same load and more reps is directly comparable across lb/kg records.
       for (const set of currentSets) {
         const load = convertWeight(set.weight, w.unit || unit, unit)
@@ -102,11 +138,15 @@ export function weeklyRecap(state, today, period = 'last') {
   const earlier = source.filter((w) => strengthSession(w) && w.date < start)
   const sets = strength.reduce((n, w) => n + setCount(w), 0)
   const priorSets = previous.reduce((n, w) => n + setCount(w), 0)
+  // Sets per area, sharing each set between the areas it trains (from the
+  // exercise library): a bench press set counts mostly for chest, partly for
+  // triceps and shoulders. Shown to the nearest half set.
   const muscles = new Map()
   for (const w of strength)
     for (const e of w.exercises || []) {
       const count = loggedSets(e).length
-      if (count) muscles.set(e.muscle || 'Other', (muscles.get(e.muscle || 'Other') || 0) + count)
+      if (!count) continue
+      for (const [area, share] of areaSplit(e)) muscles.set(area, (muscles.get(area) || 0) + count * share)
     }
   const skips = new Map()
   for (const w of strength)
@@ -139,7 +179,8 @@ export function weeklyRecap(state, today, period = 'last') {
       }
     }),
     muscles: [...muscles]
-      .map(([name, count]) => ({ name, sets: count }))
+      .map(([name, count]) => ({ name, sets: Math.round(count * 2) / 2 }))
+      .filter((m) => m.sets > 0)
       .sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name)),
     progress: exerciseProgress(strength, earlier, state.settings.weightUnit),
     skips: [...skips].map(([reason, count]) => ({ reason, count })).sort((a, b) => b.count - a.count),

@@ -21,7 +21,14 @@ export default function useStartWorkout(nav) {
       unit: state.settings.weightUnit,
       dumbbellWeights: availableLoads(profile, location),
       // Saved routines use the same adaptive weights as daily plans.
-      strength: { learning: state.learning, goal: profile.goal, experience: profile.experience, today: todayKey() },
+      strength: {
+        learning: state.learning,
+        metrics: state.metrics,
+        goal: profile.goal,
+        experience: profile.experience,
+        today: todayKey(),
+        place: location,
+      },
     })
     const ready = prepareSession(session)
     dispatch({ type: 'SET_ACTIVE_WORKOUT', session: ready })

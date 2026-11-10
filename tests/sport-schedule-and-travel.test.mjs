@@ -121,10 +121,20 @@ test('schedule reduces actual daily dose and loads; removing an event restores t
     },
   ]
   const base = buildDailyPlan(state, { today, now })
+  // A normal practice: only the muscles the sport uses get less; the rest
+  // of the body trains as usual.
   state.settings.training.sportSchedule = [event()]
   const before = structuredClone(state)
+  const practice = buildDailyPlan(state, { today, now })
+  assert.ok(practice.schedule.lighter)
+  assert.equal(practice.schedule.systemic, false)
+  assert.notEqual(practice.decision.facts.mode, 'lighter')
+  assert.ok(practice.items.every((i) => !['Legs', 'Glutes', 'Core'].includes(findExercise(i.exId).muscle) || i.sets <= 1))
+  // A match: the whole session is lighter, and loads never go up.
+  state.settings.training.sportSchedule = [event({ type: 'match' })]
   const light = buildDailyPlan(state, { today, now })
-  assert.ok(light.schedule.lighter)
+  assert.ok(light.schedule.lighter && light.schedule.systemic)
+  assert.equal(light.decision.facts.mode, 'lighter')
   assert.ok(light.items.reduce((sum, i) => sum + i.sets, 0) < base.items.reduce((sum, i) => sum + i.sets, 0))
   assert.ok(
     light.items.every(
@@ -132,23 +142,30 @@ test('schedule reduces actual daily dose and loads; removing an event restores t
     ),
   )
   const bench = light.items.find((i) => i.exId === 'bench-press')
-  if (bench) assert.ok(bench.weight <= 85)
+  if (bench) assert.ok(bench.weight <= 100)
+  state.settings.training.sportSchedule = [event()]
   assert.deepEqual(state, before)
   state.settings.training.sportSchedule = []
   assert.deepEqual(buildDailyPlan(state, { today, now }).items, base.items)
 })
 test('saved routines keep authored data while schedule reductions lock targets against overload', () => {
-  const state = stateFor({ sportSchedule: [event()] })
   const items = [
     { exId: 'bodyweight-squat', sets: 5, reps: 15 },
     { exId: 'bench-press', sets: 4, reps: 12, weight: 100 },
   ]
+  // A normal practice: only the legs are eased; the bench press is untouched.
+  const practice = adaptRoutineItems(stateFor({ sportSchedule: [event()] }), items, 'gym', { pain: [], sore: [] }, { today, now })
+  assert.equal(practice.items[0].sets, 1)
+  assert.deepEqual([practice.items[1].sets, practice.items[1].reps, practice.items[1].weight], [4, 12, 100])
+  // A match: everything is lighter, on weights the bar can actually hold.
+  const state = stateFor({ sportSchedule: [event({ type: 'match' })] })
   const before = structuredClone(items)
   const adapted = adaptRoutineItems(state, items, 'gym', { pain: [], sore: [] }, { today, now })
   assert.equal(adapted.items[0].sets, 1)
   assert.equal(adapted.items[1].sets, 2)
   assert.equal(adapted.items[1].reps, 8)
   assert.equal(adapted.items[1].weight, 85)
+  assert.equal(adapted.context.easy, true)
   const session = buildSession(
     { ...adapted, lockedTargets: adapted.schedule.lighter, items: adapted.items },
     { now },

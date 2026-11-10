@@ -6,7 +6,7 @@
 // heuristics anchored to published rep–load relationships and RIR research;
 // they are not measurements of physiology. See docs/RECOMMENDATION_ENGINE.md.
 
-export const STRENGTH_VERSION = 'strength-2'
+export const STRENGTH_VERSION = 'strength-3'
 
 // ── Rep–load relationship ────────────────────────────────────────────────
 // Fraction of a one-rep max that can be lifted for R reps to failure:

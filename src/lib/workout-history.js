@@ -1,5 +1,13 @@
 import { convertWeight } from './units.js'
-import { findRecords, totals } from './workout.js'
+import { findRecords, isAssisted, totals } from './workout.js'
+import { metaOf } from './catalog/index.js'
+import { MIN_REST } from './engine/config.js'
+
+// Rest when an older record didn't save its own: what plans use for the role.
+const restFor = (exId) => {
+  const role = metaOf(exId)?.role
+  return role === 'compound' ? 90 : Math.max(60, MIN_REST[role] ?? 60)
+}
 import { correctedOutcome } from './engine/ledger.js'
 import { SET_LIMITS } from './set-entry.js'
 
@@ -14,16 +22,25 @@ export function routineFromWorkout(workout, unit = workout.unit) {
     location: workout.location,
     placeName: workout.placeName,
     requestedMinutes: workout.requestedMinutes,
+    // Working sets only: the warm-up is added again when the workout starts.
     items: workout.exercises
-      .filter((e) => e.sets.length)
-      .map((e) => ({
-        exId: e.exId,
-        sets: e.sets.length,
-        reps: e.sets[0].reps,
-        sec: e.sets[0].sec,
-        weight: e.weighted ? convertWeight(e.sets[0].weight || 0, workout.unit || unit, unit) : null,
-        restSec: e.restSec ?? 60,
-      })),
+      .map((e) => ({ e, work: e.sets.filter((s) => s.kind !== 'warmup' && (!s.status || s.status === 'done')) }))
+      .filter(({ work }) => work.length)
+      .map(({ e, work }) => {
+        const loads = work.map((s) => s.weight).filter((w) => Number.isFinite(w) && w >= 0)
+        // The top working set: the heaviest load, or the least assistance.
+        const load = !e.weighted || !loads.length ? null : isAssisted(e.exId) ? Math.min(...loads) : Math.max(...loads)
+        const top = work.find((s) => s.weight === load) || work[0]
+        return {
+          exId: e.exId,
+          sets: work.length,
+          reps: top.targetReps ?? top.reps,
+          sec: top.targetSec ?? top.sec,
+          weight: load === null ? null : convertWeight(load, workout.unit || unit, unit),
+          restSec: Number.isFinite(e.restSec) ? e.restSec : restFor(e.exId),
+          ...(e.unilateral ? { unilateral: true } : {}),
+        }
+      }),
   }
 }
 

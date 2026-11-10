@@ -2,13 +2,46 @@
 //
 // Every completed set contributes set-equivalents to the muscles, broad areas,
 // movement pattern, substitution family, joint actions and exercise involved,
-// using the documented contribution estimates in config.js. Recent work fades
+// using each exercise's muscle shares from the exercise library
+// (strength/library.js). A set the person tapped as easy counts for less. Recent work fades
 // with a half-life; the seven-day totals do not. These are planning
 // heuristics, not measurements of recovery.
 import { metaOf } from '../catalog/index.js'
 import { MUSCLE_AREA } from '../catalog/vocabulary.js'
+import { exerciseProfile } from '../strength/library.js'
+import { fatigueRir, involvementOf } from '../strength/recovery.js'
 import { CONTRIBUTION, EFFORT_FACTOR, HALF_LIFE_HOURS, WARMUP_FACTOR } from './config.js'
 import { realHistory, recordTime } from './ledger.js'
+
+// A set counts fully toward the weekly balance when it was a real effort.
+// Only a set the person said was easy (with reps to spare) counts for less:
+// a few reps left still counts in full, "easy, 8 or more left" about a third.
+function effortShare(set) {
+  if (!set?.feel) return 1
+  const rir = fatigueRir(set)
+  return rir <= 3 ? 1 : rir <= 5 ? 0.6 : 0.35
+}
+
+// Each muscle's share of a set, from the exercise library (the same
+// percentages the strength model uses), relative to the prime mover: the
+// main muscle gets a full set, helpers a part of one. Exercises without a
+// library entry keep the catalog's primary / secondary / stabiliser split.
+const PARTS = new Map()
+function partsOf(meta) {
+  if (PARTS.has(meta.id)) return PARTS.get(meta.id)
+  const profile = exerciseProfile(meta.id)
+  const inv = profile ? involvementOf(profile) : null
+  const parts =
+    inv && Object.keys(inv).length
+      ? Object.entries(inv).map(([m, v]) => [m, Math.round(v * 100) / 100])
+      : [
+          ...meta.primary.map((m) => [m, CONTRIBUTION.primary]),
+          ...meta.secondary.map((m) => [m, CONTRIBUTION.secondary]),
+          ...meta.stabilizers.map((m) => [m, CONTRIBUTION.stabilizer]),
+        ]
+  PARTS.set(meta.id, parts)
+  return parts
+}
 
 const HOUR = 3600000
 const ROLE_FACTOR = { compound: 1, accessory: 1, isolation: 1, control: 0.4, drill: 0.25, stretch: 0.1 }
@@ -53,17 +86,13 @@ export function exposureFrom(workouts, { now, today, include = () => true }, ext
       const meta = metaOf(e.exId)
       for (const set of e.sets || []) {
         if (set.status && set.status !== 'done') continue
-        const dose = setDose(meta, set, e.type) * effort
+        const dose = setDose(meta, set, e.type) * effort * effortShare(set)
         if (!dose) continue
         counted = true
         const decay = (hl) => dose * Math.pow(0.5, ageHours / hl)
         const week = dose * inWeek
         if (meta) {
-          const parts = [
-            ...meta.primary.map((m) => [m, CONTRIBUTION.primary]),
-            ...meta.secondary.map((m) => [m, CONTRIBUTION.secondary]),
-            ...meta.stabilizers.map((m) => [m, CONTRIBUTION.stabilizer]),
-          ]
+          const parts = partsOf(meta)
           const areaShare = {}
           for (const [m, share] of parts) {
             bump(out.muscle, m, decay(HALF_LIFE_HOURS.muscle) * share, week * share, at)

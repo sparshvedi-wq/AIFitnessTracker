@@ -4,7 +4,8 @@ import { lastPerformance } from './workout.js'
 import { trainingTitle } from './training-copy.js'
 import { resolvePlace } from './places.js'
 import { availableLoads, fitAvailableLoad } from './preferences.js'
-import { sportScheduleContext } from './sport-schedule.js'
+import { pastActivityLoad, sportScheduleContext } from './sport-schedule.js'
+import { snapLoad, strengthTarget } from './strength/index.js'
 import { movementPreferences, DEFAULT_ON_THE_GO } from './movement-preferences.js'
 import { allMeta, metaOf } from './catalog/index.js'
 import { EQUIPMENT_CAPABILITIES, GYM_CAPABILITIES, capabilitiesFor } from './catalog/vocabulary.js'
@@ -211,6 +212,9 @@ export function buildEventPump(state, event, options = {}) {
   })
   const items = [],
     used = new Set()
+  const unit = state.settings.weightUnit
+  const sizes = availableLoads(p, location)
+  const activities = pastActivityLoad(p, { today, now: options.now ?? Date.now() })
   for (const m of pool.sort(
     (a, b) =>
       Number(a.requirements.length > 0) - Number(b.requirements.length > 0) ||
@@ -231,11 +235,34 @@ export function buildEventPump(state, event, options = {}) {
       delete item.reps
       item.sec = 20
     }
-    if (def.weighted)
-      item.weight = fitAvailableLoad(
-        last ? Math.round(Math.max(...last.sets.map((s) => s.weight || 0)) * 0.7 * 2) / 2 : null,
-        availableLoads(p, location),
-      )
+    if (def.weighted) {
+      // Easy by design: the strength model plans it with several reps left,
+      // on weights the equipment here can hold.
+      const target = strengthTarget({
+        exId: m.id,
+        def,
+        workouts: state.workouts,
+        learning: state.learning,
+        metrics: state.metrics,
+        customExercises: state.customExercises,
+        unit,
+        today,
+        now: options.now ?? Date.now(),
+        goal: p.goal,
+        experience: p.experience,
+        easy: true,
+        rir: 4,
+        fixedReps: 10,
+        sets: 2,
+        place: location,
+        sizes,
+        activities,
+      })
+      const top = last ? Math.max(...last.sets.map((s) => s.weight || 0)) : 0
+      const fallback = top > 0 ? snapLoad({ exId: m.id, weight: top * 0.7, unit, sizes, used: [top] }) : null
+      item.weight = fitAvailableLoad(target && target.mode !== 'reps' && target.weight != null ? target.weight : fallback, sizes)
+      if (target?.reps && target.mode !== 'reps') item.reps = Math.min(12, Math.max(8, target.reps))
+    }
     if (planSeconds([...items, item]) + 120 <= minutes * 60) {
       items.push(item)
       used.add(m.muscle)

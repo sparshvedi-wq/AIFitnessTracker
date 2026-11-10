@@ -26,7 +26,7 @@ import {
 } from './model.js'
 import { prescribeLoad, prescribeReps, repRange, targetRir } from './prescribe.js'
 import { exerciseProfile, similarity } from './library.js'
-import { liveStrengthGraph, strengthTarget } from './index.js'
+import { liveStrengthGraph, strengthTarget, trainsAny } from './index.js'
 
 const isWork = (s) => s && s.kind !== 'warmup'
 const round = (v) => Math.round(v * 1000) / 1000
@@ -139,7 +139,10 @@ function graphPlan(session, ex, ctx, { def, next, range, rir, failure }) {
     now: ctx.now,
     goal: ctx.goal,
     experience: ctx.experience,
-    easy: ctx.easy,
+    // The day's lighter signals, and muscles kept lighter today (a nearby
+    // practice, a very hard session), stay in force while re-planning.
+    easy: Boolean(ctx.easy || session.schedule?.systemic || trainsAny(ex.exId, session.lighterMuscles || [], def)),
+    activities: ctx.activities,
     place: session.location || null,
     sizes: ['hand', 'one'].includes(profile.loadConvention) ? ctx.sizes || [] : [],
     customExercises: ctx.customExercises,

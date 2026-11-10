@@ -18,6 +18,8 @@ const workout = (date, options = {}) => ({
   ...options,
 })
 const exercise = (exId, sets) => ({ ...findExercise(exId), exId, sets })
+// A workout whose sets lift exactly `volume` (lifted weight is worked out from the sets).
+const lifted = (volume) => ({ exercises: [exercise('bench-press', [{ reps: 1, weight: volume }])], totals: { sets: 1, volume } })
 
 test('compact week aligns Monday through Sunday and keeps scheduled events separate from saved work', () => {
   const s = defaultState()
@@ -165,11 +167,11 @@ test('recap surfaces reported equipment limits without inventing a weakness or f
 })
 test('History Month shows this calendar month and Year sums year-to-date rather than one month', () => {
   const rows = [
-    workout('2026-01-10', { totals: { volume: 100 } }),
-    workout('2026-09-10', { totals: { volume: 200 } }),
-    workout('2026-10-02', { totals: { volume: 300 } }),
-    workout(today, { totals: { volume: 400 } }),
-    workout('2026-10-29', { totals: { volume: 9000 } }),
+    workout('2026-01-10', lifted(100)),
+    workout('2026-09-10', lifted(200)),
+    workout('2026-10-02', lifted(300)),
+    workout(today, lifted(400)),
+    workout('2026-10-29', lifted(9000)),
   ]
   const month = historyVolumeView(rows, 'month', today, 'lb')
   assert.equal(month.now, 700)
@@ -186,8 +188,8 @@ test('History Month shows this calendar month and Year sums year-to-date rather 
 })
 test('History comparisons handle a short previous month and normalize mixed weight units', () => {
   const rows = [
-    workout('2026-02-28', { totals: { volume: 100 } }),
-    workout('2026-03-01', { unit: 'kg', totals: { volume: 100 } }),
+    workout('2026-02-28', lifted(100)),
+    workout('2026-03-01', { unit: 'kg', ...lifted(100) }),
   ]
   const month = historyVolumeView(rows, 'month', '2026-03-31', 'kg')
   assert.equal(month.now, 100)

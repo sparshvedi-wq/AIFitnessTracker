@@ -3,13 +3,13 @@
 // they are not measurements of physiology, recovery or fatigue.
 // See docs/RECOMMENDATION_ENGINE.md for the reasoning behind each group.
 
-export const ENGINE_VERSION = 'daily-4.0'
+export const ENGINE_VERSION = 'daily-4.1'
 export const RULES = {
   eligibility: 'elig-2',
-  exposure: 'expo-1',
+  exposure: 'expo-2',
   rollover: 'roll-2',
   learning: 'learn-1',
-  scoring: 'score-4',
+  scoring: 'score-5',
   photoFocus: 'photo-1',
   exploration: 'explore-1',
   selection: 'select-4',
@@ -133,6 +133,8 @@ export const WEIGHTS = {
   // how recovered its muscles are.
   fit: 1.0,
   fatigue: 1.5,
+  // Main muscles of a session reported as very hard, for the next few days.
+  recovering: 1.0,
 }
 export const SPORT_PRIORITY_SCALE = { sport: 1, balanced: 0.5, goal: 0 }
 

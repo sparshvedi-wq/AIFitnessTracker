@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
 import Select from '../Select.jsx'
@@ -112,6 +112,26 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     setPanel(null)
     setReplace(false)
   }
+  // Saved routines use the same adaptive weights as daily plans: this place,
+  // today's bodyweight, and everything else the strength model reads.
+  const sessionOptions = useCallback(
+    (at, profile) => ({
+      workouts: state.workouts,
+      customExercises: state.customExercises,
+      unit: state.settings.weightUnit,
+      now,
+      dumbbellWeights: availableLoads(profile, at),
+      strength: {
+        learning: state.learning,
+        metrics: state.metrics,
+        goal: profile.goal,
+        experience: profile.experience,
+        today,
+        place: at,
+      },
+    }),
+    [state.workouts, state.customExercises, state.settings.weightUnit, state.learning, state.metrics, now, today],
+  )
   const plan = useMemo(() => {
     if (kind === 'pump')
       return buildEventPump(
@@ -146,15 +166,30 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       movement: onTheGo || undefined,
     })
     const items = adapted.items
-    while (items.length && planSeconds(items) > minutes * 60) {
+    // Fitted with this person's own pace, like daily plans.
+    while (items.length && planSeconds(items) > (minutes * 60) / (adapted.context.pace || 1)) {
       const item = [...items].reverse().find((it) => it.sets > 1)
       if (item) item.sets--
       else items.pop()
     }
-    return {
+    const planned = {
       ...routine,
       name: routine.name,
       items,
+      strengthContext: adapted.context,
+      lighterMuscles: adapted.context.lighterMuscles,
+      location,
+    }
+    // The weights and reps the workout will actually start with, for the preview.
+    const preview = buildSession(planned, sessionOptions(location, p))
+    const shown = items.map((it) => {
+      const ex = preview.exercises.find((e) => e.exId === it.exId)
+      const work = ex?.sets.find((x) => x.kind !== 'warmup')
+      return work ? { ...it, previewWeight: work.weight, previewReps: work.reps } : it
+    })
+    return {
+      ...planned,
+      items: shown,
       // A gentle movement session stays a movement session, not strength history.
       kind: routine.kind === 'recovery' ? 'recovery' : 'routine',
       location,
@@ -166,7 +201,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
         muscles: adapted.schedule.muscles,
         overlap: Boolean(adapted.schedule.overlap),
       },
-      lockedTargets: adapted.schedule.lighter,
+      // Lighter days are planned by the strength model on real equipment steps.
+      lockedTargets: false,
       requestedMinutes: minutes,
       focus: adapted.changes.length
         ? 'Your routine, adjusted for this place.'
@@ -196,6 +232,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     focusAreas,
     shortSession,
     skipToday,
+    sessionOptions,
   ])
   const start = (confirmed = false) => {
     if (!plan.items.length && !(kind === 'routine' && !routine.items.length)) return
@@ -242,17 +279,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       type: 'SET_ACTIVE_WORKOUT',
       session: beginPrepared(
         prepareSession(
-          buildSession(
-            { ...plan, placeName: place.name, equipmentProfile: p },
-            {
-              workouts: state.workouts,
-              customExercises: state.customExercises,
-              unit: state.settings.weightUnit,
-              dumbbellWeights: availableLoads(p, location),
-              // Saved routines use the same adaptive weights as daily plans.
-              strength: { learning: state.learning, goal: p.goal, experience: p.experience, today },
-            },
-          ),
+          buildSession({ ...plan, placeName: place.name, equipmentProfile: p }, sessionOptions(location, p)),
         ),
       ),
     })
@@ -283,14 +310,15 @@ export default function SessionSetup({ routine, onClose, onStart }) {
   const exerciseDef = selectedExercise && findExercise(selectedExercise.exId, state.customExercises)
   // Sets × reps, plus the planned weight so the equipment can be set up first.
   const loadText = (it) => {
-    if (!Number.isFinite(it.weight)) return ''
+    const weight = it.previewWeight !== undefined ? it.previewWeight : it.weight
+    if (!Number.isFinite(weight)) return ''
     const load = metaOf(it.exId)?.load
     const unit = state.settings.weightUnit
-    if (load === 'assist') return ` · ${fmtNum(it.weight)} ${unit} assistance`
-    return it.weight > 0 ? ` · ${fmtNum(it.weight)} ${unit}${load === 'hand' ? ' each' : ''}` : ''
+    if (load === 'assist') return ` · ${fmtNum(weight)} ${unit} assistance`
+    return weight > 0 ? ` · ${fmtNum(weight)} ${unit}${load === 'hand' ? ' each' : ''}` : ''
   }
   const dose = (it) =>
-    `${it.sets} × ${it.sec ? (it.sec >= 60 ? fmtClock(it.sec * 1000) : `${it.sec}s`) : `${it.reps}${it.unilateral ? ' / side' : ' reps'}`}${loadText(it)}`
+    `${it.sets} × ${it.sec ? (it.sec >= 60 ? fmtClock(it.sec * 1000) : `${it.sec}s`) : `${it.previewReps ?? it.reps}${it.unilateral ? ' / side' : ' reps'}`}${loadText(it)}`
   const back = () => {
     if (panel) setPanel(panel === 'exercise' ? exerciseReturn : null)
     else if (returnToPlan) {

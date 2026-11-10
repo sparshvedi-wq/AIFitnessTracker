@@ -7,6 +7,7 @@ import Modal from '../Modal.jsx'
 import { useApp } from '../../store/AppContext.jsx'
 import { profileOf } from '../../lib/planner.js'
 import { availableLoads } from '../../lib/preferences.js'
+import { pastActivityLoad } from '../../lib/sport-schedule.js'
 import { metaOf } from '../../lib/catalog/index.js'
 import { findExercise } from '../../lib/exercises.js'
 import { fmtNum } from '../../lib/workout.js'
@@ -33,6 +34,8 @@ export function useStrengthContext(session) {
       sizes: availableLoads(p, location),
       customExercises: state.customExercises,
       metrics: state.metrics,
+      // Sport and activities already done count as muscle fatigue.
+      activities: pastActivityLoad(p, { today, now }),
     })
   }
 }

@@ -66,7 +66,9 @@ function ProgressFact({ progress }) {
       <span className="mt-1 block text-[13px] text-muted">
         {progress.kind === 'load'
           ? `+${fmtNum(progress.delta)} ${progress.unit} · ${progress.reps} reps`
-          : `+${progress.delta} reps${progress.load ? ` at ${fmtNum(progress.load)} ${progress.unit}` : ''}`}{' '}
+          : progress.kind === 'assist'
+            ? `${fmtNum(progress.delta)} ${progress.unit} less assistance · ${progress.reps} reps`
+            : `+${progress.delta} reps${progress.load != null ? ` at ${fmtNum(progress.load)} ${progress.unit}${progress.assisted ? ' assistance' : ''}` : ''}`}{' '}
         vs {shortLabel(progress.previousDate)}
       </span>
     </>
@@ -220,7 +222,9 @@ export default function WeeklyRecap({ state, today, now, nav }) {
             <p className="mt-3 text-[12px] text-muted">
               {recap.progress.kind === 'load'
                 ? `${fmtNum(recap.progress.from)} → ${fmtNum(recap.progress.to)} ${recap.progress.unit}`
-                : `${recap.progress.from} → ${recap.progress.to} reps`}{' '}
+                : recap.progress.kind === 'assist'
+                  ? `${fmtNum(recap.progress.from)} → ${fmtNum(recap.progress.to)} ${recap.progress.unit} assistance`
+                  : `${recap.progress.from} → ${recap.progress.to} reps`}{' '}
               · {shortLabel(recap.progress.previousDate)} to {shortLabel(recap.progress.date)}
             </p>
           </div>
@@ -238,7 +242,7 @@ export default function WeeklyRecap({ state, today, now, nav }) {
                       style={{ width: `${(m.sets / recap.muscles[0].sets) * 100}%` }}
                     />
                   </span>
-                  <span className="w-6 text-right">{m.sets}</span>
+                  <span className="w-8 text-right">{m.sets}</span>
                 </div>
               ))}
             </div>

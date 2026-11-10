@@ -220,7 +220,7 @@ export default function History({ nav }) {
               className="mt-2"
             />
           </div>
-          {trend.length > 1 && sameDefinition && <LineChart values={trend.map((r) => r.value)} height={84} />}
+          {trend.length > 1 && sameDefinition && <LineChart values={trend.map((r) => (r.assisted ? -r.value : r.value))} height={84} />}
           <p className="mt-3 text-[12px] text-muted">
             {!trend.length
               ? 'Nothing logged in this period.'
@@ -228,9 +228,11 @@ export default function History({ nav }) {
                 ? 'Shown separately: the exercise changed.'
                 : trend[0]?.type === 'time'
                   ? 'Longest set, seconds'
-                  : trend[0]?.weighted
-                    ? `Heaviest set, ${unit}`
-                    : 'Most reps in a set'}
+                  : trend[0]?.assisted
+                    ? `Least assistance, ${unit} (the line rises as you need less)`
+                    : trend[0]?.weighted
+                      ? `Heaviest set, ${unit}`
+                      : 'Most reps in a set'}
           </p>
           <div className="mt-3 divide-y divide-line">
             {trend
@@ -245,7 +247,7 @@ export default function History({ nav }) {
                   <span className="flex-1 text-muted">{shortLabel(r.date)}</span>
                   <span>
                     {fmtNum(r.value)}
-                    {r.type === 'time' ? ' sec' : r.weighted ? ` ${unit} × ${r.reps}` : ' reps'}
+                    {r.type === 'time' ? ' sec' : r.assisted ? ` ${unit} assistance × ${r.reps}` : r.weighted ? ` ${unit} × ${r.reps}` : ' reps'}
                   </span>
                   <Icon name="chevronRight" size={15} />
                 </button>

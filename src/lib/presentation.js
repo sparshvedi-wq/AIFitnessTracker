@@ -5,6 +5,15 @@ export function planSummary(plan) {
   if (!plan.items.length) return 'No exercises match today’s check-in.'
   if (plan.movement?.position === 'seated') return 'Light seated movement.'
   if (/restart after time away/i.test(plan.focus)) return 'A lighter return to training.'
+  // A normal practice or activity nearby only eases the muscles it uses.
+  if (plan.schedule?.lighter && plan.schedule.systemic === false && plan.schedule.muscles?.length) {
+    const source = plan.schedule.reasonEvent
+    const name = source?.title || source?.name
+    const areas = plan.schedule.muscles.join(', ').toLowerCase()
+    return name
+      ? `Easier on your ${areas} ${plan.schedule.reasonPhase === 'before' ? 'before' : 'after'} ${name.toLowerCase()}.`
+      : `Training as usual, easier on your ${areas}.`
+  }
   if (plan.schedule?.lighter) {
     const source = plan.schedule.reasonEvent
     const name = source?.title || source?.name

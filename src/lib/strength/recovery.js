@@ -14,6 +14,7 @@
 // prefer fresh areas, and how much each muscle was stimulated per session,
 // which the strength model uses to decide where training should pay off.
 import { FEEL_RIR } from './config.js'
+import { MUSCLE_AREA } from '../catalog/vocabulary.js'
 import { MUSCLES, RECOVERY_HALF_LIFE_HOURS } from './library.js'
 import { clamp, isNum } from './math.js'
 
@@ -98,6 +99,34 @@ export function addSetFatigue(state, profile, { rir = 2, warmup = false, at = st
   return { at: s.at, acute, residual }
 }
 
+// Sport and other activities: each working-set equivalent tires every muscle
+// of the activity's areas about as much as a moderate set (≈3 reps left).
+const ACTIVITY_SCALE = Math.exp(-FATIGUE_MODEL.rirDecay * 3) * 0.7
+
+/**
+ * Fatigue at `now` including past activities ([{ at, areas, sets }], from
+ * sport-schedule.js pastActivityLoad), each faded from when it ended.
+ */
+export function withActivityFatigue(state, activities = [], now = state.at) {
+  if (!Array.isArray(activities) || !activities.length) return state
+  const residual = Float64Array.from(state.residual)
+  let changed = false
+  for (const a of activities) {
+    if (!a || !isNum(a.at) || a.at > now || !(a.sets > 0) || !Array.isArray(a.areas)) continue
+    const areas = new Set(a.areas)
+    const hours = (now - a.at) / HOUR
+    for (let i = 0; i < N; i++) {
+      if (!areas.has(MUSCLE_AREA[MUSCLES[i]])) continue
+      const add = Math.min(a.sets, 12) * FATIGUE_MODEL.residualPerSet * ACTIVITY_SCALE * Math.exp(-RES_DECAY[i] * hours)
+      if (add > 1e-6) {
+        residual[i] = Math.min(FATIGUE_MODEL.residualCap, residual[i] + add)
+        changed = true
+      }
+    }
+  }
+  return changed ? { at: state.at, acute: state.acute, residual } : state
+}
+
 /** Fatigue level (0–cap) of one muscle. */
 export function muscleFatigue(state, m) {
   const i = INDEX.get(m)
@@ -150,7 +179,8 @@ export function setStimulus(profile, rir, warmup = false) {
 
 /**
  * Places a record's working sets in time: sets run in order from the start,
- * spread over the logged duration (or a typical pace when unknown).
+ * spread over the logged duration (or a typical pace when unknown). Sets
+ * saved with the time they were logged (`at`) use that time instead.
  */
 export function setTimes(record, count) {
   const end = isNum(record.endedAt) ? record.endedAt : null

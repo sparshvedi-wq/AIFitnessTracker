@@ -6,7 +6,7 @@
 import { MIN_REST } from './config.js'
 import { comparableSessions, historyIndex, planTarget, progressionTrend } from './progression.js'
 import { extraSetSeconds, planSeconds } from './session-time.js'
-import { strengthTarget } from '../strength/index.js'
+import { strengthTarget, trainsAny } from '../strength/index.js'
 
 export function baseDose(meta, def, ctx) {
   const loaded = def.weighted && !['bw', 'band'].includes(meta.load)
@@ -38,6 +38,9 @@ export function withTarget(item, meta, def, ctx) {
   })
   const signal = ctx.signals.get(meta.id)
   const trend = progressionTrend(sessions, meta, def.type)
+  // Lighter for this exercise when the whole day is lighter, or when it relies
+  // on muscles a very hard session worked or a nearby practice will use.
+  const easy = ctx.easy || trainsAny(meta.id, ctx.lighterMuscles, def)
   // Weight and reps from the adaptive strength model, when it applies.
   ctx.strengthCache ||= new Map()
   const adaptive = strengthTarget({
@@ -51,8 +54,8 @@ export function withTarget(item, meta, def, ctx) {
     now: ctx.now,
     goal: ctx.goal,
     experience: ctx.experience,
-    easy: ctx.easy,
-    highEffort: ctx.highEffort,
+    easy,
+    highEffort: ctx.highEffort && !easy,
     returning: ctx.returning,
     sizes: ['hand', 'one'].includes(meta.load) && ctx.caps.has('db') ? ctx.dumbbellSizes : [],
     sets: ctx.setCap,
@@ -61,6 +64,7 @@ export function withTarget(item, meta, def, ctx) {
     place: ctx.place?.id ?? null,
     metrics: ctx.state.metrics,
     customExercises: ctx.state.customExercises,
+    activities: ctx.activities,
     cache: ctx.strengthCache,
   })
   // What the strength model thinks of this exercise today feeds selection:
@@ -91,18 +95,27 @@ export function withTarget(item, meta, def, ctx) {
     sessions,
     unit: ctx.unit,
     sizes: ['hand', 'one'].includes(meta.load) && ctx.caps.has('db') ? ctx.dumbbellSizes : [],
-    easy: ctx.easy,
+    easy,
     awayDays: ctx.awayDays,
     comfort: signal?.comfort.status,
     effortAnswer: signal?.difficulty,
   })
+  // Held every set at the top of what the simple rules allow (a 90 s hold,
+  // 20 reps): outgrown, so a harder version is worth suggesting.
+  if (target.code === 'at-cap') ctx.strengthFit.set(meta.id, { flags: ['outgrown'], readiness: 1, code: 'at-cap' })
   const next = { ...item }
   if (def.type === 'time') next.sec = target.sec ?? next.sec
   else next.reps = Math.min(def.weighted ? 15 : 20, target.reps ?? next.reps)
   if (def.weighted) next.weight = target.weight ?? null
   return {
     item: next,
-    progression: { code: target.code, up: target.up, facts: target.facts, rule: target.rule },
+    progression: {
+      code: target.code,
+      up: target.up,
+      facts: target.facts,
+      rule: target.rule,
+      ...(target.code === 'at-cap' ? { flags: ['outgrown'] } : {}),
+    },
     trend,
   }
 }

@@ -19,6 +19,8 @@ import { ineligibility } from './eligibility.js'
 import { rankSubstitutes } from './substitute.js'
 import { extraSetSeconds, itemSeconds } from './session-time.js'
 import { enterWork, finish, makeSessionExercise, openRest } from '../workout.js'
+import { swapTarget } from '../workout-adjustments.js'
+import { DUMBBELL_MOVES, availableLoads, fitAvailableLoad } from '../preferences.js'
 
 /** Fingerprint of everything logged or planned in a session; ignores timers and the cursor. */
 export function sessionFingerprint(session) {
@@ -81,16 +83,24 @@ export function previewReplan(state, session, change, { now = Date.now(), today,
     }
     inSession.add(best.meta.id)
     const work = pending.filter((s) => s.kind !== 'warmup')
+    // The strength model plans the substitute at the new place, after today's sets.
+    const profile = { ...ctx.p }
+    const target = best.def.type === 'reps' ? swapTarget(state, { ...session, location: ctx.place.id }, best.def, { now, location: ctx.place.id, profile, sets: Math.max(1, work.length) }) : null
+    const modelWeight = best.def.weighted && target && target.mode !== 'reps' ? target.weight : null
+    const weight = modelWeight != null && DUMBBELL_MOVES.includes(best.meta.id) ? fitAvailableLoad(modelWeight, availableLoads(ctx.p, ctx.place.id)) : modelWeight
+    const reps = target?.reps ?? (best.def.type === 'reps' ? (e.type === 'reps' ? work[0]?.reps ?? 10 : 10) : null)
     const replacement = makeSessionExercise(
       best.def,
       {
         sets: Math.max(1, work.length),
-        reps: best.def.type === 'reps' ? (e.type === 'reps' ? work[0]?.reps ?? 10 : 10) : null,
+        reps: best.def.type === 'reps' ? reps : null,
         sec: best.def.type === 'time' ? (e.type === 'time' ? work[0]?.sec ?? 30 : 30) : null,
         restSec: e.restSec,
+        ...(target ? { repRange: target.range, targetRir: target.rir } : {}),
+        ...(Array.isArray(target?.choices) ? { startChoices: target.choices } : {}),
       },
-      { reps: best.def.type === 'reps' ? work[0]?.reps ?? 10 : null, sec: best.def.type === 'time' ? 30 : null, weight: null },
-      { note: 'Changed for this place. Pick a comfortable weight.' },
+      { reps: best.def.type === 'reps' ? reps : null, sec: best.def.type === 'time' ? 30 : null, weight: best.def.weighted ? weight ?? null : null },
+      { note: best.def.weighted && weight == null ? 'Changed for this place. Pick a comfortable weight.' : 'Changed for this place. Change the weight if it feels off.' },
     )
     replacement.unilateral = Boolean(best.meta.perSide && best.def.type === 'reps')
     replacement.swappedFrom = e.exId

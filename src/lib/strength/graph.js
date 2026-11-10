@@ -54,7 +54,10 @@ import { clamp, enduranceSensitivity, formulaSd, fractionAt, isNum, repSensitivi
 import { addSetFatigue, availability, decayFatigue, emptyFatigue, fatigueRir, setStimulus, setTimes } from './recovery.js'
 
 const DAY = 86400000
-const SKIP_KINDS = ['sport', 'pump', 'recovery']
+const SKIP_KINDS = ['sport', 'recovery']
+// Short focus sessions are easy by design: they tire muscles but are not
+// evidence of what someone can lift.
+const FATIGUE_ONLY = ['pump']
 const FEELS = ['easy', 'good', 'hard', 'failed']
 const LB_PER_KG = 1 / 0.45359237
 
@@ -355,7 +358,9 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
       }
     }
     for (const s of sets) {
-      const at = times[Math.min(t, times.length - 1)] ?? recordTime(record)
+      // The time the set was logged, when saved; otherwise spread over the session.
+      const loggedAt = isNum(s.at) ? s.at : isNum(s.doneAt) ? s.doneAt : null
+      const at = loggedAt ?? times[Math.min(t, times.length - 1)] ?? recordTime(record)
       t++
       G.fatigue = decayFatigue(G.fatigue, at)
       const warmup = s.kind === 'warmup'
@@ -510,15 +515,20 @@ function applyExercise(G, key, evidence, { live = false, firstSession = false } 
     }
     if (!worst) continue
     update(S, worst.g.H, worst.g.y - worst.g.h, worst.r, boundMask)
-    if (live && worst.o.explicit) {
+    // Something the person told us ("too heavy", "8 or more left") is a limit,
+    // not a hint. In the workout it holds exactly; once saved it holds within
+    // a normal day-to-day difference, so the next session agrees with what
+    // the workout already did instead of seeming to forget the answer.
+    if (worst.o.explicit) {
       const g = geometry(G, worst.o, profile, place)
-      const still = side > 0 ? g.y - g.h : g.h - g.y
+      const slack = live ? 0 : DAY_SD
+      const still = (side > 0 ? g.y - g.h : g.h - g.y) - slack
       if (still > 0) {
         const n = S.x.length
         const v = new Array(n).fill(0)
         for (let i = 0; i < n; i++) if (boundMask(S.names[i])) v[i] = g.H.reduce((t, [j, h]) => t + h * S.P[i][j], 0)
         const HPH = g.H.reduce((t, [j, h]) => t + h * v[j], 0)
-        if (HPH > 1e-12) for (let i = 0; i < n; i++) S.x[i] += (v[i] / HPH) * (g.y - g.h) * 1.0001
+        if (HPH > 1e-12) for (let i = 0; i < n; i++) S.x[i] += (v[i] / HPH) * side * still * 1.0001
       }
     }
   }
@@ -692,6 +702,10 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
 
 function applyRecord(G, record, { live = false, skip } = {}) {
   const at = recordTime(record)
+  if (!live && FATIGUE_ONLY.includes(record.kind)) {
+    recordEvidence(G, record, { skip: () => true })
+    return
+  }
   const { byKey, stimulus } = recordEvidence(G, record, { live, skip })
   for (const [exId, ev] of byKey) {
     if (!ev.profile.tie || !ev.observations.length) {

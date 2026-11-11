@@ -30,28 +30,26 @@ export function headline(decision) {
   if (!f.items)
     return {
       code: 'nothing-fits',
-      text: 'Nothing fits what you’re avoiding today, so a break is the sensible choice.',
+      text: 'Nothing fits what you’re avoiding today. Take a break.',
     }
   if (f.returning) return { code: 'returning', text: 'A lighter restart. Build back at your own pace.' }
-  if (f.mode === 'lighter')
-    return { code: 'lighter-day', text: 'A lighter session today, with balanced work and room to recover.' }
+  if (f.mode === 'lighter') return { code: 'lighter-day', text: 'A lighter session, with room to recover.' }
   if (f.rolloverExercise)
     return {
       code: 'rollover',
-      text: `You didn’t get to ${lower(f.rolloverExercise)} last time, so it’s back today.`,
+      text: `${f.rolloverExercise} is back: you missed it last time.`,
     }
   if (f.recentGroup && f.planGroup && f.recentGroup !== f.planGroup && f.recentWhen)
     return {
       code: 'rotate-emphasis',
-      text: `You finished your ${GROUP[f.recentGroup]} work ${f.recentWhen}. Today gives ${GROUP_PLURAL[f.planGroup]} more attention.`,
+      text: `More ${GROUP_PLURAL[f.planGroup]}, after ${GROUP[f.recentGroup]} work ${f.recentWhen}.`,
     }
   if (f.preferredExercise)
     return {
       code: 'learned-preference',
-      text: `You preferred ${lower(f.preferredExercise)} last time, so it’s back today.`,
+      text: `${f.preferredExercise} is back: you preferred it last time.`,
     }
-  if (f.short)
-    return { code: 'short', text: 'A shorter session today, with the remaining work reassessed next time.' }
+  if (f.short) return { code: 'short', text: 'A shorter session today. Nothing to make up later.' }
   return null
 }
 
@@ -133,16 +131,28 @@ export function itemNote(entry, ctx) {
         ? `A harder version: you’ve outgrown ${entry.harderThan.toLowerCase()}.`
         : 'A harder version of something you’ve outgrown.',
     )
-  else if (codes.includes('step-up')) parts.push('A small step up from your level: start light and focus on form.')
+  else if (codes.includes('step-up'))
+    parts.push('A small step up from your level: start light and focus on form.')
   if (pr.code === 'deload') parts.push('A lighter session to reset after some tough ones.')
   if (pr.code === 'estimated-start')
-    parts.push(pr.facts?.source ? `A careful first guess from your ${pr.facts.source.toLowerCase()}.` : 'A careful first guess from a similar exercise.')
-  else if (flags.includes('outgrown')) parts.push(entry.weighted ? 'You’ve outgrown the weights here; add weight if you can.' : 'This is getting easy; a harder version is next.')
-  else if (flags.includes('lightest-is-heavy') || (flags.includes('below-range') && !entry.weighted)) parts.push('Hard for now: do the reps you can, with good form.')
+    parts.push(
+      pr.facts?.source
+        ? `A careful first guess from your ${pr.facts.source.toLowerCase()}.`
+        : 'A careful first guess from a similar exercise.',
+    )
+  else if (flags.includes('outgrown'))
+    parts.push(
+      entry.weighted
+        ? 'You’ve outgrown the weights here; add weight if you can.'
+        : 'This is getting easy; a harder version is next.',
+    )
+  else if (flags.includes('lightest-is-heavy') || (flags.includes('below-range') && !entry.weighted))
+    parts.push('Hard for now: do the reps you can, with good form.')
   else if (pr.code === 'load-up') parts.push('Up a step: you’re ready for it.')
   else if (pr.code === 'load-down') parts.push('A little lighter, based on your last sets.')
   else if (flags.includes('more-reps-before-jump')) parts.push('A few more reps before the next weight up.')
-  else if ((pr.facts?.readiness ?? 1) < 0.95) parts.push('Slightly lighter: these muscles are still recovering.')
+  else if ((pr.facts?.readiness ?? 1) < 0.95)
+    parts.push('Slightly lighter: these muscles are still recovering.')
   if (entry.side) parts.push(`Last set: one extra ${entry.side}-side rep if it feels fine.`)
   return parts.join(' ')
 }

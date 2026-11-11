@@ -27,10 +27,10 @@ test('the latest win is drawn from saved working sets only, with a five-mark rin
   assert.equal(tallySessions([warmupOnly], today).length, 0)
   assert.equal(latestWin([warmupOnly], today).kind, 'next')
   const first = latestWin([session('a', today)], today)
-  assert.deepEqual([first.kind, first.title, first.bundle, first.when], ['first', 'First mark', 1, 'Today'])
+  assert.deepEqual([first.kind, first.title, first.bundle, first.when], ['first', 'First session done', 1, 'Today'])
   const five = Array.from({ length: 5 }, (_, i) => session(`s${i}`, addDays(today, -20 + i * 4)))
   const milestone = latestWin(five, today)
-  assert.deepEqual([milestone.kind, milestone.title, milestone.bundle], ['milestone', '5 marks', 5])
+  assert.deepEqual([milestone.kind, milestone.title, milestone.bundle], ['milestone', '5 sessions', 5])
   const six = [...five, session('s5', today)]
   assert.equal(latestWin(six, today).bundle, 1)
   const best = [...six, session('s6', today, undefined, { records: [{ name: 'Goblet squat' }] })]

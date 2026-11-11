@@ -74,3 +74,36 @@ export function historyVolumeView(workouts, range, today, unit) {
     })),
   }
 }
+
+const TRAINING = (w) => !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind)
+const workingSets = (w) =>
+  w.exercises.reduce(
+    (n, e) =>
+      n + (e.sets || []).filter((s) => s.kind !== 'warmup' && (!s.status || s.status === 'done')).length,
+    0,
+  )
+
+/**
+ * Working sets over a History period as bars: one per day for a 7 or 30 day
+ * period, one per week (the last twelve) when `days` is 0 for all time.
+ */
+export function historyBars(workouts, today, days) {
+  const real = workouts.filter((w) => TRAINING(w) && w.date <= today)
+  const sum = (start, end) =>
+    real.reduce((n, w) => (w.date >= start && w.date <= end ? n + workingSets(w) : n), 0)
+  if (days)
+    return Array.from({ length: days }, (_, i) => {
+      const date = addDays(today, i - days + 1)
+      return {
+        date,
+        sets: sum(date, date),
+        current: date === today,
+        label: days <= 7 ? WEEKDAY_INITIALS[(fromKey(date).getDay() + 6) % 7] : '',
+      }
+    })
+  const start = weekStart(today)
+  return Array.from({ length: 12 }, (_, i) => {
+    const date = addDays(start, (i - 11) * 7)
+    return { date, sets: sum(date, addDays(date, 6)), current: i === 11, label: '' }
+  })
+}

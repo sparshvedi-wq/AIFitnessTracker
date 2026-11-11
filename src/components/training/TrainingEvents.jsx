@@ -235,18 +235,19 @@ export default function TrainingEvents({ onClose, onPrepare, initial = 'list' })
     >
       {screen === 'list' && (
         <>
-          <p className="mt-3 text-[14px] leading-relaxed text-muted">Add only what matters.</p>
-          <button className="btn-primary mt-5 w-full" onClick={() => setScreen('kind')}>
-            <Icon name="plus" size={18} />
-            Add an event
-          </button>
+          {events.length > 0 && (
+            <button className="btn-primary mt-4 w-full" onClick={() => setScreen('kind')}>
+              <Icon name="plus" size={18} />
+              Add an event
+            </button>
+          )}
           {events.map((e) => (
             <div key={e.id} className="mt-4 rounded-tuck bg-surface2 p-4">
               <button className="flex w-full items-center gap-3 text-left" onClick={() => begin(e.kind, e)}>
                 <DateTile date={e.date} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold">{e.title}</span>
-                  <span className="mt-1 block text-[12px] text-muted">
+                  <span className="block text-[16px] font-semibold">{e.title}</span>
+                  <span className="row-meta">
                     {e.status === 'done' ? 'Completed · ' : ''}
                     {labelForKey(e.date)} · {e.time} · {e.minutes} min
                   </span>
@@ -288,12 +289,24 @@ export default function TrainingEvents({ onClose, onPrepare, initial = 'list' })
             </div>
           ))}
           {!events.length && (
-            <div className="empty-state mt-5">
-              <Icon name="sport" size={30} />
-              <p>Practice, a hike, a busy day or an occasion.</p>
+            <div className="mt-4 rounded-tuck bg-surface2 px-5 pb-5 pt-7 text-center">
+              <div className="flex justify-center gap-2.5" aria-hidden="true">
+                {['sport', 'trophy', 'star'].map((icon) => (
+                  <span key={icon} className="icon-tile !h-12 !w-12 !rounded-2xl !bg-surface text-accent-ink">
+                    <Icon name={icon} size={22} />
+                  </span>
+                ))}
+              </div>
+              <h3 className="mt-5 font-display text-[23px] leading-tight">Nothing planned yet</h3>
+              <p className="mx-auto mt-2 max-w-[260px] text-[15px] text-ink2">
+                Add a game, a hike or a big day. Your training works around it.
+              </p>
+              <button className="btn-primary mt-6 w-full" onClick={() => setScreen('kind')}>
+                <Icon name="plus" size={18} />
+                Add an event
+              </button>
             </div>
           )}
-          <p className="mt-5 text-[12px] text-muted">Plans change; move or cancel this any time.</p>
         </>
       )}
       {screen === 'kind' && (
@@ -614,8 +627,8 @@ export default function TrainingEvents({ onClose, onPrepare, initial = 'list' })
       )}
       {screen === 'list' && (profile.lifeEvents || []).some((e) => e.status === 'cancelled') && (
         <details className="mt-5 border-t border-line">
-          <summary className="min-h-12 cursor-pointer py-4 text-[13px] text-muted">
-            Cancelled or removed events
+          <summary className="min-h-12 cursor-pointer py-4 text-[15px] font-semibold text-ink2">
+            Cancelled events
           </summary>
           {(profile.lifeEvents || [])
             .filter((e) => e.status === 'cancelled' && validTrainingEvent(e))

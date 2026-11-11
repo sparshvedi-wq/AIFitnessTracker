@@ -51,20 +51,20 @@ export function latestWin(workouts, today) {
   const sessions = tallySessions(workouts, today).sort(byTime)
   const total = sessions.length
   const bundle = total ? ((total - 1) % 5) + 1 : 0
-  if (!total) return { kind: 'next', title: 'First mark', label: 'Next win', total, bundle, when: '' }
+  if (!total) return { kind: 'next', title: 'Your first session', label: 'Next win', total, bundle, when: 'Starts your tally' }
   const last = sessions.at(-1)
   const when = whenLabel(last.date, today)
   const base = { total, bundle, when, workoutId: last.id, label: 'Latest win' }
-  if (total === 1) return { ...base, kind: 'first', title: 'First mark' }
-  if (MARK_MILESTONES.includes(total)) return { ...base, kind: 'milestone', title: `${total} marks` }
+  if (total === 1) return { ...base, kind: 'first', title: 'First session done' }
+  if (MARK_MILESTONES.includes(total)) return { ...base, kind: 'milestone', title: `${total} sessions` }
   const best = (last.records || [])[0]
   if (best) return { ...base, kind: 'best', title: 'New best', detail: best.name || '' }
   const previous = sessions.at(-2)
   // Rounded so a daylight-saving change can't shave an hour off a week.
   if (previous && Math.round((fromKey(last.date) - fromKey(previous.date)) / DAY) >= 7)
-    return { ...base, kind: 'back', title: 'Back at it' }
+    return { ...base, kind: 'back', title: 'Back after a break' }
   const start = weekStart(today)
   const recent = sessions.filter((w) => w.date >= start).length
-  if (recent >= 2) return { ...base, kind: 'week', title: `${recent} this week` }
-  return { ...base, kind: 'mark', title: 'Mark added' }
+  if (recent >= 2) return { ...base, kind: 'week', title: `${recent} sessions this week` }
+  return { ...base, kind: 'mark', title: 'Session logged' }
 }

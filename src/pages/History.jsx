@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { addDays, shortLabel, labelForKey } from '../lib/date.js'
-import { LOGGED_WORKOUT, fmtNum, personalBests } from '../lib/workout.js'
+import { LOGGED_WORKOUT, fmtNum, muscleSets, personalBests } from '../lib/workout.js'
 import { historyTimeline, exerciseTrend } from '../lib/history-insights.js'
 import Icon from '../components/Icon.jsx'
-import { LineChart, PageTitle, SectionHead, Segmented, StatTile } from '../components/Ink.jsx'
+import { LineChart, MuscleBars, PageTitle, SectionHead, Segmented, StatTile } from '../components/Ink.jsx'
 import SessionRow from '../components/SessionRow.jsx'
 import WorkoutDetail from '../components/workout/WorkoutDetail.jsx'
 import useStartWorkout from '../components/workout/useStartWorkout.js'
 import Modal from '../components/Modal.jsx'
 import Select from '../components/Select.jsx'
-import { historyVolumeView } from '../lib/history-view.js'
+import { historyBars, historyVolumeView } from '../lib/history-view.js'
 
 const TYPES = [
   ['all', 'All'],
@@ -53,9 +53,17 @@ export default function History({ nav }) {
   const sameDefinition =
     trend.length && trend.every((r) => r.type === trend[0].type && r.weighted === trend[0].weighted)
   const volume = historyVolumeView(state.workouts, 'month', today, unit)
+  const bars = historyBars(state.workouts, today, days)
+  const muscles = muscleSets(
+    state.workouts.filter(
+      (w) => !w.sample && w.date <= today && !['sport', 'pump', 'recovery'].includes(w.kind),
+    ),
+    days ? addDays(today, -days + 1) : '2000-01-01',
+  ).filter((m) => m.sets > 0)
   const bests = personalBests(state.workouts.filter((w) => w.date <= today && !w.sample)).filter(
     (b) => b.weight || b.reps || b.sec,
   )
+  const topBest = Math.max(1, ...bests.filter((b) => b.weighted).map((b) => b.weight || 0))
   const hasAny = useMemo(
     () => historyTimeline(state, today, { days: 0, filter: 'all', query: '' }).rows.length > 0,
     [state, today],
@@ -115,15 +123,24 @@ export default function History({ nav }) {
           [0, 'All time'],
         ]}
       />
-      <div className="mt-4 grid grid-cols-3 gap-2">
-        {[
-          [view.days, 'Days'],
-          [view.sets, 'Sets'],
-          [view.activities, 'Activities'],
-        ].map(([value, label]) => (
-          <StatTile key={label} value={value} label={label} />
-        ))}
-      </div>
+      <section className="mt-4 rounded-tuck bg-surface p-5" aria-label="Training in this period">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            [view.days, 'Days'],
+            [view.sets, 'Sets'],
+            [view.activities, 'Activities'],
+          ].map(([value, label]) => (
+            <StatTile key={label} value={value} label={label} className="stat-tile--bare" />
+          ))}
+        </div>
+        <ActivityBars bars={bars} days={days} />
+      </section>
+      {muscles.length > 0 && (
+        <section className="mt-3 rounded-tuck bg-surface p-5">
+          <h2 className="mb-4 text-[16px] font-semibold">Muscles worked</h2>
+          <MuscleBars rows={muscles.slice(0, 6).map((m) => [m.muscle, m.sets])} />
+        </section>
+      )}
       <section className="page-section">
         <SectionHead
           title="Your activity"
@@ -219,7 +236,9 @@ export default function History({ nav }) {
               className="mt-2"
             />
           </div>
-          {trend.length > 1 && sameDefinition && <LineChart values={trend.map((r) => (r.assisted ? -r.value : r.value))} height={84} />}
+          {trend.length > 1 && sameDefinition && (
+            <LineChart values={trend.map((r) => (r.assisted ? -r.value : r.value))} height={84} />
+          )}
           <p className="mt-3 text-[14px] font-semibold text-ink2">
             {!trend.length
               ? 'Nothing logged in this period.'
@@ -246,7 +265,13 @@ export default function History({ nav }) {
                   <span className="flex-1 text-ink2">{shortLabel(r.date)}</span>
                   <span className="num text-[17px]">
                     {fmtNum(r.value)}
-                    {r.type === 'time' ? ' sec' : r.assisted ? ` ${unit} assistance × ${r.reps}` : r.weighted ? ` ${unit} × ${r.reps}` : ' reps'}
+                    {r.type === 'time'
+                      ? ' sec'
+                      : r.assisted
+                        ? ` ${unit} assistance × ${r.reps}`
+                        : r.weighted
+                          ? ` ${unit} × ${r.reps}`
+                          : ' reps'}
                   </span>
                   <Icon name="chevronRight" size={15} className="text-faint" />
                 </button>
@@ -259,15 +284,28 @@ export default function History({ nav }) {
         {volume.now > 0 && <StatTile value={fmtNum(volume.now)} unit={unit} label="Lifted this month" />}
         <div className="mt-2 divide-y divide-line">
           {bests.map((b) => (
-            <div key={b.exId} className="flex items-baseline gap-3 py-4 text-[15px]">
-              <span className="flex-1 font-medium">{b.name}</span>
-              <span className="num text-[17px]">
-                {b.type === 'time'
-                  ? `${b.sec}s`
-                  : b.weighted
-                    ? `${fmtNum(b.weight)} ${b.unit || unit} × ${b.reps}`
-                    : `${b.reps} reps`}
-              </span>
+            <div key={b.exId} className="py-3.5 text-[15px]">
+              <div className="flex items-baseline gap-3">
+                <span className="flex-1 font-medium">{b.name}</span>
+                <span className="num text-[17px]">
+                  {b.type === 'time'
+                    ? `${b.sec}s`
+                    : b.weighted
+                      ? `${fmtNum(b.weight)} ${b.unit || unit} × ${b.reps}`
+                      : `${b.reps} reps`}
+                </span>
+              </div>
+              {b.weighted && b.weight > 0 && (
+                <span
+                  className="mt-2.5 block h-1.5 overflow-hidden rounded-full bg-ink/10"
+                  aria-hidden="true"
+                >
+                  <span
+                    className="block h-full rounded-full bg-accent"
+                    style={{ width: `${Math.max(6, (b.weight / topBest) * 100)}%` }}
+                  />
+                </span>
+              )}
             </div>
           ))}
         </div>
@@ -302,6 +340,47 @@ export default function History({ nav }) {
           </>
         )}
       </Modal>
+    </div>
+  )
+}
+
+// Working sets across the chosen period: a bar per day, or per week for all time.
+function ActivityBars({ bars, days }) {
+  const max = Math.max(1, ...bars.map((b) => b.sets))
+  const total = bars.reduce((n, b) => n + b.sets, 0)
+  return (
+    <div className="mt-5">
+      <div
+        className={`flex h-24 items-end ${bars.length > 14 ? 'gap-[3px]' : 'gap-2'}`}
+        role="img"
+        aria-label={`${total} sets ${days ? `in the last ${days} days, by day` : 'in the last 12 weeks, by week'}`}
+      >
+        {bars.map((b) => (
+          <span
+            key={b.date}
+            className={`min-w-0 flex-1 rounded-[5px] ${b.sets ? 'bg-accent' : 'bg-ink/10'}`}
+            style={{ height: b.sets ? `${Math.max(12, (b.sets / max) * 100)}%` : 4 }}
+          />
+        ))}
+      </div>
+      <div
+        className="mt-2.5 flex justify-between gap-2 text-[13px] font-semibold text-ink2"
+        aria-hidden="true"
+      >
+        {bars[0].label ? (
+          bars.map((b) => (
+            <span key={b.date} className={`flex-1 text-center ${b.current ? 'text-accent-ink' : ''}`}>
+              {b.label}
+            </span>
+          ))
+        ) : (
+          <>
+            <span>{shortLabel(bars[0].date)}</span>
+            <span>{days ? 'Sets per day' : 'Sets per week'}</span>
+            <span className="text-accent-ink">{days ? 'Today' : 'This week'}</span>
+          </>
+        )}
+      </div>
     </div>
   )
 }

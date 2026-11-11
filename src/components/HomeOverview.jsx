@@ -6,6 +6,7 @@ import { fromKey } from '../lib/date.js'
 import { weekStart } from '../lib/workout.js'
 import { tallySessions } from '../lib/milestones.js'
 import { feel } from '../lib/coach.js'
+import Icon from './Icon.jsx'
 
 const DAY = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
@@ -162,81 +163,20 @@ export function TallyCard({ workouts, today, fresh = 0 }) {
   )
 }
 
-// Center artwork for each kind of win: drawn, not written.
-function WinGlyph({ kind }) {
-  const common = {
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 2.4,
-    strokeLinecap: 'round',
-    strokeLinejoin: 'round',
-  }
-  return (
-    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" className="win-glyph">
-      {kind === 'next' && <path d="M13 5v16" {...common} strokeDasharray="2.5 3.5" />}
-      {kind === 'first' && <path d="M13 4.5c-1.2 6-.2 11.5-.6 17" {...common} strokeWidth="3.2" />}
-      {kind === 'milestone' && (
-        <>
-          <path d="M6 6v14M10.5 6v14M15 6v14M19.5 6v14" {...common} strokeWidth="2" />
-          <path d="M3.5 18L22.5 7.5" {...common} strokeWidth="2.2" />
-        </>
-      )}
-      {kind === 'best' && (
-        <>
-          <path d="M5 19l6-6 4 3.5L21 9" {...common} />
-          <path d="M16.5 8.5H21v4.5" {...common} />
-        </>
-      )}
-      {kind === 'back' && (
-        <>
-          <path d="M20 13a7 7 0 1 1-2.1-5" {...common} />
-          <path d="M18.5 3.5v4.4h-4.4" {...common} />
-        </>
-      )}
-      {kind === 'week' && <path d="M5 19v-3M10 19v-6M15 19v-9M20 19V6" {...common} strokeWidth="2.6" />}
-      {kind === 'mark' && <path d="M6 13.5l4.2 4L20 8" {...common} strokeWidth="2.8" />}
-    </svg>
-  )
-}
-
-// Five ring segments: the current group of five marks, the way a tally is written.
-function WinRing({ bundle, fresh, kind }) {
-  const r = 27
-  const segment = 72
-  const gap = 10
-  const arc = (i) => {
-    const start = ((i * segment + gap / 2 - 90) * Math.PI) / 180
-    const end = (((i + 1) * segment - gap / 2 - 90) * Math.PI) / 180
-    return `M${33 + r * Math.cos(start)} ${33 + r * Math.sin(start)}A${r} ${r} 0 0 1 ${33 + r * Math.cos(end)} ${33 + r * Math.sin(end)}`
-  }
-  const firstFresh = bundle - Math.min(fresh, bundle)
-  return (
-    <span className={`win-ring win-ring--${kind}`} aria-hidden="true">
-      <svg width="66" height="66" viewBox="0 0 66 66">
-        {Array.from({ length: 5 }, (_, i) => {
-          const lit = i < bundle
-          const isFresh = lit && i >= firstFresh && fresh > 0
-          return (
-            <path
-              key={`${i}-${isFresh ? 'fresh' : lit ? 'lit' : 'off'}`}
-              d={arc(i)}
-              pathLength="1"
-              className={`win-segment ${lit ? 'is-lit' : ''} ${isFresh ? 'is-fresh' : ''}`}
-              style={isFresh ? { animationDelay: `${(i - firstFresh) * 140 + 360}ms` } : undefined}
-            />
-          )
-        })}
-      </svg>
-      <span className="win-ring-center">
-        <WinGlyph kind={kind} />
-      </span>
-    </span>
-  )
+// One plain icon per kind of win; the words beside it say what happened.
+const WIN_ICON = {
+  next: 'target',
+  first: 'star',
+  milestone: 'trophy',
+  best: 'trend',
+  back: 'repeat',
+  week: 'barChart',
+  mark: 'check',
 }
 
 const WIN_SENTENCE = {
-  next: 'Your first mark is the next win',
-  first: 'Latest win: your first workout',
+  next: 'Your first session is the next win',
+  first: 'Latest win: your first session',
   milestone: 'Latest win: a tally milestone',
   best: 'Latest win: a new best',
   back: 'Latest win: back to training',
@@ -246,15 +186,20 @@ const WIN_SENTENCE = {
 
 export function WinCard({ win, fresh = 0, onOpen }) {
   const label = `${WIN_SENTENCE[win.kind]}. ${win.title}${win.detail ? `, ${win.detail}` : ''}${win.when ? `, ${win.when}` : ''}.`
+  const meta = [win.detail, win.when].filter(Boolean).join(' · ')
   const body = (
     <>
-      <span className="stat-card-label">{win.label}</span>
-      <span className="win-row">
-        <WinRing bundle={win.bundle} fresh={fresh} kind={win.kind} />
-        {(win.detail || win.when) && <span className="win-when">{win.detail || win.when}</span>}
+      <span className="win-head">
+        <span className="stat-card-label">{win.label}</span>
+        <span className={`win-badge ${win.kind === 'next' ? 'is-next' : ''} ${fresh ? 'is-new' : ''}`}>
+          <Icon name={WIN_ICON[win.kind]} size={18} />
+        </span>
       </span>
-      <span key={`${win.kind}-${win.total}`} className={`win-title ${fresh ? 'is-new' : ''}`}>
-        {win.title}
+      <span className="block min-w-0">
+        <span key={`${win.kind}-${win.total}`} className={`win-title ${fresh ? 'is-new' : ''}`}>
+          {win.title}
+        </span>
+        {meta && <span className="win-when">{meta}</span>}
       </span>
     </>
   )

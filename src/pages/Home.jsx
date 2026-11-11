@@ -13,8 +13,8 @@ import Icon from '../components/Icon.jsx'
 import { LineChart, MuscleBars, SectionHead, StatTile, TallyLogo } from '../components/Ink.jsx'
 import TrainingCard from '../components/TrainingCard.jsx'
 import AskAdjust from '../components/AskAdjust.jsx'
-import { TallyCard, WeekStrip, WinCard, useNewMarks } from '../components/HomeOverview.jsx'
-import { latestWin, tallySessions } from '../lib/milestones.js'
+import { TallyCard, WeekStrip, LiftedCard, useNewMarks } from '../components/HomeOverview.jsx'
+import { tallySessions } from '../lib/milestones.js'
 import ActiveSessionCard from '../components/ActiveSessionCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
 import WeeklyRecap from '../components/WeeklyRecap.jsx'
@@ -46,7 +46,6 @@ export default function Home({ nav }) {
   // Today-only answers live with today's check-in; the usual setup is untouched.
   const setToday = (patch) =>
     dispatch({ type: 'SET_READINESS', readiness: { ...readinessOf(state, today), ...patch, date: today } })
-  const win = latestWin(workouts, today)
   const freshMarks = useNewMarks(tallySessions(workouts, today).length, settings.workout)
   const progress = trainingDays(workouts, settings, today)
   const active = state.activeWorkout
@@ -75,12 +74,11 @@ export default function Home({ nav }) {
 
       <div className="mt-5 grid grid-cols-2 gap-3">
         <TallyCard workouts={workouts} today={today} fresh={freshMarks} />
-        <WinCard
-          win={win}
-          fresh={freshMarks}
-          onOpen={
-            win.workoutId ? () => setDetail(state.workouts.find((w) => w.id === win.workoutId) || null) : null
-          }
+        <LiftedCard
+          workouts={workouts}
+          today={today}
+          unit={settings.weightUnit}
+          onOpen={() => nav.go('history')}
         />
       </div>
 
@@ -117,6 +115,7 @@ export default function Home({ nav }) {
               customExercises={state.customExercises}
               onStart={() => start(next)}
               startLabel="Start training"
+              artworkDay={today}
             />
             {next.alternatives?.length > 0 && (
               <div className="mt-4 flex gap-2" role="group" aria-label="Other options today">
@@ -227,9 +226,7 @@ function TrainingStats({ state, workouts, today, progress, display }) {
       <div className="grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2">
         {[
           [
-            hasTrainingTarget(settings)
-              ? `${progress.count}/${settings.workout.weeklyGoal}`
-              : progress.count,
+            hasTrainingTarget(settings) ? `${progress.count}/${settings.workout.weeklyGoal}` : progress.count,
             'days',
             'Last 7 days',
           ],

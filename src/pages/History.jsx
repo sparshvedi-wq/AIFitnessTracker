@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../store/AppContext.jsx'
 import { addDays, shortLabel, labelForKey } from '../lib/date.js'
-import { LOGGED_WORKOUT, fmtNum, muscleSets, personalBests } from '../lib/workout.js'
+import { LOGGED_WORKOUT, fmtNum, personalBests } from '../lib/workout.js'
 import { historyTimeline, exerciseTrend } from '../lib/history-insights.js'
 import Icon from '../components/Icon.jsx'
-import { LineChart, MuscleBars, PageTitle, SectionHead, Segmented, StatTile } from '../components/Ink.jsx'
+import { LineChart, PageTitle, SectionHead, Segmented, StatTile } from '../components/Ink.jsx'
+import MuscleRecovery from '../components/MuscleRecovery.jsx'
 import SessionRow from '../components/SessionRow.jsx'
 import WorkoutDetail from '../components/workout/WorkoutDetail.jsx'
 import useStartWorkout from '../components/workout/useStartWorkout.js'
@@ -54,12 +55,6 @@ export default function History({ nav }) {
     trend.length && trend.every((r) => r.type === trend[0].type && r.weighted === trend[0].weighted)
   const volume = historyVolumeView(state.workouts, 'month', today, unit)
   const bars = historyBars(state.workouts, today, days)
-  const muscles = muscleSets(
-    state.workouts.filter(
-      (w) => !w.sample && w.date <= today && !['sport', 'pump', 'recovery'].includes(w.kind),
-    ),
-    days ? addDays(today, -days + 1) : '2000-01-01',
-  ).filter((m) => m.sets > 0)
   const bests = personalBests(state.workouts.filter((w) => w.date <= today && !w.sample)).filter(
     (b) => b.weight || b.reps || b.sec,
   )
@@ -135,12 +130,7 @@ export default function History({ nav }) {
         </div>
         <ActivityBars bars={bars} days={days} />
       </section>
-      {muscles.length > 0 && (
-        <section className="mt-3 rounded-tuck bg-surface p-5">
-          <h2 className="mb-4 text-[16px] font-semibold">Muscles worked</h2>
-          <MuscleBars rows={muscles.slice(0, 6).map((m) => [m.muscle, m.sets])} />
-        </section>
-      )}
+      <MuscleRecovery state={state} today={today} />
       <section className="page-section">
         <SectionHead
           title="Your activity"

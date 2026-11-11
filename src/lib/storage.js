@@ -6,6 +6,7 @@ import { LEGACY_STORAGE_KEY, STORAGE_KEY, validateSnapshot } from '../../expo/sr
 import { EXERCISES, ORIGINAL_IDS } from './exercises.js'
 import { migrateExerciseIds, ID_MIGRATION_VERSION } from './catalog/migrations.js'
 import { normalizeLearning } from './engine/learning.js'
+import { validPersonalRecord } from './personal-records.js'
 
 export { STORAGE_KEY }
 
@@ -25,6 +26,7 @@ export function defaultState() {
     customExercises: [],
     // workouts: finished guided sessions, oldest first
     workouts: [],
+    personalRecords: [],
     checkins: [],
     // learning: explicit exercise feedback, question history and resets (engine/learning.js)
     learning: normalizeLearning(null),
@@ -113,6 +115,9 @@ export function normalizeState(parsed) {
     customExercises: parsed.customExercises || [],
     // Restored backups are not guaranteed to be in order; every screen assumes oldest first.
     workouts: [...(parsed.workouts || [])].sort(byDate),
+    personalRecords: Array.isArray(parsed.personalRecords)
+      ? parsed.personalRecords.filter(validPersonalRecord)
+      : [],
     checkins: parsed.checkins || [],
     activeWorkout: parsed.activeWorkout || null,
     learning: normalizeLearning(parsed.learning),

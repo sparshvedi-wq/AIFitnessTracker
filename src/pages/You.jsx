@@ -14,6 +14,7 @@ import { LineChart, PageTitle, SectionHead, Segmented, Toggle } from '../compone
 import { bodyweights } from '../components/workout/useStartWorkout.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
 import { photoDraft } from '../lib/photo-draft.js'
+import PersonalRecords from '../components/PersonalRecords.jsx'
 
 function compact(n) {
   if (n >= 1e6) return `${fmtNum(Math.round(n / 1e5) / 10)}M`
@@ -154,10 +155,7 @@ export default function You({ nav }) {
               onClick={() => setSheet('lift')}
             />
           ) : (
-            <AddRow
-              label="Set a strength goal"
-              onClick={() => setSheet('lift')}
-            />
+            <AddRow label="Set a strength goal" onClick={() => setSheet('lift')} />
           )}
           <GoalCard
             title={hasTarget ? `Around ${goal} days in any 7` : 'Train when it suits you'}
@@ -174,6 +172,8 @@ export default function You({ nav }) {
           />
         </div>
       </section>
+
+      <PersonalRecords />
 
       {!display.metricLight && (
         <section className="page-section rounded-tuck bg-surface px-5 py-[18px]">

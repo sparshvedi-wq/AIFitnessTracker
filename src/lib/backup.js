@@ -48,6 +48,7 @@ export function validateBackup(data) {
     listOf(data.routines, (r) => isRecord(r) && Array.isArray(r.items) && r.items.every(isRecord)) &&
     listOf(data.customExercises, (e) => isRecord(e) && typeof e.id === 'string') &&
     listOf(data.checkins, isRecord) &&
+    listOf(data.personalRecords, isRecord) &&
     (data.metrics === undefined || isRecord(data.metrics)) &&
     (data.activeWorkout == null || readableSession(data.activeWorkout)) &&
     (data.settings?.training == null || isRecord(data.settings.training)) &&

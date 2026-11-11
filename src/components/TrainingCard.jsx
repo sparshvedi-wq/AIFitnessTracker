@@ -5,6 +5,7 @@ import { findExercise } from '../lib/exercises.js'
 import { planNote } from '../lib/presentation.js'
 import { planSeconds } from '../lib/engine/session-time.js'
 import { PlanRibbon } from './training/SetupVisuals.jsx'
+import { dailyArtwork } from '../lib/personal-records.js'
 
 // The session at a glance: how long, how much, and anything unusual about today.
 export function planFacts(plan) {
@@ -37,12 +38,29 @@ export default function TrainingCard({
   customExercises = [],
   title,
   startLabel = 'Review workout',
+  artworkDay,
 }) {
   const [expanded, setExpanded] = useState(false)
   const note = planNote(plan)
   const scheduled = Boolean(plan.schedule?.lighter || plan.schedule?.preparation)
+  const artKind = plan.items.some((it) => findExercise(it.exId, customExercises)?.weighted)
+    ? plan.location === 'home'
+      ? 'home'
+      : 'training'
+    : 'bodyweight'
   return (
     <section className={`training-card ${compact ? 'training-card--compact' : ''}`}>
+      {artworkDay && !compact && (
+        <div className="training-art" aria-hidden="true">
+          <span className="training-art-orbit" />
+          <img
+            key={dailyArtwork(artworkDay, artKind)}
+            src={dailyArtwork(artworkDay, artKind)}
+            alt=""
+            decoding="async"
+          />
+        </div>
+      )}
       {title && <p className="training-card-eyebrow">{title}</p>}
       <h2 className="training-card-title">{plan.name}</h2>
       {plan.items.length > 0 && <CardFacts facts={planFacts(plan)} />}

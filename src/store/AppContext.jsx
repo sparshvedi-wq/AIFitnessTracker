@@ -10,9 +10,17 @@ import { saveTrainingEvent } from '../lib/training-events.js'
 import { rebuildRecords } from '../lib/workout-history.js'
 import { deletePreviews, keptPreviewIds, savePreviews } from '../lib/photo-store.js'
 import { withLearningEvent } from '../lib/engine/learning.js'
+import { validPersonalRecord } from '../lib/personal-records.js'
 
 function reducer(state, action) {
   switch (action.type) {
+    case 'SAVE_PERSONAL_RECORDS':
+      return {
+        ...state,
+        personalRecords: [...(state.personalRecords || []), ...action.records.filter(validPersonalRecord)],
+      }
+    case 'DELETE_PERSONAL_RECORD':
+      return { ...state, personalRecords: (state.personalRecords || []).filter((r) => r.id !== action.id) }
     case 'SET_METRIC': {
       const prev = state.metrics[action.date] || { weight: null }
       return {

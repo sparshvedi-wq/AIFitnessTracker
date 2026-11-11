@@ -7,6 +7,8 @@ import { weekStart } from '../lib/workout.js'
 import { tallySessions } from '../lib/milestones.js'
 import { feel } from '../lib/coach.js'
 import Icon from './Icon.jsx'
+import { liftedTotal } from '../lib/personal-records.js'
+import { fmtNum } from '../lib/workout.js'
 
 const DAY = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
@@ -103,11 +105,22 @@ export function useNewMarks(total, prefs) {
 // Tally strokes in groups of five; `fresh` trailing strokes draw themselves in.
 function Strokes({ count, fresh = 0 }) {
   const groups = Math.ceil(count / 5)
+  const columns = groups <= 2 ? groups : groups <= 6 ? 3 : 4
+  const rows = Math.ceil(groups / columns)
+  const height = Math.max(22, Math.floor((86 - (rows - 1) * 6) / rows))
   const firstFresh = count - Math.min(fresh, count)
   return (
-    <span className="tally-mark-groups" aria-hidden="true">
+    <span
+      className="tally-mark-groups"
+      style={{ '--tally-columns': columns, '--tally-height': `${height}px` }}
+      aria-hidden="true"
+    >
       {Array.from({ length: groups }, (_, group) => (
-        <svg key={group} width="30" height="36" viewBox="-3 0 32 36" className="tally-strokes">
+        <svg
+          key={group}
+          viewBox={`-3 0 ${Math.min(4, count - group * 5) * 6.5 + 6} 36`}
+          className="tally-strokes"
+        >
           {Array.from({ length: Math.min(5, count - group * 5) }, (_, slot) => {
             const i = group * 5 + slot
             const isFresh = i >= firstFresh
@@ -127,6 +140,40 @@ function Strokes({ count, fresh = 0 }) {
   )
 }
 
+export function LiftedCard({ workouts, today, unit, onOpen }) {
+  const total = liftedTotal(workouts, unit, today)
+  const value = Math.round(total)
+  const volumes = workouts
+    .filter((w) => !w.sample && w.date <= today)
+    .slice(-10)
+    .map((w) => liftedTotal([w], unit, today))
+  const bars = [...Array(Math.max(0, 10 - volumes.length)).fill(0), ...volumes]
+  const peak = Math.max(1, ...bars)
+  return (
+    <button
+      className="stat-card lifted-card text-left"
+      onClick={onOpen}
+      aria-label={`${fmtNum(value)} ${unit === 'kg' ? 'kilograms' : 'pounds'} lifted. View history`}
+    >
+      <span className="flex items-center justify-between gap-2">
+        <span className="stat-card-label">{unit === 'kg' ? 'kg' : 'lbs'} lifted</span>
+        <Icon name="chevronRight" size={16} className="text-muted" />
+      </span>
+      <span className="lifted-number num" title={fmtNum(value)}>
+        {new Intl.NumberFormat('en-US', {
+          notation: value >= 100000 ? 'compact' : 'standard',
+          maximumFractionDigits: 1,
+        }).format(value)}
+      </span>
+      <span className="lifted-bars" aria-hidden="true">
+        {bars.map((v, i) => (
+          <i key={i} style={{ height: `${Math.max(8, (v / peak) * 100)}%`, opacity: v ? 1 : 0.15 }} />
+        ))}
+      </span>
+    </button>
+  )
+}
+
 export function TallyCard({ workouts, today, fresh = 0 }) {
   const sessions = tallySessions(workouts, today)
   const total = sessions.length
@@ -141,7 +188,7 @@ export function TallyCard({ workouts, today, fresh = 0 }) {
       className={`stat-card tally-card ${fresh ? 'is-celebrating' : ''}`}
       aria-label={`Your tally: ${total} ${total === 1 ? 'session' : 'sessions'}, ${thisWeek} this week`}
     >
-      <span className="stat-card-label">Your tally</span>
+      <span className="stat-card-label w-full text-center">Your tally</span>
       <div
         ref={marks}
         className="tally-mark-window"

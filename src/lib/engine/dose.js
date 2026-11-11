@@ -126,19 +126,28 @@ export function withTarget(item, meta, def, ctx) {
  */
 export function allocateSets(chosen, ctx) {
   const items = chosen.map((c) => c.item)
-  const capFor = (c) => (ctx.protectedAreas.size && c.meta.areas.some((a) => ctx.protectedAreas.has(a)) ? 1 : ctx.setCap)
-  for (let guard = 0; guard < 40; guard++) {
-    let best = null
-    for (let i = 0; i < chosen.length; i++) {
-      const item = items[i]
-      if (item.sets >= capFor(chosen[i])) continue
-      const added = extraSetSeconds(item)
-      if (planSeconds(items) + added + ctx.easeIn > ctx.budget) continue
-      const value = Math.max(0.1, chosen[i].score) / (item.sets + 0.5) / added
-      if (!best || value > best.value || (value === best.value && i < best.i)) best = { i, value }
+  const guarded = (c) => ctx.protectedAreas.size && c.meta.areas.some((a) => ctx.protectedAreas.has(a))
+  const fill = (capFor) => {
+    for (let guard = 0; guard < 60; guard++) {
+      let best = null
+      for (let i = 0; i < chosen.length; i++) {
+        const item = items[i]
+        if (item.sets >= capFor(chosen[i])) continue
+        const added = extraSetSeconds(item)
+        if (planSeconds(items) + added + ctx.easeIn > ctx.budget) continue
+        const value = Math.max(0.1, chosen[i].score) / (item.sets + 0.5) / added
+        if (!best || value > best.value || (value === best.value && i < best.i)) best = { i, value }
+      }
+      if (!best) break
+      items[best.i].sets++
     }
-    if (!best) break
-    items[best.i].sets++
   }
+  fill((c) => (guarded(c) ? 1 : ctx.setCap))
+  // Every exercise is at its usual cap and time is still left: one more set
+  // where it is worth most. Control and drill work stays at the usual cap.
+  const stretch = ctx.stretchCap ?? ctx.setCap
+  if (stretch > ctx.setCap)
+    fill((c) => (guarded(c) ? 1 : STRETCH_ROLES.has(c.meta.role) ? stretch : ctx.setCap))
   return items
 }
+const STRETCH_ROLES = new Set(['compound', 'accessory', 'isolation'])

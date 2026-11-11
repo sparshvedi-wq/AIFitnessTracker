@@ -6,7 +6,7 @@
 // heuristics anchored to published rep–load relationships and RIR research;
 // they are not measurements of physiology. See docs/RECOMMENDATION_ENGINE.md.
 
-export const STRENGTH_VERSION = 'strength-3'
+export const STRENGTH_VERSION = 'strength-4'
 
 // ── Rep–load relationship ────────────────────────────────────────────────
 // Fraction of a one-rep max that can be lifted for R reps to failure:
@@ -139,3 +139,12 @@ export const JUMP = { free: 0.1, smallestStepMax: 0.25, confidentSd: 0.06, bigDr
 export const EXTRA_REPS_BEFORE_JUMP = 3
 // In a live workout, change the remaining sets only when it matters.
 export const MATERIAL_REP_CHANGE = 2
+// Someone who logs their sets without saying how they felt gives the model
+// only "at least 0 left", which never raises an estimate. After this many
+// clean sessions running that never went backwards (every set done, nothing
+// hard, missed or very hard), each further plan the model would only repeat
+// asks for one more rep, or the next weight once the top of the range is
+// reached: ordinary double progression. The attempt is the evidence: made,
+// the floor moves up; missed, the model learns exactly where the limit is
+// and takes over. Estimates themselves are never inflated.
+export const STEADY_SESSIONS_BEFORE_STEP = 2

@@ -100,7 +100,8 @@ test('planner stays within time across goals, durations, locations and equipment
         const plan = buildDailyPlan(state, { today, minutes, location })
         assert.ok(plan.estimatedSeconds <= minutes * 60, `${goal} ${location} ${minutes}`)
         assert.equal(plan.estimatedSeconds, planSeconds(plan.items) + 180)
-        assert.ok(plan.items.length <= 6)
+        // Longer sessions hold more exercises and one more set, not just longer rests.
+        assert.ok(plan.items.length <= (minutes >= 75 ? 8 : minutes >= 60 ? 7 : 6))
         for (const it of plan.items) {
           assert.ok(
             availableMovement(
@@ -109,7 +110,7 @@ test('planner stays within time across goals, durations, locations and equipment
               location === 'on-the-go' ? [] : state.settings.training.equipment,
             ),
           )
-          assert.ok(it.sets >= 1 && it.sets <= 3)
+          assert.ok(it.sets >= 1 && it.sets <= (minutes >= 60 ? 4 : 3))
         }
       }
 })

@@ -92,11 +92,19 @@ export function LineChart({
   fill = true,
   dotFill = 'rgb(var(--surface))',
   pad = 8,
+  // The smallest range the chart's height may stand for. Without it a line
+  // always runs from the bottom to the top, so a 5 lb change looks like a leap.
+  minSpan = 0,
 }) {
   const [ref, w] = useWidth()
   const [id] = useState(() => `fade${gradId++}`)
-  const lo = min ?? Math.min(...values)
-  const hi = max ?? Math.max(...values)
+  let lo = min ?? Math.min(...values)
+  let hi = max ?? Math.max(...values)
+  if (hi - lo < minSpan) {
+    const middle = (hi + lo) / 2
+    lo = min ?? middle - minSpan / 2
+    hi = max ?? middle + minSpan / 2
+  }
   const span = hi - lo || 1
   let svg = null
   if (w > 0 && values.length > 1) {

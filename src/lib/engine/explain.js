@@ -62,7 +62,16 @@ export function reasonLines(decision) {
   if (f.seated) lines.push('Seated moves on a stable chair.')
   if (f.returning) lines.push(`Last strength session ${f.awayDays} days ago, so a lighter restart.`)
   if (f.quiet) lines.push('Quiet: no jumps or impact.')
-  lines.push(`Fits ${f.minutes} minutes, with time to ease in and rest.`)
+  // A plan well short of the time asked for says so, rather than claiming to fill it.
+  const brief =
+    f.mode === 'normal' && !f.short && f.estimatedMinutes > 0 && f.estimatedMinutes <= f.minutes * 0.7
+  lines.push(
+    brief
+      ? f.recentAreas?.length >= 3
+        ? `About ${f.estimatedMinutes} of your ${f.minutes} minutes: most areas were trained in the last few days.`
+        : `About ${f.estimatedMinutes} of your ${f.minutes} minutes is useful today.`
+      : `Fits ${f.minutes} minutes, with time to ease in and rest.`,
+  )
   if (f.short) lines.push('A short option. Nothing to make up later.')
   lines.push(
     f.goal === 'Sport performance'

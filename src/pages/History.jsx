@@ -237,7 +237,11 @@ export default function History({ nav }) {
             />
           </div>
           {trend.length > 1 && sameDefinition && (
-            <LineChart values={trend.map((r) => (r.assisted ? -r.value : r.value))} height={84} />
+            <LineChart
+              values={trend.map((r) => (r.assisted ? -r.value : r.value))}
+              height={84}
+              minSpan={Math.max(...trend.map((r) => Math.abs(r.value))) * 0.25}
+            />
           )}
           <p className="mt-3 text-[14px] font-semibold text-ink2">
             {!trend.length
@@ -251,6 +255,12 @@ export default function History({ nav }) {
                     : trend[0]?.weighted
                       ? `Heaviest set, ${unit}`
                       : 'Most reps in a set'}
+            {trend.length > 1 && sameDefinition && trend[0].value !== trend.at(-1).value && (
+              <span className="num font-normal text-muted">
+                {' '}
+                · {fmtNum(trend[0].value)} → {fmtNum(trend.at(-1).value)}
+              </span>
+            )}
           </p>
           <div className="mt-3 divide-y divide-line">
             {trend

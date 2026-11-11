@@ -274,7 +274,10 @@ function regionGroup(items) {
     counts[meta.region] = (counts[meta.region] || 0) + 1
   }
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]
-  return top && ['push', 'pull', 'lower', 'arms', 'core'].includes(top[0]) ? top[0] : null
+  // A session is only named after a region that makes up at least half of it:
+  // a full-body day with two leg moves out of five was not "leg work".
+  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+  return top && top[1] * 2 >= total && ['push', 'pull', 'lower', 'arms', 'core'].includes(top[0]) ? top[0] : null
 }
 
 function recentGroupFact(ctx) {
@@ -352,9 +355,25 @@ export function recommendStrength(state, options) {
   const exploreBudget =
     ctx.easy || ctx.returning || ctx.shortSession ? 0 : (EXPLORATION.maxPerSession[ctx.variety] ?? 1)
   ctx.maxExplore = ctx.exploration === 'off' ? 0 : exploreBudget
-  ctx.maxItems = Math.min(ctx.shortSession ? 3 : 6, Math.max(2, Math.floor(ctx.minutes / 7)))
+  const itemCap = ctx.shortSession
+    ? SELECTION.maxItems.short
+    : ctx.minutes >= 75
+      ? SELECTION.maxItems.from75
+      : ctx.minutes >= 60
+        ? SELECTION.maxItems.from60
+        : SELECTION.maxItems.normal
+  ctx.maxItems = Math.min(itemCap, Math.max(2, Math.floor(ctx.minutes / 7)))
   ctx.minItems = Math.min(2, ctx.maxItems)
   ctx.setCap = ctx.shortSession || ctx.easy || ctx.experience === 'Starting out' ? 2 : ctx.highEffort ? 4 : 3
+  // In a long session, time still unused at the usual cap may buy one more
+  // set per exercise, so a longer session is actually longer. Never on short
+  // or lighter days, and not in someone's first few sessions while starting out.
+  const settlingIn = ctx.experience === 'Starting out' && ctx.strength.length < 3
+  const stretchFrom = SELECTION.stretchFromMinutes[ctx.experience] ?? SELECTION.stretchFromMinutes.default
+  ctx.stretchCap =
+    ctx.shortSession || ctx.easy || settlingIn || ctx.minutes < stretchFrom
+      ? ctx.setCap
+      : Math.min(ctx.setCap + 1, ctx.experience === 'Starting out' ? 3 : 5)
   // Only the strongest unfinished candidates influence one plan.
   ctx.rollover = [...ctx.rollover].sort((a, b) => b.priority - a.priority).slice(0, ROLLOVER_MAX_IN_PLAN)
 
@@ -399,11 +418,24 @@ export function recommendStrength(state, options) {
   // is needed) are dropped when enough worthwhile candidates remain.
   const worthwhile = candidates.filter((c) => c.score >= SELECTION.minScore)
   const pool = worthwhile.length >= ctx.minItems ? worthwhile : candidates
-  const chosen = movementMode
-    ? []
-    : ctx.selection === 'greedy'
-      ? selectGreedy(pool, ctx)
-      : selectBeam(pool, ctx)
+  const select = (from, context = ctx) =>
+    context.selection === 'greedy' ? selectGreedy(from, context) : selectBeam(from, context)
+  let chosen = movementMode ? [] : select(pool)
+  // A session someone asked for should be a real session. When the strong
+  // picks leave it well short (few remain once the week's work is done, or
+  // they clash with each other), fill from the next best candidates.
+  if (!movementMode && !ctx.easy)
+    for (const step of SELECTION.fill) {
+      const enough = Math.max(
+        ctx.minItems,
+        step.share ? Math.ceil(ctx.maxItems * step.share) : ctx.maxItems - step.spare,
+      )
+      if (chosen.length >= enough) continue
+      const wider = candidates.filter((c) => c.score >= step.minScore)
+      if (wider.length <= chosen.length) continue
+      const filled = select(wider, { ...ctx, minItems: enough, maxPerPattern: SELECTION.fillMaxPerPattern })
+      if (filled.length > chosen.length) chosen = filled
+    }
   const items = allocateSets(chosen, ctx)
 
   // Validation: everything chosen must still pass every hard rule and fit the time.
@@ -529,6 +561,7 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     returning: ctx.returning,
     awayDays: ctx.awayDays,
     minutes: ctx.minutes,
+    estimatedMinutes: Math.round(((planSeconds(planItems) + ctx.easeIn) * ctx.pace) / 60),
     short: ctx.shortSession,
     goal: ctx.goal,
     experience: ctx.experience,

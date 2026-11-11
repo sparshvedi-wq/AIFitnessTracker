@@ -16,7 +16,7 @@
 import { metaOf } from '../catalog/index.js'
 import { findExercise } from '../exercises.js'
 import { realHistory } from '../engine/ledger.js'
-import { STRENGTH_VERSION } from './config.js'
+import { EXTRA_REPS_BEFORE_JUMP, JUMP, STEADY_SESSIONS_BEFORE_STEP, STRENGTH_VERSION } from './config.js'
 import { GRAPH, buildGraph, extendGraph, graphAt, graphRecords, liveRecord, muscleStrengths, predictExercise } from './graph.js'
 import { effectiveLoad, exerciseProfile, loggedFor, relatedExercises } from './library.js'
 import { loadGrid } from './loads.js'
@@ -298,6 +298,10 @@ function graphTarget(args, def, profile) {
   const deload = Boolean(pred.seen && info?.stalled && !args.live && !args.graph)
   const lighterDay = Boolean(args.easy || args.returning || deload)
   const fresh = pred.avail >= 0.97
+  // Planning (not mid-workout) on a normal day, after clean repeats of the
+  // same numbers: see STEADY_SESSIONS_BEFORE_STEP.
+  const steadyHold = Boolean(pred.seen && !args.live && !args.graph && !lighterDay && fresh && !args.fixedReps && last && last.steady >= 1)
+  const steadyStep = steadyHold && !args.noIncrease && last.steady >= STEADY_SESSIONS_BEFORE_STEP
   // "Easy, I could do 5+ more" (last time, or earlier today) allows a bigger step.
   const liveSets = args.live?.exercises?.filter((e) => e.exId === args.exId).flatMap((e) => e.sets || []) || []
   const roomy = Boolean(args.roomy || last?.roomy || liveSets.some((x) => x.status === 'done' && x.feel === 'easy' && x.reserve >= 5))
@@ -333,6 +337,12 @@ function graphTarget(args, def, profile) {
       transfer: !pred.seen,
       floor: !args.noFloor && pred.seen && last && !last.failed && !last.hard && !lighterDay && fresh ? { reps: last.minReps } : null,
     })
+    // The same reps done cleanly session after session: ask for one more.
+    if (steadyStep && !isNum(args.current) && p.reps <= last.minReps && last.minReps < range[1] + EXTRA_REPS_BEFORE_JUMP) {
+      p.reps = last.minReps + 1
+      p.code = 'reps-up'
+      p.predictedRir = Math.max(0, p.predictedRir - 1)
+    }
     return check({
       ...base,
       ...p,
@@ -397,6 +407,39 @@ function graphTarget(args, def, profile) {
     lighterDay,
     floor: !args.noFloor && lastForPlan && !last.failed && !last.hard && !lighterDay && fresh ? { weight: lastEff, reps: last.minReps } : null,
   })
+  // A weight just done cleanly, every set, is not taken away on a normal
+  // day: the estimate may still doubt it, but the person has shown it.
+  if (steadyHold && samePlace && lastEff !== null && !isNum(args.current) && !isNum(args.fixedWeight) && p.weight < lastEff - 1e-6 && grid.has(lastEff)) {
+    p.weight = lastEff
+    p.reps = Math.min(last.minReps, range[1] + EXTRA_REPS_BEFORE_JUMP)
+    p.code = 'hold'
+    p.flags = p.flags.filter((f) => f !== 'below-range' && f !== 'lightest-is-heavy')
+    p.predictedRir = 0
+  }
+  // The same weight and reps done cleanly session after session, and the
+  // model would simply repeat them: step once. One more rep while there is
+  // room in the range (a few past it when the next weight is a big jump),
+  // otherwise the next weight at the reps the best estimate gives it.
+  if (steadyStep && samePlace && lastEff !== null && !isNum(args.current) && !isNum(args.fixedWeight) && Math.abs(p.weight - lastEff) < 1e-6 && p.reps <= last.minReps) {
+    const next = grid.next(lastEff, 1)
+    const stepOk =
+      next !== null &&
+      next / lastEff <= 1 + JUMP.smallestStepMax + 1e-9 &&
+      (!(profile.bw > 0) || toLogged(next) / Math.max(toLogged(lastEff), 1e-9) <= 1 + JUMP.smallestStepMax + 1e-9)
+    const top = stepOk ? range[1] : range[1] + EXTRA_REPS_BEFORE_JUMP
+    if (last.minReps < top) {
+      p.reps = last.minReps + 1
+      p.code = 'reps-up'
+      p.predictedRir = Math.max(0, p.predictedRir - 1)
+    } else if (stepOk) {
+      const capacity = repsAtFraction(next / (Math.exp(pred.level) * plannedA), pred.k)
+      p.weight = next
+      p.reps = Math.min(range[1], Math.max(range[0], Math.floor(capacity - rir + 0.3)))
+      p.code = 'load-up'
+      p.predictedRir = Math.max(0, Math.round((capacity - p.reps) * 10) / 10)
+      p.flags = p.flags.filter((f) => f !== 'more-reps-before-jump')
+    }
+  }
   // Back to the logged number, snapped to the exact grid value it came from.
   const rawWeight = toLogged(p.weight)
   const weight = loggedGrid.between(rawWeight - 1e-6, rawWeight + 1e-6)[0] ?? rawWeight

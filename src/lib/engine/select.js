@@ -74,7 +74,10 @@ const EMPTY = { chosen: [], covered: {}, classes: [], direct: [], value: 0, mask
 
 function fits(chosen, candidate, ctx) {
   if (chosen.some((c) => c.meta.id === candidate.meta.id)) return false
-  if (chosen.filter((c) => c.meta.pattern === candidate.meta.pattern).length >= SELECTION.maxPerPattern)
+  if (
+    chosen.filter((c) => c.meta.pattern === candidate.meta.pattern).length >=
+    (ctx.maxPerPattern ?? SELECTION.maxPerPattern)
+  )
     return false
   if (chosen.some((c) => c.meta.family === candidate.meta.family)) return false
   // No broad area is the main target of more than two exercises.

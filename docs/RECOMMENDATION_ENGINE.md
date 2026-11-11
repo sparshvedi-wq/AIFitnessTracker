@@ -1,4 +1,4 @@
-# Daily recommendation engine (daily-4.1, strength-3)
+# Daily recommendation engine (daily-4.2, strength-4)
 
 Loop: recommend → train → record what happened → selectively ask → update preferences → reassess.
 All planning, accounting, constraints and learning are deterministic code in `src/lib/engine/`.
@@ -16,15 +16,15 @@ measurements of recovery, fatigue or physiology.
 | `engine/feedback.js` | ≤1 optional question per saved session, value-ranked (retry 0.95, unfamiliar variation 0.7, repeated unknown skips 0.8, conflict 0.75, new exercise 0.45, load change 0.45); 21-day repeat cooldown; interruption cost grows with recent questions; pause after 3 dismissals |
 | `engine/eligibility.js` | Hard rules (never traded against benefit): equipment AND/OR capabilities, supports, space/position, quiet, experience, explicit exclusions, avoided/sore/flagged areas, reported discomfort, explicit dislike, remembered swaps. Unknown metadata = not eligible |
 | `engine/scoring.js` | Normalized features: goal, need, focus, sport, rollover, preference, comfort, progression, familiarity, staple, setup, place affinity, muscle overlap, similar/pattern/exact/same-day repeat, practice |
-| `engine/select.js` | Beam search (width 24, pool 40) over subsets: score + need coverage − in-session overlap − equipment changes, under pattern/family/area/time/exploration limits; greedy baseline kept |
-| `engine/dose.js` | Minimum rests by role; sets added by marginal value per second. Weights and reps come from the strength model below (`strength/`); `progression.js` remains for timed work and as a fallback |
+| `engine/select.js` | Beam search (width 24, pool 40) over subsets: score + need coverage − in-session overlap − equipment changes, under pattern/family/area/time/exploration limits; greedy baseline kept. Up to 6 exercises below an hour, 7 from 60 minutes, 8 from 75. When the strong picks leave a requested session short (the week's targets are met, or the few that remain clash), it is filled in steps: candidates scoring ≥ 0.5 to one short of full, ≥ 0 to two thirds, with a second move of one pattern allowed (never of one family). Negative scores are never filler, and lighter days are never filled |
+| `engine/dose.js` | Minimum rests by role; sets added by marginal value per second. In a long session (from 60 minutes; from 40 for someone starting out, after their first three sessions) time still unused at the usual cap buys one more set on compound, accessory and isolation work. Weights and reps come from the strength model below (`strength/`); `progression.js` remains for timed work and as a fallback |
 | `strength/` | The adaptive strength model: exercise library, shared fatigue/recovery, a strength graph tying every exercise together, weight and rep prescription, and the live-workout layer (see **Strength model**) |
 | `engine/replan.js` | Mid-workout changes keep every logged set; fingerprints include targets, rest and side-work edits; double apply is a no-op; stale previews are refused. Current session start/pause/rest timing survives previews. Replaced timed exercises wait for Start |
 | `engine/explain.js` | Reason codes → one factual headline + short reasons; full trace with `explainDailyPlan(state, { trace: true })` |
 | `assistant/` + `components/AskAdjust.jsx` | Local parser, results from real data, previews with Apply/Undo |
 | `server/src/assistant.ts` | Optional gpt-6-luna interpreter (off unless `ASSIST_AI_ENABLED=true` and the client build sets `VITE_ASSIST_AI=on`) |
 
-## Strength model (`src/lib/strength/`, strength-3)
+## Strength model (`src/lib/strength/`, strength-4)
 
 Weights and reps are planned by one model of a person's strength shared by every exercise, so what is learned on one lift informs every related lift.
 
@@ -38,6 +38,8 @@ Weights and reps are planned by one model of a person's strength shared by every
 | `index.js` | `strengthTarget`, `strengthSummary`, `todayReadiness`, `exerciseReadiness`, `experienceSuggestion`; caching; any internal error falls back to the simple rules (never a broken plan) |
 
 Planning also uses the model: a `fit` feature (outgrown, too hard even at the lightest option) and a `fatigue` feature (muscles still recovering, counted only beyond what recent overlap already penalises), and a coverage step-up (one level up, gentlest equipment first) when a main movement has nothing at someone's level.
+
+**Progress without answers.** Sets logged without a "how did it feel" answer only prove "at least 0 left", which never raises an estimate. After two clean sessions running that never went backwards (every set done at the top weight, nothing hard, missed or very hard), each plan the model would only repeat asks for one more rep, or the next weight once the top of the range is reached (`STEADY_SESSIONS_BEFORE_STEP`): ordinary double progression. The attempt is the evidence; a miss hands control back to the model with a real measurement. A weight just done cleanly is not taken away on a normal day. Neither rule applies mid-workout, on lighter days, when muscles are still recovering, or to a held load. Simulated lifters who never answer (`tests/session-fill-and-steady-progress.test.mjs`, and the hidden-strength harness with answers off): sets short of the plan 2.8% → 3.1%; with answers the results are unchanged.
 
 **Everything that plans weights uses the same model and context.** Daily plans, saved routines (with this place, today's bodyweight, lighter-day signals, held loads and past activities, and a preview that shows the weights the workout will start with), mid-workout swaps and place changes (after today's sets), short focus sessions (easy, several reps left) and the "Next time" note after saving (the model a few days on, with the saved workout counted) all ask `strengthTarget`. Simple scaling rules (lighter days, warm-ups) always snap to weights the equipment can hold (`snapLoad`).
 

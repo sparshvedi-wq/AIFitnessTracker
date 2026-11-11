@@ -673,6 +673,25 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
       roomy: evidence.observations.some((o) => o.reserve >= 5),
       place: evidence.place || null,
     }
+    // Clean: at least two working sets, all at the top weight, nothing hard,
+    // missed or failed, in a session not reported as very hard. `steady`
+    // counts clean sessions in a row that never went backwards (the same
+    // weight and reps, or more).
+    const clean =
+      accepted.length >= 2 &&
+      atTop.length === accepted.length &&
+      !last.failed &&
+      !last.hard &&
+      !evidence.observations.some((o) => o.source === 'very-hard-session')
+    const before = prev.last
+    const heldOrMore =
+      before &&
+      before.steady > 0 &&
+      (last.weight === null
+        ? before.weight === null && last.minReps >= before.minReps
+        : isNum(before.weight) &&
+          (last.weight > before.weight + 1e-6 || (Math.abs(before.weight - last.weight) < 1e-6 && last.minReps >= before.minReps)))
+    last.steady = clean ? (heldOrMore ? before.steady + 1 : 1) : 0
   }
   let streak = prev.streak || { sign: 0, count: 0 }
   if (innovation && innovation.sd > 0) {

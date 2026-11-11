@@ -3,7 +3,7 @@
 // they are not measurements of physiology, recovery or fatigue.
 // See docs/RECOMMENDATION_ENGINE.md for the reasoning behind each group.
 
-export const ENGINE_VERSION = 'daily-4.1'
+export const ENGINE_VERSION = 'daily-4.2'
 export const RULES = {
   eligibility: 'elig-2',
   exposure: 'expo-2',
@@ -12,11 +12,11 @@ export const RULES = {
   scoring: 'score-5',
   photoFocus: 'photo-1',
   exploration: 'explore-1',
-  selection: 'select-4',
-  dose: 'dose-2',
+  selection: 'select-5',
+  dose: 'dose-3',
   progression: 'strength-graph-1',
   feedback: 'ask-1',
-  explanation: 'why-1',
+  explanation: 'why-2',
 }
 
 // ── Exposure: how much completed work each set contributes ───────────────
@@ -165,6 +165,25 @@ export const SELECTION = {
   // Candidates below this score are left out unless needed for a minimal
   // session; leftover time then buys sets of better choices instead.
   minScore: 1.0,
+  // When that leaves a session short of what was asked for (the week's
+  // targets are already met, or the few strong picks clash with each other),
+  // the bar is lowered in steps: decent candidates may fill it to one short
+  // of what its length allows, marginal ones to two thirds. Nothing with a
+  // negative score is added: that work is actively discouraged today (still
+  // recovering, or a straight repeat). Lighter days are never filled.
+  fill: [
+    { minScore: 0.5, spare: 1 },
+    { minScore: 0, share: 2 / 3 },
+  ],
+  // While filling, a second exercise of one movement pattern is allowed (a
+  // second core or leg move for someone with few options); never the same family.
+  fillMaxPerPattern: 2,
+  // Exercises by requested minutes: longer sessions hold more, not just longer rests.
+  maxItems: { short: 3, normal: 6, from60: 7, from75: 8 },
+  // One more set per exercise than the usual cap, only where the usual cap
+  // leaves a long session unused: from an hour (from 40 minutes for someone
+  // starting out, whose usual cap is two sets).
+  stretchFromMinutes: { 'Starting out': 40, default: 60 },
   coverageBonus: 0.9,
   focusBonus: 1.2,
   transitionSec: { same: 10, change: 30 },

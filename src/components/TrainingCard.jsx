@@ -2,12 +2,33 @@ import { useState } from 'react'
 import Icon from './Icon.jsx'
 import ExerciseThumbs from './ExerciseThumbs.jsx'
 import { findExercise } from '../lib/exercises.js'
-import { planSummary } from '../lib/presentation.js'
-import { ONBOARDING_ART } from '../lib/onboarding-art.js'
-export { planScene } from '../lib/onboarding-art.js'
+import { planNote } from '../lib/presentation.js'
+import { planSeconds } from '../lib/engine/session-time.js'
 import { PlanRibbon } from './training/SetupVisuals.jsx'
 
-const WIDE = new Set(['movement', 'sports', 'rhythm'])
+// The session at a glance: how long, how much, and anything unusual about today.
+export function planFacts(plan) {
+  const sets = plan.items.reduce((n, it) => n + (it.sets || 0), 0)
+  const minutes = Math.max(5, Math.round(planSeconds(plan.items) / 300) * 5)
+  return [
+    [minutes, 'min'],
+    [new Set(plan.items.map((it) => it.exId)).size, 'moves'],
+    [sets, 'sets'],
+  ]
+}
+
+export function CardFacts({ facts }) {
+  return (
+    <dl className="training-card-facts">
+      {facts.map(([value, unit]) => (
+        <div key={unit}>
+          <dd className="num">{value}</dd>
+          <dt>{unit}</dt>
+        </div>
+      ))}
+    </dl>
+  )
+}
 
 export default function TrainingCard({
   plan,
@@ -15,37 +36,39 @@ export default function TrainingCard({
   compact = false,
   customExercises = [],
   title,
-  scene = 'neutral',
-  hideStart = false,
+  startLabel = 'Review workout',
 }) {
   const [expanded, setExpanded] = useState(false)
-  const wide = WIDE.has(scene)
+  const note = planNote(plan)
+  const scheduled = Boolean(plan.schedule?.lighter || plan.schedule?.preparation)
   return (
     <section className={`training-card ${compact ? 'training-card--compact' : ''}`}>
-      {!compact && (
-        <span className={`training-card-art ${wide ? 'is-wide' : ''}`} aria-hidden="true">
-          <span className="floor-glow training-card-glow" />
-          <img src={ONBOARDING_ART[scene] || ONBOARDING_ART.neutral} alt="" decoding="async" />
-        </span>
+      {title && <p className="training-card-eyebrow">{title}</p>}
+      <h2 className="training-card-title">{plan.name}</h2>
+      {plan.items.length > 0 && <CardFacts facts={planFacts(plan)} />}
+      {note && (
+        <p className="training-card-note">
+          <Icon name={scheduled ? 'sport' : 'info'} size={18} />
+          <span>{note}</span>
+        </p>
       )}
-      <div className="training-card-head">
-        {title && <p className="text-[14px] font-bold text-accent-ink">{title}</p>}
-        <h2
-          className={`font-display ${compact ? 'text-[26px]' : 'text-[32px]'} leading-[1.02] tracking-[-0.02em]`}
-        >
-          {plan.name}
-        </h2>
-      </div>
-      {planSummary(plan) && <p className="training-card-why">{planSummary(plan)}</p>}
       {!compact && <ExerciseThumbs items={plan.items} customExercises={customExercises} className="mt-4" />}
-      <button
-        className="training-card-toggle"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
-      >
-        {expanded ? 'Hide exercises' : 'All exercises'}
-        <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
-      </button>
+      {onStart && (
+        <button onClick={onStart} className="btn-primary mt-5 w-full">
+          {startLabel}
+          <Icon name="arrowRight" size={17} />
+        </button>
+      )}
+      {plan.items.length > 0 && (
+        <button
+          className="training-card-toggle"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          {expanded ? 'Hide exercises' : 'All exercises'}
+          <Icon name={expanded ? 'chevronUp' : 'chevronDown'} size={16} />
+        </button>
+      )}
       {expanded && (
         <div className="training-card-list">
           <PlanRibbon items={plan.items} customExercises={customExercises} findExercise={findExercise} />
@@ -54,22 +77,13 @@ export default function TrainingCard({
               key={`${it.exId}-${i}`}
               className="flex items-center justify-between gap-3 border-b border-line/70 py-3 last:border-0"
             >
-              <span className="text-[15px] font-medium">
-                <span className="mr-2 text-[12px] text-muted">{String(i + 1).padStart(2, '0')}</span>
-                {findExercise(it.exId, customExercises)?.name}
-              </span>
-              <span className="shrink-0 text-[14px] text-ink2">
+              <span className="text-[15px] font-medium">{findExercise(it.exId, customExercises)?.name}</span>
+              <span className="num shrink-0 text-[16px] text-ink2">
                 {it.sets} × {it.sec ? `${it.sec}s` : `${it.reps}${it.unilateral ? ' / side' : ''}`}
               </span>
             </div>
           ))}
         </div>
-      )}
-      {!hideStart && (
-        <button onClick={onStart} className="btn-primary mt-4 w-full">
-          Review workout
-          <Icon name="arrowRight" size={17} />
-        </button>
       )}
     </section>
   )

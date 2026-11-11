@@ -232,3 +232,34 @@ export function Segmented({ label, options, value, onChange, className = '' }) {
     </div>
   )
 }
+
+// One figure, shown large, with its unit beside it and what it counts beneath.
+export function StatTile({ value, unit, label, className = '' }) {
+  return (
+    <div className={`stat-tile ${className}`}>
+      <p className="stat-tile-value">
+        <span className="num">{value}</span>
+        {unit && <span className="stat-tile-unit">{unit}</span>}
+      </p>
+      {label && <p className="stat-tile-label">{label}</p>}
+    </div>
+  )
+}
+
+// Sets per muscle as bars: `rows` is [[name, sets], ...], largest first.
+export function MuscleBars({ rows }) {
+  const max = Math.max(1, ...rows.map(([, sets]) => sets))
+  return (
+    <div className="space-y-3.5">
+      {rows.map(([name, sets]) => (
+        <div key={name} className="flex items-center gap-3">
+          <span className="w-[84px] shrink-0 text-[15px] font-semibold">{name}</span>
+          <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-ink/10">
+            <span className="block h-full rounded-full bg-accent" style={{ width: `${(sets / max) * 100}%` }} />
+          </span>
+          <span className="num w-7 text-right text-[17px]">{sets}</span>
+        </div>
+      ))}
+    </div>
+  )
+}

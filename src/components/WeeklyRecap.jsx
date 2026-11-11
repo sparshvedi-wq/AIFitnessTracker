@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { defaultRecapPeriod, weeklyRecap } from '../lib/week.js'
 import { addDays, shortLabel, WEEKDAY_INITIALS } from '../lib/date.js'
 import { fmtNum } from '../lib/workout.js'
-import { eventOccurrences } from '../lib/training-events.js'
 import Icon from './Icon.jsx'
-import usePlanningTime from './training/usePlanningTime.js'
+import { MuscleBars, StatTile } from './Ink.jsx'
 import Modal from './Modal.jsx'
 import { buildDailyPlan } from '../lib/planner.js'
-import { planSummary, count } from '../lib/presentation.js'
+import { count } from '../lib/presentation.js'
 
 function Bars({ bars }) {
   const max = Math.max(1, ...bars.map((b) => b.sets))
@@ -62,8 +61,8 @@ function Rhythm({ workouts, today }) {
 function ProgressFact({ progress }) {
   return (
     <>
-      <span className="block text-[14px] font-semibold">{progress.name}</span>
-      <span className="mt-1 block text-[13px] text-muted">
+      <span className="block text-[16px] font-semibold">{progress.name}</span>
+      <span className="row-meta">
         {progress.kind === 'load'
           ? `+${fmtNum(progress.delta)} ${progress.unit} · ${progress.reps} reps`
           : progress.kind === 'assist'
@@ -77,21 +76,17 @@ function ProgressFact({ progress }) {
 export default function WeeklyRecap({ state, today, now, nav }) {
   const [open, setOpen] = useState(false)
   const [period, setPeriod] = useState(() => defaultRecapPeriod(state, today))
-  const liveNow = usePlanningTime()
   const recap = weeklyRecap(state, today, period)
-  const nextEvent = eventOccurrences(state.settings.training?.lifeEvents, today, addDays(today, 7)).find(
-    (e) => e.endsAt > (now ?? liveNow),
-  )
   const dates = `${shortLabel(recap.start)}–${shortLabel(recap.end)}`
   const nextPlan = open && !state.activeWorkout ? buildDailyPlan(state, { today, now }) : null
   const summaryStats = recap.strength.length
     ? [
-        [recap.days, 'Training days'],
-        [recap.sets, 'Sets'],
+        [recap.days, recap.days === 1 ? 'day' : 'days'],
+        [recap.sets, recap.sets === 1 ? 'set' : 'sets'],
       ]
     : [
-        [recap.warmups, 'Warmups'],
-        [recap.movement, 'Light sessions'],
+        [recap.warmups, 'warmups'],
+        [recap.movement, 'light'],
       ]
   const act = (callback) => {
     setOpen(false)
@@ -101,7 +96,7 @@ export default function WeeklyRecap({ state, today, now, nav }) {
     <section className="page-section">
       <div className="section-heading">
         <h2 className="section-title">Weekly recap</h2>
-        <span className="text-[12px] text-muted">{period === 'current' ? 'So far' : dates}</span>
+        {period !== 'current' && <span className="text-[14px] font-semibold text-ink2">{dates}</span>}
       </div>
       {!recap.sessions.length ? (
         <button
@@ -112,12 +107,7 @@ export default function WeeklyRecap({ state, today, now, nav }) {
           <span className="icon-tile">
             <Icon name="barChart" size={21} />
           </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-semibold">No sessions recorded</span>
-            <span className="mt-1 block text-[12px] text-muted">
-              {state.sample ? 'Sample history is excluded' : 'View dates'}
-            </span>
-          </span>
+          <span className="min-w-0 flex-1 text-[16px] font-semibold">No sessions yet</span>
           <Icon name="chevronRight" size={16} className="text-faint" />
         </button>
       ) : (
@@ -126,19 +116,16 @@ export default function WeeklyRecap({ state, today, now, nav }) {
           className="mt-3 block w-full rounded-tuck bg-surface p-5 text-left"
           aria-label="Open weekly recap"
         >
-          <div className="flex items-end gap-5">
+          <div className="flex items-center gap-5">
             <div className="flex flex-1 gap-6">
               {summaryStats.map(([value, label]) => (
-                <div key={label}>
-                  <span className="num text-[32px]">{value}</span>
-                  <span className="mt-2 block text-[12px] text-muted">{label}</span>
-                </div>
+                <StatTile key={label} value={value} unit={label} className="stat-tile--bare" />
               ))}
             </div>
             <Rhythm workouts={state.workouts} today={today} />
           </div>
-          <div className="mt-4 flex items-center gap-3 border-t border-line pt-4">
-            <span className="icon-tile !h-9 !w-9 !rounded-xl">
+          <div className="panel mt-4 flex items-center gap-3 !p-3">
+            <span className="icon-tile !h-9 !w-9 !rounded-xl !bg-surface">
               <Icon
                 name={recap.progress ? 'trend' : recap.sessions.length ? 'train' : 'barChart'}
                 size={17}
@@ -149,15 +136,12 @@ export default function WeeklyRecap({ state, today, now, nav }) {
                 <ProgressFact progress={recap.progress} />
               ) : (
                 <>
-                  <span className="block text-[14px] font-semibold">
+                  <span className="block text-[16px] font-semibold">
                     {recap.sessions.length
                       ? recap.muscles[0]
-                        ? `${recap.muscles[0].name} · ${count(recap.muscles[0].sets, 'set')}`
+                        ? `Most work: ${recap.muscles[0].name.toLowerCase()}`
                         : `${recap.warmups + recap.movement} movement sessions`
-                      : 'No sessions recorded'}
-                  </span>
-                  <span className="mt-1 block text-[12px] text-muted">
-                    {recap.sessions.length ? 'View breakdown' : 'Your recap starts with a saved session'}
+                      : 'No sessions yet'}
                   </span>
                 </>
               )}
@@ -184,74 +168,59 @@ export default function WeeklyRecap({ state, today, now, nav }) {
         </div>
         <div className="mt-6 grid grid-cols-3 gap-2">
           {[
-            [recap.days, 'Training days'],
+            [recap.days, 'Days'],
             [recap.sets, 'Sets'],
             [recap.warmups, 'Warmups'],
           ].map(([value, label]) => (
-            <div key={label} className="rounded-2xl bg-surface2 px-3 py-4">
-              <p className="num text-[30px]">{value}</p>
-              <p className="mt-2 text-[12px] text-muted">{label}</p>
-            </div>
+            <StatTile key={label} value={value} label={label} className="!bg-surface2" />
           ))}
         </div>
-        <div className="mt-5">
+        <div className="panel mt-2">
+          <h3 className="mb-4 text-[16px] font-semibold">Sets by day</h3>
           <Bars bars={recap.bars} />
-          <div className="mt-2 flex gap-1.5 text-center text-[12px] text-muted" aria-hidden="true">
+          <div
+            className="mt-2 flex gap-1.5 text-center text-[13px] font-semibold text-ink2"
+            aria-hidden="true"
+          >
             {WEEKDAY_INITIALS.map((d, i) => (
               <span key={i} className="flex-1">
                 {d}
               </span>
             ))}
           </div>
+          {recap.hasComparison && (
+            <p className="mt-4 text-[15px] text-ink2">
+              {recap.sets === recap.priorSets
+                ? 'Same number of sets as'
+                : `${Math.abs(recap.sets - recap.priorSets)} ${recap.sets > recap.priorSets ? 'more' : 'fewer'} sets than`}{' '}
+              {period === 'current' ? 'the same days last week' : 'the previous week'}.
+            </p>
+          )}
         </div>
-        {recap.hasComparison && (
-          <p className="mt-4 text-[13px] text-muted">
-            {recap.sets === recap.priorSets
-              ? 'Same number of sets as'
-              : `${Math.abs(recap.sets - recap.priorSets)} ${recap.sets > recap.priorSets ? 'more' : 'fewer'} sets than`}{' '}
-            {period === 'current' ? 'the same days last week' : 'the previous week'}.
-          </p>
-        )}
         {recap.progress && (
-          <div className="mt-5 rounded-tuck bg-surface2 p-4">
-            <div className="mb-3 flex items-center gap-2 text-[12px] text-accent">
-              <Icon name="trend" size={16} />
-              Exercise progress
+          <div className="panel mt-2">
+            <div className="mb-3 flex items-center gap-2 text-[14px] font-bold text-accent-ink">
+              <Icon name="trend" size={17} />
+              Progress
             </div>
-            <ProgressFact progress={recap.progress} />
-            <p className="mt-3 text-[12px] text-muted">
-              {recap.progress.kind === 'load'
-                ? `${fmtNum(recap.progress.from)} → ${fmtNum(recap.progress.to)} ${recap.progress.unit}`
-                : recap.progress.kind === 'assist'
-                  ? `${fmtNum(recap.progress.from)} → ${fmtNum(recap.progress.to)} ${recap.progress.unit} assistance`
-                  : `${recap.progress.from} → ${recap.progress.to} reps`}{' '}
-              · {shortLabel(recap.progress.previousDate)} to {shortLabel(recap.progress.date)}
+            <span className="block text-[16px] font-semibold">{recap.progress.name}</span>
+            <p className="num mt-2 text-[24px]">
+              {fmtNum(recap.progress.from)} → {fmtNum(recap.progress.to)}
+              <span className="stat-tile-unit">
+                {recap.progress.kind === 'load'
+                  ? recap.progress.unit
+                  : recap.progress.kind === 'assist'
+                    ? `${recap.progress.unit} assistance`
+                    : 'reps'}
+              </span>
             </p>
           </div>
         )}
         {recap.muscles.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-[14px] font-semibold">Sets by muscle group</h3>
-            <div className="mt-3 space-y-3">
-              {recap.muscles.map((m) => (
-                <div key={m.name} className="flex items-center gap-3 text-[13px]">
-                  <span className="w-20 shrink-0 text-muted">{m.name}</span>
-                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
-                    <span
-                      className="block h-full rounded-full bg-accent/70"
-                      style={{ width: `${(m.sets / recap.muscles[0].sets) * 100}%` }}
-                    />
-                  </span>
-                  <span className="w-8 text-right">{m.sets}</span>
-                </div>
-              ))}
-            </div>
+          <div className="panel mt-2">
+            <h3 className="mb-4 text-[16px] font-semibold">Sets by muscle</h3>
+            <MuscleBars rows={recap.muscles.map((m) => [m.name, m.sets])} />
           </div>
-        )}
-        {recap.movement > 0 && (
-          <p className="mt-4 text-[13px] text-muted">
-            {recap.movement} light movement session{recap.movement === 1 ? '' : 's'} saved separately.
-          </p>
         )}
         {recap.skips[0]?.reason === 'equipment' && (
           <button className="list-row mt-4 border-t border-line" onClick={() => act(nav.openPersonal)}>
@@ -265,28 +234,23 @@ export default function WeeklyRecap({ state, today, now, nav }) {
         )}
         {recap.sessions.length > 0 && (
           <button
-            className="list-row mt-5 rounded-tuck bg-surface2 px-4"
+            className="list-row mt-2 rounded-[22px] bg-surface2 px-4"
             onClick={() => act(state.activeWorkout ? nav.openPlayer : () => nav.go('train'))}
           >
-            <span className="icon-tile">
+            <span className="icon-tile !bg-surface">
               <Icon name="train" size={19} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[12px] text-muted">
-                {state.activeWorkout ? 'Current session' : 'Next session'}
+              <span className="block text-[14px] font-bold text-accent-ink">
+                {state.activeWorkout ? 'In progress' : 'Next'}
               </span>
-              <span className="mt-1 block text-[14px] font-semibold">
+              <span className="mt-0.5 block truncate text-[16px] font-semibold">
                 {state.activeWorkout
                   ? state.activeWorkout.name
                   : nextPlan
-                    ? [nextPlan.name, planSummary(nextPlan)].filter(Boolean).join(' · ')
-                    : 'Recommended for today'}
+                    ? nextPlan.name
+                    : 'Today’s session'}
               </span>
-              {nextEvent && (
-                <span className="mt-1 block text-[12px] text-muted">
-                  {nextEvent.name} · {shortLabel(nextEvent.date)}
-                </span>
-              )}
             </span>
             <Icon name="chevronRight" size={16} />
           </button>
@@ -300,9 +264,6 @@ export default function WeeklyRecap({ state, today, now, nav }) {
             </button>
           </div>
         )}
-        <p className="mt-5 border-t border-line pt-4 text-[13px] text-muted">
-          Working sets only. Warm-ups are counted separately.
-        </p>
       </Modal>
     </section>
   )

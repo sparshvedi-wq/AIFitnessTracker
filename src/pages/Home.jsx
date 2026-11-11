@@ -10,12 +10,11 @@ import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.j
 import { returnMessage, shortSessionRequest } from '../lib/flexible-training.js'
 import { fmtNum, muscleSets } from '../lib/workout.js'
 import Icon from '../components/Icon.jsx'
-import { LineChart, SectionHead, TallyLogo } from '../components/Ink.jsx'
-import TrainingCard, { planScene } from '../components/TrainingCard.jsx'
+import { LineChart, MuscleBars, SectionHead, StatTile, TallyLogo } from '../components/Ink.jsx'
+import TrainingCard from '../components/TrainingCard.jsx'
 import AskAdjust from '../components/AskAdjust.jsx'
 import { TallyCard, WeekStrip, WinCard, useNewMarks } from '../components/HomeOverview.jsx'
 import { latestWin, tallySessions } from '../lib/milestones.js'
-import { ONBOARDING_ART } from '../lib/onboarding-art.js'
 import ActiveSessionCard from '../components/ActiveSessionCard.jsx'
 import EventShortcut from '../components/training/EventShortcut.jsx'
 import WeeklyRecap from '../components/WeeklyRecap.jsx'
@@ -53,7 +52,6 @@ export default function Home({ nav }) {
   const active = state.activeWorkout
   const welcomeBack = returnMessage(workouts, today)
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
-  const scene = planScene(next, settings.training.goal)
   const setupPending = settings.training.onboardingVersion !== ONBOARDING_VERSION
 
   return (
@@ -101,43 +99,32 @@ export default function Home({ nav }) {
           <ActiveSessionCard session={active} onOpen={nav.openPlayer} />
         ) : resting ? (
           <section className="training-card">
-            <span className="training-card-art is-wide" aria-hidden="true">
-              <span className="floor-glow training-card-glow" />
-              <img src={ONBOARDING_ART.movement} alt="" decoding="async" />
-            </span>
-            <div className="training-card-head">
-              <p className="text-[14px] font-bold text-accent-ink">Today</p>
-              <h2 className="font-display text-[32px] leading-tight">Rest day</h2>
-            </div>
-            <p className="training-card-why">Resting today is a good choice. Nothing carries over.</p>
-            <button className="btn-secondary mt-4 w-full" onClick={() => setToday({ rest: false })}>
-              Plan a session anyway
+            <p className="training-card-eyebrow">Today</p>
+            <h2 className="training-card-title">Rest day</h2>
+            <p className="training-card-note">
+              <Icon name="moon" size={18} />
+              <span>Nothing carries over.</span>
+            </p>
+            <button className="btn-secondary mt-5 w-full" onClick={() => setToday({ rest: false })}>
+              Train anyway
             </button>
           </section>
         ) : (
           <>
             <TrainingCard
-              title="Your training"
+              title="Today"
               plan={next}
               customExercises={state.customExercises}
-              scene={scene}
-              hideStart
+              onStart={() => start(next)}
+              startLabel="Start training"
             />
-            <button className="btn-primary mt-4 w-full" onClick={() => start(next)}>
-              Start training
-            </button>
             {next.alternatives?.length > 0 && (
-              <div
-                className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px]"
-                role="group"
-                aria-label="Other options today"
-              >
-                <span className="text-muted">Or</span>
+              <div className="mt-4 flex gap-2" role="group" aria-label="Other options today">
                 {next.alternatives.map((alt) =>
                   alt.kind === 'movement' && next.kind !== 'recovery' ? (
                     <button
                       key={alt.kind}
-                      className="text-link min-h-11 !text-[14px]"
+                      className="chip flex-1 justify-center"
                       onClick={() =>
                         start(
                           buildDailyPlan(state, {
@@ -154,7 +141,7 @@ export default function Home({ nav }) {
                   ) : alt.kind === 'rest' ? (
                     <button
                       key={alt.kind}
-                      className="text-link min-h-11 !text-[14px]"
+                      className="chip flex-1 justify-center"
                       onClick={() => setToday({ rest: true })}
                     >
                       {alt.label}
@@ -174,7 +161,6 @@ export default function Home({ nav }) {
           </span>
           <span className="flex-1 text-left">
             <span className="block text-[15px] font-semibold">Finish your setup</span>
-            <span className="mt-1 block text-[14px] text-muted">Your answers are saved</span>
           </span>
           <Icon name="chevronRight" size={16} />
         </button>
@@ -226,6 +212,7 @@ function TrainingStats({ state, workouts, today, progress, display }) {
   const scores = series.map((s) => s.score)
   const volume = weekVolume(workouts, today)
   const bw = bodyweights(state.metrics).at(-1)
+  const average = avgSessionMin(workouts)
   const hasStrength = workouts.some(strength)
   const muscleTotals = muscleSets(workouts.filter(strength), addDays(today, -27))
   return (
@@ -237,50 +224,35 @@ function TrainingStats({ state, workouts, today, progress, display }) {
         </span>
         <Icon name="chevronDown" size={17} className="text-muted" />
       </summary>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2">
         {[
           [
             hasTrainingTarget(settings)
-              ? `${progress.count} / ${settings.workout.weeklyGoal}`
+              ? `${progress.count}/${settings.workout.weeklyGoal}`
               : progress.count,
-            'Days · last 7',
+            'days',
+            'Last 7 days',
           ],
-          [fmtNum(volume.now), `${settings.weightUnit} lifted · this week`],
-          [avgSessionMin(workouts) ?? '–', 'Average minutes'],
-          ...(!display.metricLight && bw ? [[fmtNum(bw.value), `Bodyweight · ${settings.weightUnit}`]] : []),
-        ].map(([value, label]) => (
-          <div key={label} className="rounded-2xl bg-surface p-4">
-            <p className="num text-[27px]">{value}</p>
-            <p className="mt-2 text-[12px] text-muted">{label}</p>
-          </div>
+          ...(volume.now ? [[fmtNum(volume.now), settings.weightUnit, 'Lifted this week']] : []),
+          ...(average ? [[average, 'min', 'Average session']] : []),
+          ...(!display.metricLight && bw ? [[fmtNum(bw.value), settings.weightUnit, 'Bodyweight']] : []),
+        ].map(([value, unit, label]) => (
+          <StatTile key={label} value={value} unit={unit} label={label} />
         ))}
       </div>
       {muscleTotals.length > 0 && (
         <section className="mt-3 rounded-tuck bg-surface p-5">
-          <h3 className="mb-4 text-[14px] font-semibold">Sets by muscle · last 4 weeks</h3>
-          <div className="space-y-3">
-            {muscleTotals.map((m) => (
-              <div key={m.muscle} className="flex items-center gap-3 text-[13px]">
-                <span className="w-20 shrink-0 text-muted">{m.muscle}</span>
-                <span className="h-1.5 flex-1 rounded-full bg-line">
-                  <span
-                    className="block h-full rounded-full bg-accent/70"
-                    style={{ width: `${(m.sets / muscleTotals[0].sets) * 100}%` }}
-                  />
-                </span>
-                <span className="w-6 text-right">{m.sets}</span>
-              </div>
-            ))}
-          </div>
+          <h3 className="mb-4 text-[16px] font-semibold">Sets by muscle</h3>
+          <MuscleBars rows={muscleTotals.map((m) => [m.muscle, m.sets])} />
         </section>
       )}
       {!display.metricLight && hasTrainingTarget(settings) && hasStrength && (
         <section className="mt-3 rounded-tuck bg-surface p-5">
           <div className="flex items-baseline justify-between">
-            <h3 className="text-[14px] font-semibold">Consistency score</h3>
+            <h3 className="text-[16px] font-semibold">Consistency</h3>
             <p>
               <span className="num text-[30px]">{scores.at(-1)}</span>
-              <span className="ml-1 text-[12px] text-muted">/ 100</span>
+              <span className="ml-1 text-[14px] font-semibold text-ink2">/ 100</span>
             </p>
           </div>
           <LineChart values={scores} height={80} />

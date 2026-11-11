@@ -4,7 +4,7 @@ import { addDays, shortLabel, labelForKey } from '../lib/date.js'
 import { LOGGED_WORKOUT, fmtNum, personalBests } from '../lib/workout.js'
 import { historyTimeline, exerciseTrend } from '../lib/history-insights.js'
 import Icon from '../components/Icon.jsx'
-import { PageTitle, SectionHead, LineChart, Segmented } from '../components/Ink.jsx'
+import { LineChart, PageTitle, SectionHead, Segmented, StatTile } from '../components/Ink.jsx'
 import SessionRow from '../components/SessionRow.jsx'
 import WorkoutDetail from '../components/workout/WorkoutDetail.jsx'
 import useStartWorkout from '../components/workout/useStartWorkout.js'
@@ -117,14 +117,11 @@ export default function History({ nav }) {
       />
       <div className="mt-4 grid grid-cols-3 gap-2">
         {[
-          [view.days, 'Training days'],
-          [view.sets, 'Sets logged'],
+          [view.days, 'Days'],
+          [view.sets, 'Sets'],
           [view.activities, 'Activities'],
         ].map(([value, label]) => (
-          <div key={label} className="rounded-tuck bg-surface px-3 py-4">
-            <p className="num text-[28px]">{value}</p>
-            <p className="mt-2 text-[12px] leading-snug text-muted">{label}</p>
-          </div>
+          <StatTile key={label} value={value} label={label} />
         ))}
       </div>
       <section className="page-section">
@@ -173,13 +170,15 @@ export default function History({ nav }) {
                     <Icon name={r.type === 'photo' ? 'camera' : 'sport'} size={21} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold">{r.title}</span>
-                    <span className="mt-1 block text-[12px] text-muted">
-                      {shortLabel(r.date)} ·{' '}
-                      {r.type === 'photo' ? 'Saved check-in' : `${r.data.minutes} min · Reported activity`}
-                    </span>
+                    <span className="block truncate text-[16px] font-semibold">{r.title}</span>
+                    <span className="row-meta">{shortLabel(r.date)}</span>
                   </span>
-                  <Icon name="chevronRight" size={16} />
+                  {r.type !== 'photo' && (
+                    <span className="row-figure">
+                      <span className="num">{r.data.minutes}</span>min
+                    </span>
+                  )}
+                  <Icon name="chevronRight" size={16} className="shrink-0 text-faint" />
                 </button>
               ) : (
                 <SessionRow workout={r.data} onClick={() => setDetail(r.data)} />
@@ -221,7 +220,7 @@ export default function History({ nav }) {
             />
           </div>
           {trend.length > 1 && sameDefinition && <LineChart values={trend.map((r) => (r.assisted ? -r.value : r.value))} height={84} />}
-          <p className="mt-3 text-[12px] text-muted">
+          <p className="mt-3 text-[14px] font-semibold text-ink2">
             {!trend.length
               ? 'Nothing logged in this period.'
               : !sameDefinition
@@ -241,30 +240,28 @@ export default function History({ nav }) {
               .map((r) => (
                 <button
                   key={r.id}
-                  className="flex min-h-12 w-full items-center gap-3 text-left text-[13px]"
+                  className="flex min-h-12 w-full items-center gap-3 text-left text-[15px]"
                   onClick={() => setDetail(state.workouts.find((w) => w.id === r.id))}
                 >
-                  <span className="flex-1 text-muted">{shortLabel(r.date)}</span>
-                  <span>
+                  <span className="flex-1 text-ink2">{shortLabel(r.date)}</span>
+                  <span className="num text-[17px]">
                     {fmtNum(r.value)}
                     {r.type === 'time' ? ' sec' : r.assisted ? ` ${unit} assistance × ${r.reps}` : r.weighted ? ` ${unit} × ${r.reps}` : ' reps'}
                   </span>
-                  <Icon name="chevronRight" size={15} />
+                  <Icon name="chevronRight" size={15} className="text-faint" />
                 </button>
               ))}
           </div>
         </section>
       )}
       <details className="page-section border-t border-line">
-        <summary className="min-h-14 cursor-pointer py-4 text-[14px] font-semibold">Bests</summary>
-        <p className="text-[13px] text-muted">
-          This month: {fmtNum(volume.now)} {unit} lifted.
-        </p>
-        <div className="mt-4 divide-y divide-line">
+        <summary className="min-h-14 cursor-pointer py-4 text-[16px] font-semibold">Bests</summary>
+        {volume.now > 0 && <StatTile value={fmtNum(volume.now)} unit={unit} label="Lifted this month" />}
+        <div className="mt-2 divide-y divide-line">
           {bests.map((b) => (
-            <div key={b.exId} className="flex gap-3 py-4 text-[13px]">
-              <span className="flex-1">{b.name}</span>
-              <span>
+            <div key={b.exId} className="flex items-baseline gap-3 py-4 text-[15px]">
+              <span className="flex-1 font-medium">{b.name}</span>
+              <span className="num text-[17px]">
                 {b.type === 'time'
                   ? `${b.sec}s`
                   : b.weighted

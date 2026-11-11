@@ -1,7 +1,9 @@
 import { findExercise } from './exercises.js'
 import { sportById } from './sports.js'
 
-export function planSummary(plan) {
+// Why today's session differs from a usual one, or '' when it doesn't. Shown as
+// a notice on the training card; the plain description below adds nothing there.
+export function planNote(plan) {
   if (!plan.items.length) return 'No exercises match today’s check-in.'
   if (plan.movement?.position === 'seated') return 'Light seated movement.'
   if (/restart after time away/i.test(plan.focus)) return 'A lighter return to training.'
@@ -25,8 +27,12 @@ export function planSummary(plan) {
   }
   if (plan.schedule?.preparation)
     return `Balanced training with a little ${sportById(plan.schedule.preparation.sport).name.toLowerCase()} preparation.`
-  if (plan.focus) return plan.focus
-  if (plan.firstSession) return ''
+  return plan.focus || ''
+}
+
+export function planSummary(plan) {
+  const note = planNote(plan)
+  if (note || plan.firstSession) return note
   const muscles = plan.items.map((i) => findExercise(i.exId)?.muscle)
   const lower = muscles.some((m) => ['Legs', 'Glutes'].includes(m))
   const upper = muscles.some((m) => ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'].includes(m))

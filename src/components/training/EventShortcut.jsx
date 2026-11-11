@@ -6,17 +6,20 @@ export default function EventShortcut({ state, today, now, nav, hideEmpty = fals
   const next = trainingEventContext(state.settings.training, { today, now }).next
   if (!next && hideEmpty) return null
   return (
-    <div className="mt-3 border-b border-line">
+    <div className="mt-3">
       <button className="list-row !min-h-16" onClick={() => nav.openEvents(next ? 'list' : 'add')}>
         <span className="icon-tile">
           <Icon name={next ? 'sport' : 'plus'} size={20} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold">{next ? next.title : 'Add an event'}</span>
-          <span className="mt-1 block text-[13px] text-muted">
-            {next ? `${labelForKey(next.date)} · ${next.time}` : 'Practice, travel or a special occasion'}
-          </span>
+        <span className="min-w-0 flex-1 truncate text-[16px] font-semibold">
+          {next ? next.title : 'Add an event'}
         </span>
+        {next && (
+          <span className="event-when">
+            {labelForKey(next.date)}
+            <span className="num">{next.time}</span>
+          </span>
+        )}
         <Icon name="chevronRight" size={17} className="text-faint" />
       </button>
     </div>

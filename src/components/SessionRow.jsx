@@ -13,18 +13,22 @@ export default function SessionRow({ workout, onClick, divider = false }) {
         ? 'Short session'
         : workout.kind === 'recovery'
           ? 'Light movement'
-          : 'Training'
+          : ''
+  const volume = workoutVolume(workout)
+  const place = recordPlaceLabel(workout)
   return (
     <button onClick={onClick} className={`list-row ${divider ? 'border-t border-line' : ''}`}>
       <DateTile date={workout.date} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold">{workout.name}</span>
-        <span className="mt-1 block text-[13px] text-muted">
-          {kind}
-          {recordPlaceLabel(workout) ? ` · ${recordPlaceLabel(workout)}` : ''} · {count(sets, 'set')}
-          {workoutVolume(workout) > 0 ? ` · ${fmtNum(workoutVolume(workout))} ${workout.unit}` : ''}
-        </span>
+        <span className="block truncate text-[16px] font-semibold">{workout.name}</span>
+        <span className="row-meta">{[kind, place, count(sets, 'set')].filter(Boolean).join(' · ')}</span>
       </span>
+      {volume > 0 && (
+        <span className="row-figure">
+          <span className="num">{fmtNum(volume)}</span>
+          {workout.unit}
+        </span>
+      )}
       {workout.sample ? (
         <span className="tag">Demo</span>
       ) : (

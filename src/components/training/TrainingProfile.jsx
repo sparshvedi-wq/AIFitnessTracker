@@ -1,7 +1,7 @@
 import { count } from '../../lib/presentation.js'
 import './onboarding.css'
 import { physiqueOptions, physiqueChoice } from '../../lib/physique-preferences.js'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
 import { useApp } from '../../store/AppContext.jsx'
@@ -12,11 +12,13 @@ import {
   ONBOARDING_VERSION,
   onboardingSteps,
   nextOnboardingStep,
-  onboardingProgress,
-  onboardingResponse,
+  onboardingStage,
+  chapterFills,
+  chapterRecap,
   shouldShowOnboardingResponse,
   restoredOnboardingResponse,
 } from '../../lib/onboarding.js'
+import { BASELINE_MINUTES, baselineMoves } from '../../lib/baseline.js'
 import {
   hasStartingProfile,
   initialBaselineMetric,
@@ -30,7 +32,7 @@ import {
   PlanRibbon,
   SetupHeader,
   SetupIllustration,
-  SetupResponse,
+  SetupRecap,
   SetupWelcome,
 } from './SetupVisuals.jsx'
 import ExerciseThumbs from '../ExerciseThumbs.jsx'
@@ -64,8 +66,8 @@ const TITLES = {
   rhythm: 'How much structure feels right?',
   comfort: 'Any areas to avoid?',
   photos: 'Your starting photos',
-  manual: 'Your starting profile',
-  review: 'Your first session',
+  manual: 'Your details',
+  review: 'Your plan',
 }
 const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
@@ -87,11 +89,20 @@ const GUIDE = {
   time: 'How much time usually works?',
   rhythm: 'How much structure feels right?',
   comfort: 'Any areas to avoid?',
-  manual: 'Your starting profile',
-  review: 'Here’s your first session',
+  manual: 'A few details instead',
+  review: 'Here’s your plan',
 }
-// Questions without their own artwork show one lit scene; it never repeats on the reply.
+// Questions without their own artwork show one lit scene; it never repeats on the recap.
+// Where the options need the room, the scene is a smaller one.
 const STAGED = ['experience', 'priority', 'home', 'movement', 'time', 'rhythm']
+const COMPACT_SCENE = ['time']
+// What each answer changes, in a few words under the option.
+const EXPERIENCE_DETAIL = {
+  'Starting out': 'Simple moves, fewer sets at first',
+  'Some experience': 'More exercises to choose from',
+  Experienced: 'Every exercise, more sets',
+}
+const PLACE_DETAIL = { gym: 'Full equipment', home: 'Only what you own', 'on-the-go': 'No equipment needed' }
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
@@ -121,13 +132,40 @@ export default function TrainingProfile({ onClose }) {
   const step = steps.includes(current) ? current : 'welcome'
   const index = steps.indexOf(step)
   const heading = useRef(null)
-  const response = responseFor ? onboardingResponse(responseFor, { ...p, goalMode, weeklyGoal }) : null
+  const recap = responseFor ? chapterRecap(responseFor, { ...p, goalMode, weeklyGoal, name }) : null
   const nextStep = nextOnboardingStep(step, p, editingGroup)
-  const progress = editingGroup
-    ? 100
-    : ['welcome', 'goal'].includes(step) && !responseFor
-      ? null
-      : onboardingProgress(responseFor ? nextStep : step)
+  // Welcome carries the brand; every question after it shows the five chapters.
+  const fills = step === 'welcome' ? null : editingGroup ? [1, 1, 1, 1, 1] : chapterFills(step, p, Boolean(recap))
+  // What each session length would hold, from this person's own answers.
+  const timeDetail = useMemo(() => {
+    if (step !== 'time') return {}
+    const out = {}
+    for (const minutes of new Set([15, 30, 45, 60, p.minutes])) {
+      try {
+        const plan = buildDailyPlan({ ...state, settings: { ...state.settings, training: p } }, { today, minutes })
+        const sets = plan.items.reduce((n, it) => n + (it.sets || 0), 0)
+        if (plan.items.length) out[minutes] = `${count(plan.items.length, 'move')} · ${count(sets, 'set')}`
+      } catch {
+        // A length with nothing to show simply has no line.
+      }
+    }
+    return out
+    // The profile only changes this step's numbers through the fields listed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, p.goal, p.experience, p.location, p.equipment, p.avoidMuscles, today])
+  // Someone new starts with the starting-point session (lib/baseline.js);
+  // the review says so, and lets them skip it.
+  const startingMoves = useMemo(() => {
+    if (step !== 'review') return 0
+    const fresh = !state.workouts.some((w) => !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind))
+    if (!fresh) return 0
+    try {
+      return baselineMoves({ ...state, settings: { ...state.settings, training: p } }, { today }).moves.length
+    } catch {
+      return 0
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, p.location, p.equipment, p.experience, p.avoidMuscles, today])
   useEffect(() => {
     heading.current?.focus({ preventScroll: true })
   }, [step, responseFor])
@@ -197,6 +235,7 @@ export default function TrainingProfile({ onClose }) {
     if (next === 'review') setEditingGroup(null)
   }
   const manualEntry = p.manualEntry || manualEntryOf(p.manualBaseline, state.settings.weightUnit)
+  const skipStart = p.baseline?.status === 'skipped'
   const baselineReady = hasStartingProfile(p, state.checkins, DEV)
   const advance = () => {
     if (responseFor) {
@@ -283,7 +322,6 @@ export default function TrainingProfile({ onClose }) {
       <PhotoCheckins
         onboarding
         profile={p}
-        setupProgress={onboardingProgress('photos')}
         onClose={close}
         onBack={() => move('comfort')}
         onManual={() => move('manual', { ...p, baselineMode: 'manual', manualEntry })}
@@ -305,7 +343,12 @@ export default function TrainingProfile({ onClose }) {
       headerAction={testExit}
       header={
         !returning ? (
-          <SetupHeader progress={progress} onBack={index > 0 ? back : null} action={testExit} />
+          <SetupHeader
+            fills={fills}
+            label={step === 'review' ? 'Your plan' : onboardingStage(step).label}
+            onBack={index > 0 ? back : null}
+            action={testExit}
+          />
         ) : null
       }
       hideHandle={!returning}
@@ -313,7 +356,7 @@ export default function TrainingProfile({ onClose }) {
       bodyClassName={!returning ? 'setup-body' : ''}
       footerClassName={!returning ? 'setup-footer' : ''}
       onClose={close}
-      title={response ? response[0] : returning && step === 'review' ? 'Your training setup' : TITLES[step]}
+      title={recap ? recap.title : returning && step === 'review' ? 'Your training setup' : TITLES[step]}
       subtitle={returning ? 'Changes save when you finish' : null}
       bodyKey={`${step}:${responseFor || 'question'}`}
       footer={
@@ -335,10 +378,10 @@ export default function TrainingProfile({ onClose }) {
             {responseFor
               ? 'Continue'
               : step === 'welcome'
-                ? 'Build my plan'
+                ? 'Get started'
                 : step === 'review'
                   ? !baselineReady
-                    ? 'Finish starting profile'
+                    ? 'Add photos or details'
                     : returning
                       ? 'Save changes'
                       : 'Open my dashboard'
@@ -350,11 +393,12 @@ export default function TrainingProfile({ onClose }) {
       <div
         className={`onboarding-question ${!returning ? `setup-page setup-page--${responseFor ? 'response' : step}` : ''}`}
       >
-        {response ? (
-          <SetupResponse
+        {recap ? (
+          <SetupRecap
             scene={onboardingScene(step, p, true)}
-            title={response[0]}
-            copy={response[1]}
+            chapter={recap.chapter}
+            title={recap.title}
+            lines={recap.lines}
             headingRef={heading}
           />
         ) : (
@@ -363,7 +407,10 @@ export default function TrainingProfile({ onClose }) {
               <GuideBubble headingRef={heading}>{GUIDE[step] || TITLES[step]}</GuideBubble>
             )}
             {!returning && STAGED.includes(step) && (
-              <SetupIllustration scene={onboardingScene(step, p)} variant="question" />
+              <SetupIllustration
+                scene={onboardingScene(step, p)}
+                variant={COMPACT_SCENE.includes(step) ? 'compact' : 'question'}
+              />
             )}
             {!returning && step === 'sport-choice' && <SetupIllustration scene="sports" variant="sports" />}
             {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
@@ -406,9 +453,9 @@ export default function TrainingProfile({ onClose }) {
               <Cards
                 kind="experience"
                 values={[
-                  ['Starting out', 'New or returning'],
-                  ['Some experience', 'I know the basics'],
-                  ['Experienced', 'I train regularly'],
+                  ['Starting out', 'New or returning', EXPERIENCE_DETAIL['Starting out']],
+                  ['Some experience', 'I know the basics', EXPERIENCE_DETAIL['Some experience']],
+                  ['Experienced', 'I train regularly', EXPERIENCE_DETAIL.Experienced],
                 ]}
                 value={p.experience}
                 onChange={(experience) => set({ experience })}
@@ -464,8 +511,8 @@ export default function TrainingProfile({ onClose }) {
                 label="Sport"
                 layout="rows"
                 options={[
-                  [true, 'Yes, I play', 'sports'],
-                  [false, 'No sport right now', 'neutral'],
+                  [true, 'Yes, I play', 'sports', 'Warm-ups, and lighter days near games'],
+                  [false, 'No sport right now', 'neutral', 'You can add one later'],
                 ]}
                 value={Boolean(p.wantsSport || p.sports.length)}
                 onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
@@ -515,13 +562,14 @@ export default function TrainingProfile({ onClose }) {
             {step === 'priority' && (
               <Cards
                 values={[
-                  ['goal', p.goal],
-                  ['balanced', 'A balance of both'],
+                  ['goal', p.goal === 'General fitness' ? 'Feeling fitter' : p.goal, 'With room for your sport'],
+                  ['balanced', 'A balance of both', 'Training adjusts around games'],
                   [
                     'sport',
                     p.sports.length === 1
                       ? SPORTS.find((s) => s.id === p.sports[0])?.name || 'My sport'
                       : 'My sports',
+                    'Lighter training near games',
                   ],
                 ]}
                 value={p.sportPriority}
@@ -536,6 +584,7 @@ export default function TrainingProfile({ onClose }) {
                   place.id,
                   place.name,
                   LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
+                  PLACE_DETAIL[place.id] || PLACE_DETAIL[place.base],
                 ])}
                 value={p.location}
                 onChange={(location) =>
@@ -546,8 +595,8 @@ export default function TrainingProfile({ onClose }) {
             {step === 'home' && (
               <Cards
                 values={[
-                  [true, 'Yes, sometimes'],
-                  [false, 'Not for now'],
+                  [true, 'Yes, sometimes', 'Home gets its own equipment list'],
+                  [false, 'Not for now', 'Add it whenever you like'],
                 ]}
                 value={Boolean(p.hasHomeSetup)}
                 onChange={(hasHomeSetup) => set({ hasHomeSetup })}
@@ -571,14 +620,14 @@ export default function TrainingProfile({ onClose }) {
               <Cards
                 kind="time"
                 values={[
-                  [15, 'Keep it short'],
-                  [30, 'Half an hour'],
-                  [45, 'A little longer'],
-                  [60, 'About an hour'],
+                  [15, 'Keep it short', timeDetail[15]],
+                  [30, 'Half an hour', timeDetail[30]],
+                  [45, 'A little longer', timeDetail[45]],
+                  [60, 'About an hour', timeDetail[60]],
                   ...(![15, 30, 45, 60].includes(p.minutes) && !p.flexibleTime
-                    ? [[p.minutes, 'My usual session']]
+                    ? [[p.minutes, 'My usual session', timeDetail[p.minutes]]]
                     : []),
-                  ['flexible', 'It changes'],
+                  ['flexible', 'It changes', 'Choose before each workout'],
                 ]}
                 value={p.flexibleTime ? 'flexible' : p.minutes}
                 onChange={(minutes) =>
@@ -591,8 +640,8 @@ export default function TrainingProfile({ onClose }) {
                 <Cards
                   kind="rhythm"
                   values={[
-                    ['flexible', 'Take it as it comes'],
-                    ['target', 'A rough weekly target'],
+                    ['flexible', 'Take it as it comes', 'No target, nothing to make up'],
+                    ['target', 'A rough weekly target', 'Any seven days, never a streak'],
                   ]}
                   value={goalMode}
                   onChange={setGoalMode}
@@ -630,13 +679,51 @@ export default function TrainingProfile({ onClose }) {
             )}
             {step === 'review' && (
               <>
-                <section className="lit-card mt-5 p-4" aria-label="First session preview">
-                  <p className="text-[13px] font-bold text-accent-ink">
+                {startingMoves > 0 && !returning && (
+                  <section className="lit-card mt-5 p-4" aria-label="First up">
+                    <p className="text-[13px] font-bold text-accent-ink">First up</p>
+                    <h4 className="mt-2 font-display text-[26px] leading-tight">Find your starting point</h4>
+                    <p className="mt-1 text-[14px] font-semibold text-ink2">
+                      {BASELINE_MINUTES} min · {count(startingMoves, 'movement')} · one set each
+                    </p>
+                    <p className="mt-3 text-[14px] leading-relaxed text-ink2">
+                      {skipStart
+                        ? 'Skipped. Your weights are found as you train instead. It stays on the You tab if you change your mind.'
+                        : 'One easy set of each movement, so every weight in your plan starts in the right place.'}
+                    </p>
+                    <div className="segmented mt-3" role="radiogroup" aria-label="Starting point">
+                      {[
+                        [false, 'Start with it'],
+                        [true, 'Skip it'],
+                      ].map(([skip, label]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          role="radio"
+                          aria-checked={skipStart === skip}
+                          className={`segment ${skipStart === skip ? 'segment-active' : ''}`}
+                          onClick={() => set({ baseline: skip ? { status: 'skipped', at: Date.now() } : null })}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                <section
+                  className={`${startingMoves > 0 && !returning ? 'plain-card mt-3' : 'lit-card mt-5'} p-4`}
+                  aria-label="Session preview"
+                >
+                  <p className={`text-[13px] font-bold ${startingMoves > 0 && !returning ? 'text-muted' : 'text-accent-ink'}`}>
                     {returning
                       ? 'Current plan'
-                      : name.trim()
-                        ? `${name.trim().split(' ')[0]}’s first session`
-                        : 'Built from your answers'}
+                      : startingMoves > 0
+                        ? skipStart
+                          ? 'Your first session'
+                          : 'Then, a typical session'
+                        : name.trim()
+                          ? `${name.trim().split(' ')[0]}’s first session`
+                          : 'Built from your answers'}
                   </p>
                   <h4 className="mt-2 font-display text-[28px] leading-tight">{plan.name}</h4>
                   <p className="mt-1 text-[14px] font-semibold text-ink2">
@@ -660,9 +747,10 @@ export default function TrainingProfile({ onClose }) {
                     </div>
                   </details>
                 </section>
-                <div className="checklist mt-5">
+                <h4 className="mt-6 text-[14px] font-bold text-muted">Your answers · tap to change</h4>
+                <div className="checklist mt-2.5">
                   {[
-                    ['goal', p.goal],
+                    ['goal', p.goal === 'General fitness' ? 'Feel fitter' : p.goal],
                     // Experience changes sets, exercise options and targets, so it stays one tap away.
                     ['experience', p.experience],
                     [
@@ -679,12 +767,12 @@ export default function TrainingProfile({ onClose }) {
                     [
                       p.baselineMode === 'manual' ? 'manual' : 'photos',
                       p.baselineMode === 'manual'
-                        ? 'Manual starting profile'
+                        ? 'Height and weight'
                         : p.baselineMode === 'test'
                           ? 'Starting photos'
                           : baselineReady
                             ? 'Starting photos added'
-                            : 'Add starting photos',
+                            : 'Add photos or details',
                     ],
                   ].map(([group, label]) => {
                     const pending = ['photos', 'manual'].includes(group) && !baselineReady
@@ -745,13 +833,13 @@ const CHECK_LABEL = {
   time: 'Time',
   location: 'Place',
   sports: 'Sports',
-  photos: 'Start',
-  manual: 'Start',
+  photos: 'Body',
+  manual: 'Body',
 }
 function Cards({ values, value, onChange, kind }) {
   return (
     <div className={`setup-options ${kind === 'time' ? 'setup-options--grid' : ''}`}>
-      {values.map(([id, title]) => {
+      {values.map(([id, title, detail]) => {
         const on = value === id
         const art = kind ? <ChoiceArt kind={kind} value={id} /> : null
         return (
@@ -764,7 +852,10 @@ function Cards({ values, value, onChange, kind }) {
             className="tile onboarding-choice"
           >
             {art}
-            <span className="min-w-0 flex-1 text-[17px] font-bold leading-snug">{title}</span>
+            <span className="onboarding-choice-text">
+              <span className="onboarding-choice-title">{title}</span>
+              {detail && <span className="onboarding-choice-detail">{detail}</span>}
+            </span>
             <span className={`choice-ring ${on ? 'is-on' : ''}`} aria-hidden="true">
               {on && <Icon name="check" size={14} strokeWidth={3} />}
             </span>

@@ -128,24 +128,36 @@ export function TallyStrokes({ count, height = 22, className = '', highlightFrom
   )
 }
 
-export function SetupProgress({ value }) {
-  const progress = Math.max(0, Math.min(100, value || 0))
+// Setup is five chapters; the bar shows all five, so the length is never a
+// surprise. Each segment fills as its chapter is answered.
+export function SetupChapters({ fills, label }) {
+  const done = fills.filter((f) => f >= 1).length
   return (
     <div
-      className="progress-chunky min-w-0 flex-1"
+      className="setup-chapters"
       role="progressbar"
-      aria-label="Setup progress"
+      aria-label={`Setup: ${label}`}
       aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={progress}
+      aria-valuemax={fills.length}
+      aria-valuenow={done}
+      aria-valuetext={`${label}, part ${Math.min(fills.length, done + 1)} of ${fills.length}`}
     >
-      <span style={{ width: `${Math.max(progress, 4)}%` }} />
+      <span className="setup-chapter-track" aria-hidden="true">
+        {fills.map((fill, i) => (
+          <span key={i} className="setup-chapter">
+            <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, fill))})` }} />
+          </span>
+        ))}
+      </span>
+      <span className="setup-chapter-label" aria-hidden="true">
+        {label}
+      </span>
     </div>
   )
 }
 
-// Welcome and the first question carry the brand; after that, one honest track.
-export function SetupHeader({ progress, onBack, action }) {
+// Welcome carries the brand; after that, the chapters.
+export function SetupHeader({ fills = null, label = '', onBack, action }) {
   return (
     <div className="setup-header">
       {onBack ? (
@@ -155,15 +167,15 @@ export function SetupHeader({ progress, onBack, action }) {
       ) : (
         <span className="setup-header-space" />
       )}
-      {progress === null ? (
+      {fills === null ? (
         <span className="setup-brand">
           <TallyLogo width={27} />
           <span>tally</span>
         </span>
       ) : (
-        <SetupProgress value={progress} />
+        <SetupChapters fills={fills} label={label} />
       )}
-      <span className="setup-header-space">{action || (progress !== null && <TallyLogo width={22} />)}</span>
+      <span className="setup-header-space">{action || (fills !== null && <TallyLogo width={22} />)}</span>
     </div>
   )
 }
@@ -305,22 +317,38 @@ export function SetupWelcome({ headingRef }) {
       <h3 ref={headingRef} tabIndex={-1} className="setup-welcome-title">
         Training that fits your day.
       </h3>
+      <p className="setup-welcome-copy">
+        A few questions, about two minutes. You can change any answer later.
+      </p>
     </div>
   )
 }
 
-// A short reaction after an answer: the lit figure on its stage, one headline, one useful line.
-export function SetupResponse({ scene, title, copy, headingRef }) {
+// The end of a chapter: the lit figure, one headline, and what the answers change.
+export function SetupRecap({ scene, chapter, title, lines = [], headingRef }) {
   return (
     <div className="setup-response" role="status">
       <div className="setup-response-stage" aria-hidden="true">
         <span className="setup-response-aura" />
-        <SetupIllustration scene={scene} variant="response" />
+        <SetupIllustration scene={scene} variant="recap" />
       </div>
+      <p className="setup-recap-chapter">
+        <Icon name="check" size={13} strokeWidth={3.2} />
+        {chapter}
+      </p>
       <h3 ref={headingRef} tabIndex={-1} className="setup-response-title">
         {title}
       </h3>
-      {copy && <p className="setup-response-copy">{copy}</p>}
+      {lines.length > 0 && (
+        <ul className="setup-recap-lines">
+          {lines.map((line) => (
+            <li key={line}>
+              <span aria-hidden="true" />
+              {line}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

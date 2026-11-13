@@ -27,16 +27,21 @@ export function onboardingScene(step, profile = {}, response = false) {
   if (response && step === 'sports' && !profile.sports?.length) return 'rhythm'
   if (response && step === 'equipment' && !profile.equipment?.length) return 'time'
   if (response)
+    // One scene per chapter recap, never the scene the question just showed.
     return (
       {
         goal: 'review',
         experience: 'experience',
+        about: 'review',
         'sport-choice': 'priority',
-        priority: 'time',
+        priority: 'sports',
+        home: profile.location === 'gym' ? 'gym' : 'location',
+        equipment: 'location',
         'home-loads': 'location',
+        movement: 'location',
         time: 'welcome',
         rhythm: 'movement',
-        comfort: 'manual',
+        comfort: 'welcome',
       }[step] || 'review'
     )
   if (step === 'goal')

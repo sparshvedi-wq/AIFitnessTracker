@@ -23,23 +23,38 @@ export function onboardingSteps(p) {
     'review',
   ]
 }
+// Setup is five chapters. Each of the first four ends with one recap of what
+// its answers change (chapterRecap); the last ends with the plan.
+const CHAPTERS = [
+  ['welcome', 'goal', 'physique', 'experience', 'about'],
+  ['sports', 'sport-choice', 'priority'],
+  ['location', 'home', 'equipment', 'home-loads', 'movement'],
+  ['time', 'rhythm', 'comfort'],
+  ['photos', 'manual', 'review'],
+]
+const CHAPTER_LABELS = ['About you', 'Sport', 'Your setup', 'Your day', 'Your body']
 export function onboardingStage(step) {
-  const groups = [
-    ['welcome', 'goal', 'physique', 'experience', 'about'],
-    ['sports', 'sport-choice', 'priority'],
-    ['location', 'home', 'equipment', 'home-loads', 'movement'],
-    ['time', 'rhythm', 'comfort'],
-    ['photos', 'manual', 'review'],
-  ]
   const index = Math.max(
     0,
-    groups.findIndex((group) => group.includes(step)),
+    CHAPTERS.findIndex((group) => group.includes(step)),
   )
-  return {
-    index,
-    label: ['About you', 'Sport', 'Your setup', 'Your day', 'Starting point'][index],
-    total: groups.length,
-  }
+  return { index, label: CHAPTER_LABELS[index], total: CHAPTERS.length }
+}
+/**
+ * How full each chapter's segment of the progress bar is (0–1). Earlier
+ * chapters are full, later ones empty; the current one fills as its own
+ * questions are answered and completes on its recap (`done`).
+ */
+export function chapterFills(step, p, done = false) {
+  const steps = onboardingSteps(p).filter((s) => s !== 'welcome')
+  const here = onboardingStage(step).index
+  return CHAPTERS.map((_, i) => {
+    if (i < here) return 1
+    if (i > here) return 0
+    if (done || step === 'review') return 1
+    const mine = steps.filter((s) => onboardingStage(s).index === i)
+    return (Math.max(0, mine.indexOf(step)) + 1) / (mine.length + 1)
+  })
 }
 export function nextOnboardingStep(step, p, editingGroup = null) {
   const steps = onboardingSteps(p),
@@ -53,38 +68,65 @@ export function nextOnboardingStep(step, p, editingGroup = null) {
     (editingGroup === 'location' && !['home', 'equipment', 'home-loads', 'movement'].includes(next))
   return finished ? 'review' : next
 }
-// Stable checkpoints avoid a retreating progress bar when an answer adds a branch.
-// The first question has no visible bar; its response earns the first filled step.
-export function onboardingProgress(step) {
-  return (
-    {
-      welcome: 0,
-      goal: 0,
-      physique: 4,
-      experience: 8,
-      about: 16,
-      sports: 22,
-      'sport-choice': 28,
-      priority: 33,
-      location: 40,
-      home: 45,
-      equipment: 50,
-      'home-loads': 55,
-      movement: 58,
-      time: 63,
-      rhythm: 70,
-      comfort: 77,
-      photos: 84,
-      manual: 91,
-      review: 100,
-    }[step] ?? 0
-  )
-}
+/** A recap follows this answer: it is the last question of its chapter. */
 export function shouldShowOnboardingResponse(step, p) {
-  if (step === 'sports') return !p.wantsSport && !p.sports.length
-  if (step === 'equipment') return !p.equipment?.includes('Dumbbells')
-  if (step === 'comfort') return Boolean(p.avoidMuscles?.length)
-  return ['goal', 'experience', 'sport-choice', 'priority', 'home-loads', 'time', 'rhythm'].includes(step)
+  return Boolean(chapterRecap(step, p))
+}
+/**
+ * What a finished chapter changes, in the person's own answers: a title and
+ * up to three plain lines. Null unless `step` is the chapter's last question
+ * (the last chapter ends with the plan itself, and a sport chapter with no
+ * sport has nothing to say).
+ */
+export function chapterRecap(step, p) {
+  const stage = onboardingStage(step)
+  if (stage.index > 3) return null
+  const mine = onboardingSteps(p).filter((s) => s !== 'welcome' && onboardingStage(s).index === stage.index)
+  if (mine.at(-1) !== step) return null
+  const said = (s) => onboardingResponse(s, p)
+  const has = (s) => mine.includes(s)
+  if (stage.index === 0) {
+    const first = typeof p.name === 'string' ? p.name.trim().split(' ')[0] : ''
+    // "Let's build muscle, Sam."
+    const title = said('goal')[0]
+    return {
+      chapter: stage.label,
+      title: first ? `${title.replace(/\.$/, '')}, ${first}.` : title,
+      lines: [said('goal')[1], said('experience')[1]],
+    }
+  }
+  if (stage.index === 1) {
+    if (!p.sports?.length) return null
+    return {
+      chapter: stage.label,
+      title: said('priority')[0],
+      lines: [said('sport-choice')[1], said('priority')[1]],
+    }
+  }
+  if (stage.index === 2) {
+    const place = {
+      gym: 'Gym sessions can use any equipment.',
+      'on-the-go': 'On the go needs no equipment.',
+    }[p.location]
+    const lines = [
+      ...(place ? [place] : []),
+      ...(has('equipment') ? [said('equipment')[1]] : has('home') ? [said('home')[1]] : []),
+      ...(has('home-loads') ? ['Suggested weights fit the dumbbells you listed.'] : []),
+      ...(has('movement') ? [said('movement')[1]] : []),
+    ].slice(0, 2)
+    return { chapter: stage.label, title: 'Your places are set.', lines: [...lines, said('location')[1]] }
+  }
+  return {
+    chapter: stage.label,
+    title: 'Built around your day.',
+    lines: [
+      p.flexibleTime
+        ? 'You choose the time before each workout.'
+        : `${p.minutes} minutes. ${said('time')[1]}`,
+      said('rhythm')[1],
+      said('comfort')[1],
+    ],
+  }
 }
 export function restoredOnboardingResponse(draft, profile) {
   if (!draft || typeof draft.step !== 'string') return null

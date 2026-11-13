@@ -29,7 +29,6 @@ export default function PhotoCheckins({
   onManual,
   onComplete,
   initialId,
-  setupProgress = 84,
 }) {
   const { state, dispatch, today, toast, photoPreviews, saveCheckin } = useApp()
   // Images live in the photo store; attach them to the check-ins shown here.
@@ -371,7 +370,8 @@ export default function PhotoCheckins({
         header={
           onboarding ? (
             <SetupHeader
-              progress={adding ? Math.min(93, setupProgress + Object.keys(photos).length * 3) : 93}
+              label="Your body"
+              fills={[1, 1, 1, 1, adding ? Math.min(0.75, 0.25 + Object.keys(photos).length * 0.17) : 0.85]}
               onBack={onBack}
               action={
                 DEV ? (
@@ -523,7 +523,11 @@ export default function PhotoCheckins({
           )
         }
       >
-        {onboarding && adding && !reviewing && <GuideBubble>Your starting photos</GuideBubble>}
+        {onboarding && adding && !reviewing && (
+          <GuideBubble note="Optional. A before-and-after you keep, and a hint at what to focus on.">
+            Your starting photos
+          </GuideBubble>
+        )}
         {reviewing ? (
           <PhotoReviewLoading status={busy} previews={photos} />
         ) : adding ? (

@@ -816,3 +816,221 @@
     height: 210px;
   }
 }
+
+/* Five chapters, always visible: the length of setup is never a surprise. */
+.setup-chapters {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.setup-chapter-track {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+}
+.setup-chapter {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgb(var(--surface-2));
+}
+.setup-chapter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: rgb(var(--accent));
+  transform-origin: left center;
+  transition: transform 360ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.setup-chapter-label {
+  color: rgb(var(--muted));
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.setup-header:has(.setup-chapters) {
+  align-items: start;
+  padding-bottom: 4px;
+}
+.setup-header:has(.setup-chapters) .setup-chapters {
+  padding-top: 13px;
+}
+
+/* An option says what it changes. */
+.onboarding-choice-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+}
+.onboarding-choice-title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.onboarding-choice-detail {
+  color: rgb(var(--muted));
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.3;
+}
+.onboarding-choice[aria-pressed='true'] .onboarding-choice-detail {
+  color: rgb(var(--accent-ink) / 0.82);
+}
+.setup-options--grid .onboarding-choice-title {
+  font-size: 16px;
+}
+.setup-options--grid .onboarding-choice-detail {
+  font-size: 13px;
+}
+/* An odd option out (for example "It changes") sits across the bottom as a row. */
+.setup-options--grid .onboarding-choice:last-child:nth-child(odd) {
+  display: flex;
+  grid-column: span 2;
+  align-items: center;
+  min-height: 64px;
+  padding: 12px 14px;
+}
+.image-choice-detail {
+  font-weight: 550;
+  line-height: 1.3;
+}
+.image-choice.is-selected .image-choice-detail {
+  color: rgb(var(--accent-ink) / 0.82);
+}
+
+/* A smaller scene where the options need the room. */
+.setup-scene--compact {
+  height: clamp(96px, 15dvh, 150px);
+  margin-top: 14px;
+}
+.setup-scene--compact + .setup-options {
+  margin-top: 16px;
+}
+.setup-scene--recap {
+  height: clamp(190px, 31dvh, 290px);
+  margin: 0;
+}
+
+/* Welcome: what to expect, in one line. */
+.setup-welcome-copy {
+  max-width: 30ch;
+  margin: 12px auto 0;
+  color: rgb(var(--ink-2));
+  font-size: 16px;
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: balance;
+}
+
+/* The end of a chapter: what the answers change. */
+.setup-recap-chapter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  border-radius: 99px;
+  background: rgb(var(--accent) / 0.14);
+  padding: 6px 12px 6px 9px;
+  color: rgb(var(--accent-ink));
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1;
+}
+.setup-recap-chapter + .setup-response-title {
+  margin-top: 12px;
+}
+.setup-recap-lines {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 20px;
+  border: 2px solid rgb(var(--line));
+  border-radius: 20px;
+  background: rgb(var(--surface));
+  padding: 4px 16px;
+  text-align: left;
+}
+.setup-recap-lines > li {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 13px 0;
+  color: rgb(var(--ink-2));
+  font-size: 15px;
+  line-height: 1.45;
+}
+.setup-recap-lines > li + li {
+  border-top: 1px solid rgb(var(--line));
+}
+.setup-recap-lines > li > span {
+  width: 8px;
+  height: 8px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+}
+.setup-recap-lines > li {
+  animation: recap-line 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.setup-recap-lines > li:nth-child(2) {
+  animation-delay: 90ms;
+}
+.setup-recap-lines > li:nth-child(3) {
+  animation-delay: 180ms;
+}
+@keyframes recap-line {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Review: what comes second sits on a quieter card than what comes first. */
+.plain-card {
+  border: 2px solid rgb(var(--line));
+  border-radius: 24px;
+  background: rgb(var(--surface));
+}
+
+@media (max-height: 700px) {
+  .setup-scene--compact {
+    display: none;
+  }
+  /* Three options with their detail lines need the room on a short screen. */
+  .setup-scene--question {
+    height: clamp(96px, 16dvh, 140px);
+    margin-top: 12px;
+  }
+  .setup-scene--recap {
+    height: clamp(150px, 26dvh, 200px);
+  }
+  .setup-recap-lines > li {
+    padding: 10px 0;
+    font-size: 14px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-chapter > span {
+    transition: none;
+  }
+  .setup-recap-lines > li {
+    animation: none;
+  }
+}
+.tally-reduce-motion .setup-chapter > span {
+  transition: none;
+}
+.tally-reduce-motion .setup-recap-lines > li {
+  animation: none;
+}

@@ -44,7 +44,7 @@ export function avgSessionMin(workouts, n = 10) {
   // Timed training sessions only: sport warm-ups, movement breaks and quick
   // after-the-fact logs (no real duration) would pull the average down.
   const last = workouts
-    .filter((w) => !w.sample && !['sport', 'recovery', 'pump', 'manual'].includes(w.kind) && (w.durationSec || 0) >= 120)
+    .filter((w) => !w.sample && !['sport', 'recovery', 'pump', 'manual', 'baseline'].includes(w.kind) && (w.durationSec || 0) >= 120)
     .slice(-n)
   if (!last.length) return null
   return Math.round(last.reduce((s, w) => s + (w.durationSec || 0), 0) / last.length / 60)

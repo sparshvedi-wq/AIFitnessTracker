@@ -45,8 +45,9 @@ import { allocateSets, baseDose, withTarget } from './dose.js'
 import { planSeconds } from './session-time.js'
 import { headline, itemNote, reasonLines } from './explain.js'
 import { PHOTO_AREAS, photoFocusEvidence } from './photo-focus.js'
-import { exerciseReadiness, trainsAny } from '../strength/index.js'
+import { exerciseReadiness, strengthBalance, trainsAny } from '../strength/index.js'
 import { exerciseProfile } from '../strength/library.js'
+import { TEST } from '../strength/config.js'
 import { involvementOf } from '../strength/recovery.js'
 import { paceFactor } from './pace.js'
 
@@ -54,6 +55,9 @@ import { paceFactor } from './pace.js'
 const COVERAGE_PATTERNS = ['push-h', 'pull-h', 'squat', 'hinge']
 
 export const DEFAULT_PROFILE_FIELDS = { variety: 'balanced' }
+// Extra weekly sets (as a share of the usual target) for an area that is
+// behind the person's own other lifts.
+const WEAK_AREA_BOOST = 0.25
 const STRENGTH = (w) => !['sport', 'recovery', 'pump'].includes(w.kind)
 
 /** Everything the policy needs, derived once. Exported for tests and debugging. */
@@ -144,6 +148,22 @@ export function planningContext(state, options = {}) {
         focusTargetBoost[area] = 0.3
       }
   }
+  // Areas that are behind this person's own other lifts (strength/index.js
+  // strengthBalance) get a little more weekly work until they catch up.
+  const balance = easy
+    ? null
+    : strengthBalance({
+        workouts,
+        learning: state.learning,
+        metrics: state.metrics,
+        customExercises: state.customExercises,
+        unit: state.settings?.weightUnit || 'lb',
+        today,
+        now,
+        experience: p.experience || 'Starting out',
+      })
+  const weakAreas = (balance?.behind || []).filter((a) => !blockedAreas.has(a))
+  for (const area of weakAreas) focusTargetBoost[area] = Math.max(focusTargetBoost[area] || 0, WEAK_AREA_BOOST)
   const sportAreas = new Set((p.sports || []).flatMap((id) => sportById(id).muscles))
   const preparationAreas = new Set(schedule.preparation ? sportById(schedule.preparation.sport).muscles : [])
   const goal = p.goal || 'General fitness'
@@ -211,6 +231,7 @@ export function planningContext(state, options = {}) {
     focusStrength,
     focusTargetBoost,
     photoEvidence,
+    weakAreas,
     focusSource: focus.length ? (manualFocus.length ? 'manual' : 'photo') : null,
     sportAreas,
     sportPriority: p.sportPriority || 'balanced',
@@ -416,8 +437,24 @@ export function recommendStrength(state, options) {
 
   // Low-value fillers (for example an exact repeat of yesterday when nothing
   // is needed) are dropped when enough worthwhile candidates remain.
-  const worthwhile = candidates.filter((c) => c.score >= SELECTION.minScore)
-  const pool = worthwhile.length >= ctx.minItems ? worthwhile : candidates
+  // The mirror of "outgrown": a bodyweight movement this person can't yet do
+  // for the bottom of its range gives way to an easier version of the same
+  // movement that they can (push-ups from the knees before full push-ups).
+  const beyond = (c) => !c.def.weighted && Boolean(ctx.strengthFit?.get(c.meta.id)?.flags?.includes('below-range'))
+  const tooHard = new Set(
+    candidates
+      .filter(
+        (c) =>
+          beyond(c) &&
+          candidates.some(
+            (e) => e !== c && e.meta.family === c.meta.family && !e.def.weighted && e.def.type === 'reps' && difficultyOf(e.meta) < difficultyOf(c.meta) && !beyond(e),
+          ),
+      )
+      .map((c) => c.meta.id),
+  )
+  const usable = tooHard.size ? candidates.filter((c) => !tooHard.has(c.meta.id)) : candidates
+  const worthwhile = usable.filter((c) => c.score >= SELECTION.minScore)
+  const pool = worthwhile.length >= ctx.minItems ? worthwhile : usable
   const select = (from, context = ctx) =>
     context.selection === 'greedy' ? selectGreedy(from, context) : selectBeam(from, context)
   let chosen = movementMode ? [] : select(pool)
@@ -431,7 +468,7 @@ export function recommendStrength(state, options) {
         step.share ? Math.ceil(ctx.maxItems * step.share) : ctx.maxItems - step.spare,
       )
       if (chosen.length >= enough) continue
-      const wider = candidates.filter((c) => c.score >= step.minScore)
+      const wider = usable.filter((c) => c.score >= step.minScore)
       if (wider.length <= chosen.length) continue
       const filled = select(wider, { ...ctx, minItems: enough, maxPerPattern: SELECTION.fillMaxPerPattern })
       if (filled.length > chosen.length) chosen = filled
@@ -512,6 +549,17 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
         (patternRank[a.c.meta.pattern] ?? 9) - (patternRank[b.c.meta.pattern] ?? 9) ||
         b.c.score - a.c.score,
     )
+  // Test sets are offered for the first lifts only; the rest wait their turn.
+  let offers = 0
+  for (const pair of pairs) {
+    if (!pair.item.offer || ++offers <= TEST.maxPerSession) continue
+    const { offer: _later, ...kept } = pair.item
+    pair.item = kept
+    if (pair.c.progression?.offer) {
+      const { offer: _dropped, ...progression } = pair.c.progression
+      pair.c = { ...pair.c, progression }
+    }
+  }
   const entries = pairs.map(({ c, item }) => {
     const codes = codesFor(c, ctx)
     const side = sideFor(c, ctx)
@@ -574,6 +622,8 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
       : null,
     focusSource: ctx.focusSource,
     photoEvidence: ctx.photoEvidence,
+    // Areas behind the person's other lifts that today's plan trains directly.
+    weakAreas: (ctx.weakAreas || []).filter((a) => planItems.some((i) => (exerciseProfile(i.exId)?.areas?.[a] || 0) >= 0.3)),
     sore: ctx.r.sore,
     pain: ctx.r.pain,
     recentAreas,

@@ -75,7 +75,7 @@ export function sessionPace(record) {
  */
 export function paceFactor(workouts = [], { today } = {}) {
   const ratios = realHistory(workouts, today)
-    .filter((w) => !['sport', 'recovery', 'manual'].includes(w.kind))
+    .filter((w) => !['sport', 'recovery', 'manual', 'baseline'].includes(w.kind))
     .slice(-PACE.sessions * 2)
     .map(sessionPace)
     .filter((p) => p.gaps >= PACE.minGaps && p.expected > 0)

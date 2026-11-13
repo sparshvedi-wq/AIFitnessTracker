@@ -8,6 +8,7 @@ import { currentSet, tick, pause, setCounts, sessionStatus } from '../../lib/wor
 import { makeCoach, requestWakeLock } from '../../lib/coach.js'
 import Icon from '../Icon.jsx'
 import WorkoutPlayer from './WorkoutPlayer.jsx'
+import BaselinePlayer from '../baseline/BaselinePlayer.jsx'
 import SessionSaved from './SessionSaved.jsx'
 import { isNativeApp, nativeRequest } from '../../lib/native.js'
 
@@ -126,6 +127,11 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
     lastPhase.current = key
     if (prev === null || prev === key) return
     const coach = makeCoach(prefs)
+    // The starting-point session guides itself on screen.
+    if (session.kind === 'baseline') {
+      if (session.phase === 'done') coach.done('All done. Here’s your starting point.')
+      return
+    }
     if (session.phase === 'work' && cur) {
       const setNo = `set ${session.cursor.set + 1} of ${cur.ex.sets.length}`
       const what = cur.ex.type === 'time' ? `${cur.set.sec} seconds` : `${cur.set.reps} reps`
@@ -175,6 +181,8 @@ export default function WorkoutHost({ open, setOpen, showMiniBar = true, onPrevi
       />
     )
   if (!session) return null
+  if (open && session.kind === 'baseline')
+    return <BaselinePlayer session={session} onMinimize={() => setOpen(false)} onSaved={setSavedWorkout} />
   if (open)
     return (
       <WorkoutPlayer

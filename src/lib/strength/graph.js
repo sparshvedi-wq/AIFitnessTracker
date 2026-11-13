@@ -33,13 +33,13 @@ import { convertWeight } from '../units.js'
 import {
   DAY_SD,
   FEEL_RIR,
-  RESERVE,
   FIRST_SESSION_PRIOR,
   IMPLICIT,
   LOAD_CEILING_LB,
   MAX_MODEL_REPS,
   OUTLIER,
   TREND_PRIOR,
+  reserveFor,
 } from './config.js'
 import {
   MUSCLES,
@@ -66,6 +66,11 @@ export const GRAPH = {
   regionSd: 0.15,
   muscleSd: 0.15,
   levelMean: { 'Starting out': -0.35, 'Some experience': 0, Experienced: 0.25 },
+  // Someone new to training is further from the reference lifter in the
+  // upper body than in the legs and trunk, which daily life already loads
+  // (untrained squat and deadlift strength sits near 80% of a first-year
+  // lifter's in total load moved; pressing nearer 65%).
+  levelByRegion: { 'Starting out': { push: -0.42, pull: -0.38, shoulders: -0.42, lower: -0.2, core: -0.2 } },
   trendSd: 0.006,
   trendPerSession: 0.003,
   trendDamping: 0.85,
@@ -79,6 +84,10 @@ export const GRAPH = {
   detrain: { graceDays: 10, perWeek: 0.012, max: 0.12 },
   perDay: 0.003,
   transferSdMax: 0.3,
+  // Once several lifts are known (a starting-point session, or a few
+  // workouts), a new exercise is also planned from a looser relative, with
+  // a wider safety margin: lighter than ideal is one "easy" tap from right.
+  wideTransfer: { sdMax: 0.5, score: 0.3, minExercises: 3, sdCap: 0.35 },
   bodyweightSd: { logged: 0.02, unknown: 0.15 },
   sdLimits: { muscle: 0.6, trend: 0.02, offset: 0.6, endurance: 0.25 },
 }
@@ -113,7 +122,8 @@ const trendIdx = (S, r) => S.index.get(`b:${r}`)
 
 function initialState(experience) {
   const S = newState()
-  const mean = GRAPH.levelMean[experience] ?? GRAPH.levelMean['Starting out']
+  const base = GRAPH.levelMean[experience] ?? GRAPH.levelMean['Starting out']
+  const byRegion = GRAPH.levelByRegion[experience in GRAPH.levelMean ? experience : 'Starting out'] || {}
   const g2 = GRAPH.generalSd ** 2
   const r2 = GRAPH.regionSd ** 2
   const u2 = GRAPH.muscleSd ** 2
@@ -124,7 +134,7 @@ function initialState(experience) {
       if (j === undefined) continue
       cov.push([j, g2 + (MUSCLE_REGION[other] === MUSCLE_REGION[m] ? r2 : 0)])
     }
-    addVar(S, `θ:${m}`, mean, g2 + r2 + u2, cov)
+    addVar(S, `θ:${m}`, byRegion[MUSCLE_REGION[m]] ?? base, g2 + r2 + u2, cov)
   }
   const b0 = TREND_PRIOR[experience] ?? TREND_PRIOR['Starting out']
   for (const r of REGIONS) addVar(S, `b:${r}`, b0, GRAPH.trendSd ** 2)
@@ -354,7 +364,11 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
         if (!(isNum(w) && w >= 0 && w <= ceiling)) continue
         const L = effectiveLoad(profile, w, bw.value)
         if (!(L > 0)) continue
-        out.observations.push({ kind: 'upper', reps: 0, rir: IMPLICIT.tooHeavy.atMost, sd: IMPLICIT.tooHeavy.sd, L, a: availability(G.fatigue, profile), explicit: true, source: 'too-heavy', setIndex: a.setIndex, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L })
+        // With `reps`: at most that many were possible (too heavy for the
+        // planned reps). Without: not even one.
+        const most = isNum(a.reps) && a.reps >= 1 ? Math.min(MAX_MODEL_REPS, Math.round(a.reps)) : 0
+        const bound = most ? IMPLICIT.tooHeavyForReps : IMPLICIT.tooHeavy
+        out.observations.push({ kind: 'upper', reps: most, rir: bound.atMost, sd: bound.sd, L, a: availability(G.fatigue, profile), explicit: true, source: 'too-heavy', setIndex: a.setIndex, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, ...(a.test ? { test: 'missed' } : {}) })
       }
     }
     for (const s of sets) {
@@ -388,15 +402,15 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
       const target = Number(s.targetReps)
       const missed = !feel && isNum(target) && target > 0 && reps < target
       const exceeded = !feel && isNum(target) && target > 0 && reps > target
-      const base = { reps: Math.round(reps), L, a: avail, setIndex: index, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, logged, manual: Boolean(s.manual) }
+      const base = { reps: Math.round(reps), L, a: avail, setIndex: index, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, logged, manual: Boolean(s.manual), ...(s.test ? { test: s.test } : {}) }
       out.sets.push({ ...base, feel, missed })
       const table = tableFor(G.experience)
       if (feel) {
-        // "Easy" with how many more were possible is a real number, not a guess.
-        const reserve = feel === 'easy' ? RESERVE[s.reserve] : null
+        // An answer with how many more were possible is a real number, not a guess.
+        const reserve = reserveFor(feel, s.reserve)
         if (reserve) {
-          out.observations.push({ ...base, kind: 'two', rir: reserve.mean, sd: reserve.sd, source: 'easy', explicit: true, reserve: s.reserve })
-          out.observations.push({ ...base, kind: 'lower', rir: reserve.atLeast, sd: 0.5, source: 'easy', explicit: true, reserve: s.reserve })
+          out.observations.push({ ...base, kind: 'two', rir: reserve.mean, sd: reserve.sd, source: feel, explicit: true, reserve: s.reserve })
+          if (isNum(reserve.atLeast)) out.observations.push({ ...base, kind: 'lower', rir: reserve.atLeast, sd: 0.5, source: feel, explicit: true, reserve: s.reserve })
         } else {
           out.observations.push({ ...base, kind: 'two', rir: table[feel].mean, sd: table[feel].sd, source: feel, explicit: true })
           if (feel === 'easy') out.observations.push({ ...base, kind: 'lower', rir: table.easy.atLeast, sd: 0.5, source: 'easy', explicit: true })
@@ -654,12 +668,17 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
   const used = [...prev.used]
   for (const s of accepted) if (evidence.profile.mode !== 'bodyweight' && !used.some((u) => Math.abs(u - s.logged) < 1e-6)) used.push(s.logged)
   let last = prev.last || null
+  // A test set that did not go well still teaches the estimate, but it is
+  // not "what was done last time": the sets after it went back to the usual
+  // weight, and that is where the next plan starts.
+  const missedTest = accepted.some((s) => s.test === 'missed') || evidence.observations.some((o) => o.test === 'missed')
+  const counted = missedTest && accepted.some((s) => s.test !== 'missed') ? accepted.filter((s) => s.test !== 'missed') : accepted
   if (accepted.length) {
     // The hardest set: the most effective load (for assistance, the least help).
-    const topL = Math.max(...accepted.map((s) => s.L))
-    const atTop = accepted.filter((s) => Math.abs(s.L - topL) < 1e-6)
+    const topL = Math.max(...counted.map((s) => s.L))
+    const atTop = counted.filter((s) => Math.abs(s.L - topL) < 1e-6)
     const top = atTop[0].logged
-    const failed = evidence.observations.some((o) => ['failed', 'too-heavy', 'missed'].includes(o.source))
+    const failed = evidence.observations.some((o) => ['failed', 'too-heavy', 'missed'].includes(o.source) && o.test !== 'missed')
     last = {
       at,
       date: record.date,
@@ -678,6 +697,7 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
     // counts clean sessions in a row that never went backwards (the same
     // weight and reps, or more).
     const clean =
+      !missedTest &&
       accepted.length >= 2 &&
       atTop.length === accepted.length &&
       !last.failed &&
@@ -774,7 +794,10 @@ function applyAnchor(G, anchor) {
   const ob = { kind: 'two', reps: Number(anchor.reps), rir: 2, sd: 1, L, a: availability(decayFatigue(G.fatigue, anchor.at), profile), explicit: true, source: 'anchor', bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, logged }
   const g = geometry(G, ob, profile, anchor.place || null)
   // The person's own numbers: firm for this exercise, gentle on the muscles.
-  update(G.S, g.H, g.y - g.h, g.r, (name) => name === `δ:${anchor.exId}` || name.startsWith(`ω:${anchor.exId}@`))
+  // Numbers given as a starting point ("I know my numbers") describe the
+  // person, not one lift, so they inform the muscles and every related lift.
+  const mask = anchor.scope === 'baseline' ? null : (name) => name === `δ:${anchor.exId}` || name.startsWith(`ω:${anchor.exId}@`)
+  update(G.S, g.H, g.y - g.h, g.r, mask)
   const prev = G.exercises.get(anchor.exId)
   G.exercises.set(anchor.exId, {
     n: 1,
@@ -933,6 +956,54 @@ export function predictExercise(G, exId, { place = null, def = null, live = fals
 }
 
 const similarityScore = (a, b) => similarity(a, b).score
+
+/**
+ * How each body area compares with the rest of this person, from the lifts
+ * they have actually done.
+ *
+ * Each lift's estimated max is compared with the library's reference for it
+ * (and with what is usual at the person's stage: someone new to training
+ * normally has stronger legs than arms). The person's overall level is the
+ * precision-weighted average of those; a lift's deviation from it says
+ * whether that lift is high or low *for them*. An area's figure is the
+ * average deviation of the lifts that mainly train it.
+ *
+ * How much a deviation means depends on the lift: barbell and dumbbell
+ * ratios are tight, machines differ a lot between gyms, so the spread of
+ * each lift's ratio (plus the place spread for machines) is carried into
+ * the area's spread. More different lifts for an area make it firmer.
+ * @returns [{ id, diff (log scale), sd, lifts: [exId], machinesOnly }]
+ */
+export function areaBalance(G, areaIds) {
+  const S = G.S
+  const prior = initialState(G.experience)
+  const done = [...G.exercises].filter(([, info]) => info?.n).map(([id, info]) => [id, info.last?.place || null])
+  for (const id of G.liveSeen) if (!done.some(([d]) => d === id)) done.push([id, null])
+  const lifts = []
+  for (const [id, place] of done) {
+    const profile = exerciseProfile(id, findExercise(id, G.customExercises))
+    if (!profile?.tie || !['load', 'bodyweight', 'assist'].includes(profile.mode)) continue
+    const now = level(G, profile, place, { day: false })
+    let usual = referenceLoad(profile, G.unit)
+    for (const [i, share] of muscleRows(profile)) usual += share * prior.x[i]
+    const variance = profile.ratioSd ** 2 + (profile.machine ? GRAPH.placeSd ** 2 : 0) + quad(S, now.Hs) + now.extraVar
+    lifts.push({ id, profile, value: now.mean - usual, variance })
+  }
+  if (!lifts.length) return areaIds.map((id) => ({ id, diff: 0, sd: Infinity, lifts: [], machinesOnly: false }))
+  const total = lifts.reduce((n, l) => n + 1 / l.variance, 0)
+  const overall = lifts.reduce((n, l) => n + l.value / l.variance, 0) / total
+  return areaIds.map((id) => {
+    const mine = lifts.filter((l) => (l.profile.areas[id] || 0) >= BALANCE_SHARE)
+    if (!mine.length) return { id, diff: 0, sd: Infinity, lifts: [], machinesOnly: false }
+    const weights = mine.map((l) => (l.profile.areas[id] || 0) / l.variance)
+    const sum = weights.reduce((n, w) => n + w, 0)
+    const diff = mine.reduce((n, l, i) => n + weights[i] * (l.value - overall), 0) / sum
+    const variance = mine.reduce((n, l, i) => n + weights[i] ** 2 * l.variance, 0) / sum ** 2
+    return { id, diff, sd: Math.sqrt(variance), lifts: mine.map((l) => l.id), machinesOnly: mine.every((l) => l.profile.machine) }
+  })
+}
+// A lift speaks for an area when at least this share of its work is there.
+const BALANCE_SHARE = 0.3
 
 /** Relative strength per muscle (1 = the reference lifter) with spread. */
 export function muscleStrengths(G) {

@@ -4,6 +4,8 @@
 // strengthSummary() what the model believes about one exercise, and why
 // strengthGraphFor() the shared strength graph for a person (cached)
 // todayReadiness()  how recovered each muscle is right now
+// startingWeights() first weights to try for a movement (starting-point session)
+// strengthBalance() how each body area compares with the person's own average
 //
 // Exercises tied together by the library (src/lib/strength/library.js) use
 // the shared strength graph (graph.js): everything learned on one exercise
@@ -16,9 +18,9 @@
 import { metaOf } from '../catalog/index.js'
 import { findExercise } from '../exercises.js'
 import { realHistory } from '../engine/ledger.js'
-import { EXTRA_REPS_BEFORE_JUMP, JUMP, STEADY_SESSIONS_BEFORE_STEP, STRENGTH_VERSION } from './config.js'
-import { GRAPH, buildGraph, extendGraph, graphAt, graphRecords, liveRecord, muscleStrengths, predictExercise } from './graph.js'
-import { effectiveLoad, exerciseProfile, loggedFor, relatedExercises } from './library.js'
+import { BASELINE, EXTRA_REPS_BEFORE_JUMP, JUMP, STEADY_SESSIONS_BEFORE_STEP, STRENGTH_VERSION, TEST } from './config.js'
+import { GRAPH, areaBalance, buildGraph, extendGraph, graphAt, graphRecords, liveRecord, muscleStrengths, predictExercise } from './graph.js'
+import { REF_BODYWEIGHT_KG, effectiveLoad, exerciseProfile, loggedFor, relatedExercises } from './library.js'
 import { loadGrid } from './loads.js'
 import { fractionAt, isNum, repsAtFraction } from './math.js'
 import { beliefAt, exerciseBelief, strengthMode } from './model.js'
@@ -45,7 +47,7 @@ function graphKey(args) {
   // Every anchor's numbers are part of the key: changing one rebuilds.
   const anchors = events
     .filter((e) => e?.kind === 'anchor')
-    .map((e) => [e.exId, e.at, e.weight, e.reps, e.unit].join(':'))
+    .map((e) => [e.exId, e.at, e.weight, e.reps, e.unit, e.scope || ''].join(':'))
     .join(',')
   return [args.unit, args.experience, args.today, Math.floor((args.now || 0) / 60000), anchors].join('|')
 }
@@ -292,15 +294,29 @@ function graphTarget(args, def, profile) {
   const last = info?.last || null
   const belief = { level: pred.level, sd: pred.sd, k: pred.k }
   const supportName = pred.support ? findExercise(pred.support.exId)?.name || pred.support.exId : null
-  // A never-done exercise is planned only from a close, well-known relative.
-  const transferable = !pred.seen && pred.sd <= GRAPH.transferSdMax && pred.support && pred.support.score >= 0.5
+  // A never-done exercise is planned from a close, well-known relative; or,
+  // once several lifts are known, from a looser one with a wider margin.
+  const close = Boolean(!pred.seen && pred.sd <= GRAPH.transferSdMax && pred.support && pred.support.score >= 0.5)
+  const wide = Boolean(
+    !pred.seen &&
+      !close &&
+      pred.support &&
+      pred.support.score >= GRAPH.wideTransfer.score &&
+      pred.sd <= GRAPH.wideTransfer.sdMax &&
+      G.exercises.size + G.liveSeen.size >= GRAPH.wideTransfer.minExercises,
+  )
+  const transferable = close || wide
+  const transferCap = wide ? GRAPH.wideTransfer.sdCap : null
   // A stalled lift gets one lighter session to reset before pushing again.
   const deload = Boolean(pred.seen && info?.stalled && !args.live && !args.graph)
   const lighterDay = Boolean(args.easy || args.returning || deload)
   const fresh = pred.avail >= 0.97
   // Planning (not mid-workout) on a normal day, after clean repeats of the
   // same numbers: see STEADY_SESSIONS_BEFORE_STEP.
-  const steadyHold = Boolean(pred.seen && !args.live && !args.graph && !lighterDay && fresh && !args.fixedReps && last && last.steady >= 1)
+  // A saved routine keeps its own rep count: its clean sessions count once
+  // every set reached that count, and only the weight ever steps.
+  const fixed = Boolean(args.fixedReps)
+  const steadyHold = Boolean(pred.seen && !args.live && !args.graph && !lighterDay && fresh && last && last.steady >= 1 && (!fixed || last.minReps >= range[0]))
   const steadyStep = steadyHold && !args.noIncrease && last.steady >= STEADY_SESSIONS_BEFORE_STEP
   // "Easy, I could do 5+ more" (last time, or earlier today) allows a bigger step.
   const liveSets = args.live?.exercises?.filter((e) => e.exId === args.exId).flatMap((e) => e.sets || []) || []
@@ -338,7 +354,7 @@ function graphTarget(args, def, profile) {
       floor: !args.noFloor && pred.seen && last && !last.failed && !last.hard && !lighterDay && fresh ? { reps: last.minReps } : null,
     })
     // The same reps done cleanly session after session: ask for one more.
-    if (steadyStep && !isNum(args.current) && p.reps <= last.minReps && last.minReps < range[1] + EXTRA_REPS_BEFORE_JUMP) {
+    if (steadyStep && !fixed && !isNum(args.current) && p.reps <= last.minReps && last.minReps < range[1] + EXTRA_REPS_BEFORE_JUMP) {
       p.reps = last.minReps + 1
       p.code = 'reps-up'
       p.predictedRir = Math.max(0, p.predictedRir - 1)
@@ -402,6 +418,7 @@ function graphTarget(args, def, profile) {
     current: isNum(args.current) ? toEff(args.current) : null,
     roomy,
     transfer: !pred.seen,
+    transferCap,
     noIncrease: Boolean(args.noIncrease),
     allowBigDrop: Boolean(last?.failed || args.returning || args.allowBigDrop),
     lighterDay,
@@ -411,7 +428,7 @@ function graphTarget(args, def, profile) {
   // day: the estimate may still doubt it, but the person has shown it.
   if (steadyHold && samePlace && lastEff !== null && !isNum(args.current) && !isNum(args.fixedWeight) && p.weight < lastEff - 1e-6 && grid.has(lastEff)) {
     p.weight = lastEff
-    p.reps = Math.min(last.minReps, range[1] + EXTRA_REPS_BEFORE_JUMP)
+    p.reps = fixed ? range[0] : Math.min(last.minReps, range[1] + EXTRA_REPS_BEFORE_JUMP)
     p.code = 'hold'
     p.flags = p.flags.filter((f) => f !== 'below-range' && f !== 'lightest-is-heavy')
     p.predictedRir = 0
@@ -427,7 +444,9 @@ function graphTarget(args, def, profile) {
       next / lastEff <= 1 + JUMP.smallestStepMax + 1e-9 &&
       (!(profile.bw > 0) || toLogged(next) / Math.max(toLogged(lastEff), 1e-9) <= 1 + JUMP.smallestStepMax + 1e-9)
     const top = stepOk ? range[1] : range[1] + EXTRA_REPS_BEFORE_JUMP
-    if (last.minReps < top) {
+    if (fixed && !stepOk) {
+      // A routine's reps stay as written; with no reachable next weight it repeats.
+    } else if (last.minReps < top) {
       p.reps = last.minReps + 1
       p.code = 'reps-up'
       p.predictedRir = Math.max(0, p.predictedRir - 1)
@@ -446,7 +465,7 @@ function graphTarget(args, def, profile) {
   if (!(weight >= 0) || (mode === 'load' && !(weight > 0))) return null
   const code = !pred.seen ? 'estimated-start' : deload ? 'deload' : p.code
   const fromLogged = last && isNum(last.weight) ? last.weight : null
-  return check({
+  const result = check({
     ...base,
     ...p,
     weight,
@@ -456,6 +475,27 @@ function graphTarget(args, def, profile) {
     facts: { ...facts, from: fromLogged, to: weight, reps: p.reps, estimate: round(toLogged(Math.exp(pred.level))) },
     confidence: pred.seen ? confidenceOf(pred.sd) : 'calibrating',
   })
+  // A step up in weight is offered as a test set, not imposed (TEST in
+  // config.js): the plan keeps last time's weight and carries the offer.
+  // A weight that was plainly too light ("5 or more left") just goes up.
+  if (
+    args.offerIncrease &&
+    code === 'load-up' &&
+    pred.seen &&
+    !args.live &&
+    !args.graph &&
+    !roomy &&
+    samePlace &&
+    lastEff !== null &&
+    (info?.n || 0) >= TEST.minSessions &&
+    !isNum(args.current) &&
+    !isNum(args.fixedWeight)
+  ) {
+    const held = graphTarget({ ...args, offerIncrease: false, noIncrease: true }, def, profile)
+    const lighter = held && isNum(held.weight) && (mode === 'assist' ? held.weight > weight + 1e-6 : held.weight < weight - 1e-6)
+    if (lighter) return { ...held, up: false, offer: { weight, reps: result.reps, from: held.weight, fromReps: held.reps } }
+  }
+  return result
 }
 
 /**
@@ -510,6 +550,10 @@ export function strengthNote(target, unit = 'lb') {
       ? `A careful first guess from your ${target.facts.source.toLowerCase()}. Change it if it feels off.`
       : 'A careful first guess from a similar exercise. Change it if it feels off.'
   if (target.code === 'deload') return 'A lighter session to reset after some tough ones. You’ll come back stronger.'
+  if (target.offer)
+    return target.mode === 'assist'
+      ? `Ready to test ${fmt(target.offer.weight)} ${unit} assistance. You decide when you get there.`
+      : `Ready to test ${fmt(target.offer.weight)} ${unit}. You decide when you get there.`
   if (flags.includes('lightest-is-heavy')) return 'Even the lightest weight is heavy for now. Do the reps you can, or swap.'
   if (flags.includes('outgrown'))
     return target.mode === 'reps' ? 'This is getting easy. A harder version will keep you progressing.' : 'You’ve outgrown the weights here. Add weight if you can.'
@@ -583,6 +627,136 @@ export function strengthSummary(args) {
       ...library,
       readiness: 1,
     }
+  } catch {
+    failures++
+    return null
+  }
+}
+
+/**
+ * First weights to try for a movement with little or nothing known about it
+ * (the starting-point session). Uses everything already learned, including
+ * movements done earlier in the same session, and stays on the cautious
+ * side. With nothing learned at all, the guess is scaled by bodyweight and
+ * the profile; the person still chooses.
+ * @param args the usual model arguments, plus reps (to aim for), rir, scale
+ *   (a profile factor for a first guess, default 1)
+ * @param session the workout in progress, if any
+ * @returns null (not a weighted, tied exercise) or
+ *   { suggested, choices: number[], informed, source }
+ */
+export function startingWeights(args, session = null) {
+  try {
+    const def = args.def || findExercise(args.exId, args.customExercises)
+    const meta = metaOf(args.exId)
+    const profile = meta ? exerciseProfile(args.exId, def) : null
+    if (!profile?.tie || !['load', 'assist'].includes(profile.mode)) return null
+    const G = session ? liveStrengthGraph(args, session) : graphNow(args)
+    const pred = predictExercise(G, args.exId, { place: args.place, def, live: Boolean(session) })
+    if (!pred) return null
+    const bw = pred.bodyweight.value
+    const info = pred.info
+    // Nothing learned yet: scale the library's reference lifter to this person.
+    const informed = G.exercises.size > 0 || G.liveSeen.size > 0
+    const caution = args.second ? BASELINE.caution.second : informed ? BASELINE.caution.informed : BASELINE.caution.prior
+    let level = pred.level - caution * Math.min(pred.sd, 0.3)
+    if (!informed) {
+      const refBw = args.unit === 'lb' ? REF_BODYWEIGHT_KG / 0.45359237 : REF_BODYWEIGHT_KG
+      const [lo, hi] = BASELINE.bodyweightLimits
+      const byWeight = pred.bodyweight.known ? Math.min(hi, Math.max(lo, (bw / refBw) ** BASELINE.bodyweightExponent)) : 1
+      level += Math.log(byWeight * (isNum(args.scale) && args.scale > 0 ? args.scale : 1))
+    }
+    const reps = isNum(args.reps) ? args.reps : BASELINE.targetReps
+    const rir = isNum(args.rir) ? args.rir : BASELINE.targetRir
+    const eff = Math.exp(level) * fractionAt(reps + rir, pred.k)
+    const loggedGrid =
+      profile.mode === 'assist'
+        ? assistGrid(args.unit, profile.bw * bw)
+        : loadGrid({ load: meta?.load, unit: args.unit, sizes: args.sizes || [], used: info?.used || [] })
+    const toEff = (w) => effectiveLoad(profile, w, bw)
+    const toLogged = (e) => loggedFor(profile, e, bw)
+    const grid = mappedGrid(loggedGrid, toEff, toLogged, profile.mode === 'assist')
+    if (!(grid.max > 0)) return null
+    const snap = (e) => {
+      const raw = toLogged(e)
+      return loggedGrid.between(raw - 1e-6, raw + 1e-6)[0] ?? Math.round(raw * 100) / 100
+    }
+    // Before anything is known the suggestion rounds down; after that, to
+    // the nearest real weight.
+    let middle = grid.atMost(Math.max(eff, grid.min))
+    if (!isNum(middle)) return null
+    const above = informed ? grid.next(middle, 1) : null
+    if (above !== null && above - eff < eff - middle) middle = above
+    // Two lighter, the suggestion, one heavier, about an eighth apart in
+    // what is actually moved (never less than one real step), so the four
+    // choices cover a useful range on a 5 lb stack and a dumbbell rack alike.
+    const stepTo = (from, dir, share) => {
+      const far = dir < 0 ? grid.atMost(from * (1 - share)) : grid.atMost(from * (1 + share))
+      const near = grid.next(from, dir)
+      if (near === null) return null
+      return dir < 0 ? (isNum(far) && far < near ? far : near) : isNum(far) && far > near ? far : near
+    }
+    const ladder = [middle]
+    let down = middle
+    for (let i = 0; i < 2; i++) {
+      down = stepTo(down, -1, 0.125)
+      if (down === null) break
+      ladder.unshift(down)
+    }
+    let up = middle
+    while (ladder.length < 4) {
+      up = stepTo(up, 1, 0.125)
+      if (up === null) break
+      ladder.push(up)
+    }
+    const choices = ladder.map(snap).filter((w) => isNum(w) && (w > 0 || profile.mode === 'assist'))
+    const suggested = snap(middle)
+    if (!choices.length || !(suggested > 0 || profile.mode === 'assist')) return null
+    const support = !pred.seen && pred.support ? findExercise(pred.support.exId)?.name || null : null
+    return { suggested, choices: [...new Set(choices)], informed, source: pred.seen ? 'own' : support }
+  } catch {
+    failures++
+    return null
+  }
+}
+
+// Body areas compared in the balance view.
+const BALANCE_AREAS = ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Glutes', 'Core']
+// An area is called behind (or ahead) only when the gap is both sizeable
+// and clear of the lifts' own spread; at most two areas are called behind.
+export const BALANCE = { gap: 0.12, z: 1, most: 2 }
+
+/**
+ * How each body area compares with this person's own average strength.
+ * "Behind" means behind their other lifts by the library's typical ratios,
+ * never behind other people. Areas without enough evidence say so.
+ * @returns null or { areas: [{ id, status: 'behind'|'even'|'ahead'|'unknown',
+ *   percent, lifts }], behind: [...ids], measured }
+ */
+export function strengthBalance(args) {
+  try {
+    const G = args.session ? liveStrengthGraph(args, args.session) : graphNow(args)
+    const rows = areaBalance(G, BALANCE_AREAS)
+    // One lift alone has nothing to be compared with.
+    const comparable = new Set(rows.flatMap((r) => r.lifts)).size >= 2
+    const scored = rows.map((r) => {
+      const measured = comparable && r.lifts.length > 0
+      const z = measured ? r.diff / Math.max(r.sd, 1e-6) : 0
+      return { ...r, measured, z }
+    })
+    const lowest = scored
+      .filter((r) => r.measured && r.diff <= -BALANCE.gap && r.z <= -BALANCE.z)
+      .sort((x, y) => x.z - y.z)
+      .slice(0, BALANCE.most)
+      .map((r) => r.id)
+    const areas = scored.map((r) => ({
+      id: r.id,
+      status: !r.measured ? 'unknown' : lowest.includes(r.id) ? 'behind' : r.diff >= BALANCE.gap && r.z >= BALANCE.z ? 'ahead' : 'even',
+      percent: r.measured ? Math.round((Math.exp(r.diff) - 1) * 100) : null,
+      lifts: r.lifts.map((id) => findExercise(id, args.customExercises)?.name || id),
+      machinesOnly: r.machinesOnly,
+    }))
+    return { areas, behind: areas.filter((a) => a.status === 'behind').map((a) => a.id), measured: areas.filter((a) => a.status !== 'unknown').length }
   } catch {
     failures++
     return null

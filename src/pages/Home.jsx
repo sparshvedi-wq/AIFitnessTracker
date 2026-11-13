@@ -23,6 +23,8 @@ import WorkoutDetail from '../components/workout/WorkoutDetail.jsx'
 import useStartWorkout, { bodyweights } from '../components/workout/useStartWorkout.js'
 import usePlanningTime, { lastRecordedAt } from '../components/training/usePlanningTime.js'
 import { ONBOARDING_VERSION } from '../lib/onboarding.js'
+import { baselineDue } from '../lib/baseline.js'
+import { BaselineCard } from '../components/baseline/BaselineEntry.jsx'
 
 const strength = (w) =>
   !['sport', 'recovery', 'pump'].includes(w.kind) &&
@@ -52,6 +54,8 @@ export default function Home({ nav }) {
   const welcomeBack = returnMessage(workouts, today)
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
   const setupPending = settings.training.onboardingVersion !== ONBOARDING_VERSION
+  // Someone new starts with a short session that finds their weights.
+  const startingPoint = !setupPending && baselineDue(state)
 
   return (
     <div className="animate-fade-in">
@@ -107,6 +111,8 @@ export default function Home({ nav }) {
               Train anyway
             </button>
           </section>
+        ) : startingPoint ? (
+          <BaselineCard nav={nav} />
         ) : (
           <>
             <TrainingCard

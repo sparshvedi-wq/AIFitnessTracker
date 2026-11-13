@@ -16,7 +16,8 @@ export function routineFromWorkout(workout, unit = workout.unit) {
   return {
     id: `repeat-${workout.id}`,
     name: workout.name,
-    kind: workout.kind === 'manual' ? 'routine' : workout.kind,
+    // Repeating a logged workout or a starting point is an ordinary session.
+    kind: ['manual', 'baseline'].includes(workout.kind) ? 'routine' : workout.kind,
     sport: workout.sport,
     focus: workout.focus,
     location: workout.location,

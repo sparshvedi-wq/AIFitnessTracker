@@ -23,7 +23,7 @@ const DAY = 86400000
  * @returns {null | { exId, question, prompt, answers, reason, value, workoutId }}
  */
 export function chooseQuestion(state, record, { now = Date.now(), today } = {}) {
-  if (!record || ['sport', 'recovery', 'manual'].includes(record.kind) || record.sample) return null
+  if (!record || ['sport', 'recovery', 'manual', 'baseline'].includes(record.kind) || record.sample) return null
   const learning = normalizeLearning(state.learning)
   const touches = learning.events.filter((e) => e.kind === 'answer' || e.kind === 'dismiss')
   // One question per session.

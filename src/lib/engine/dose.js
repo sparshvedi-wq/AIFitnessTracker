@@ -66,6 +66,8 @@ export function withTarget(item, meta, def, ctx) {
     customExercises: ctx.state.customExercises,
     activities: ctx.activities,
     cache: ctx.strengthCache,
+    // A step up in weight is offered as a test set, not imposed.
+    offerIncrease: true,
   })
   // What the strength model thinks of this exercise today feeds selection:
   // does it suit this person's level here, and how fresh are its muscles.
@@ -75,6 +77,7 @@ export function withTarget(item, meta, def, ctx) {
     const next = { ...item, reps: adaptive.reps, repRange: adaptive.range, targetRir: adaptive.rir }
     if (def.weighted) next.weight = adaptive.weight
     if (Array.isArray(adaptive.choices)) next.startChoices = adaptive.choices
+    if (adaptive.offer) next.offer = adaptive.offer
     return {
       item: next,
       progression: {
@@ -84,6 +87,7 @@ export function withTarget(item, meta, def, ctx) {
         flags: adaptive.flags,
         rule: adaptive.rule,
         confidence: adaptive.confidence,
+        ...(adaptive.offer ? { offer: adaptive.offer } : {}),
       },
       trend,
     }

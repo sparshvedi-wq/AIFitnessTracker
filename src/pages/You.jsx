@@ -15,6 +15,7 @@ import { bodyweights } from '../components/workout/useStartWorkout.js'
 import { displayOf, trainingDays, hasTrainingTarget } from '../lib/preferences.js'
 import { photoDraft } from '../lib/photo-draft.js'
 import PersonalRecords from '../components/PersonalRecords.jsx'
+import { BalanceSection } from '../components/baseline/BaselineEntry.jsx'
 
 function compact(n) {
   if (n >= 1e6) return `${fmtNum(Math.round(n / 1e5) / 10)}M`
@@ -174,6 +175,7 @@ export default function You({ nav }) {
       </section>
 
       <PersonalRecords />
+      <BalanceSection nav={nav} />
 
       {!display.metricLight && (
         <section className="page-section rounded-tuck bg-surface px-5 py-[18px]">

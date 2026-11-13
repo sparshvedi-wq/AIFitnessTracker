@@ -22,7 +22,7 @@ export default function WorkoutDetail({ workout: initialWorkout, onClose, onRepe
     state.workouts.find((w) => w.id === initialWorkout.id) ||
     (corrected?.id === initialWorkout.id ? corrected : initialWorkout)
   const routine =
-    state.routines.find((r) => r.id === workout.routineId) ||
+    (workout.kind !== 'baseline' && state.routines.find((r) => r.id === workout.routineId)) ||
     TEMPLATES.find((t) => t.id === workout.routineId) ||
     routineFromWorkout(workout, state.settings.weightUnit)
   const effort = EFFORT.find((e) => e.value === workout.effort)

@@ -31,6 +31,7 @@ export function resetForTesting(state, stage) {
         sideTestDate: null,
         sideExercise: '',
         lastSport: null,
+        baseline: null,
       },
     },
   }

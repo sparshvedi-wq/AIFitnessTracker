@@ -35,7 +35,6 @@ import {
   NEW_EXERCISE_SD,
   OUTLIER,
   PROCESS,
-  RESERVE,
   REP_FATIGUE_SCALE,
   SD_LIMITS,
   TREND_DAMPING,
@@ -43,6 +42,7 @@ import {
   TREND_PRIOR,
   TREND_PRIOR_REPS,
   TREND_PRIOR_SD,
+  reserveFor,
 } from './config.js'
 import {
   clamp,
@@ -125,11 +125,13 @@ export function sessionObservations(record, exId, { unit, mode, experience, meta
         if (final ? a.setIndex < index : a.setIndex !== index) continue
         const w = mode === 'load' ? convertWeight(Number(a.weight), a.unit || fromUnit, unit) : null
         if (mode === 'load' && !(isNum(w) && w > 0 && w <= ceiling)) continue
+        const most = isNum(a.reps) && a.reps >= 1 ? Math.min(MAX_MODEL_REPS, Math.round(a.reps)) : 0
+        const bound = most ? IMPLICIT.tooHeavyForReps : IMPLICIT.tooHeavy
         observations.push({
           kind: 'upper',
-          reps: 0,
-          rir: IMPLICIT.tooHeavy.atMost,
-          sd: IMPLICIT.tooHeavy.sd,
+          reps: most,
+          rir: bound.atMost,
+          sd: bound.sd,
           weight: w,
           a: fatigueFactor(rirsSoFar, mode),
           setIndex: a.setIndex,
@@ -168,10 +170,10 @@ export function sessionObservations(record, exId, { unit, mode, experience, meta
       const base = { reps: Math.round(reps), weight, a, setIndex: thisIndex, manual: Boolean(s.manual) }
       sets.push({ ...base, feel })
       if (feel) {
-        const reserve = feel === 'easy' ? RESERVE[s.reserve] : null
+        const reserve = reserveFor(feel, s.reserve)
         if (reserve) {
-          observations.push({ ...base, kind: 'two', rir: reserve.mean, sd: reserve.sd, source: 'easy', explicit: true })
-          observations.push({ ...base, kind: 'lower', rir: reserve.atLeast, sd: 0.5, source: 'easy', explicit: true })
+          observations.push({ ...base, kind: 'two', rir: reserve.mean, sd: reserve.sd, source: feel, explicit: true })
+          if (isNum(reserve.atLeast)) observations.push({ ...base, kind: 'lower', rir: reserve.atLeast, sd: 0.5, source: feel, explicit: true })
         } else {
           observations.push({ ...base, kind: 'two', rir: table[feel].mean, sd: table[feel].sd, source: feel, explicit: true })
           if (feel === 'easy') observations.push({ ...base, kind: 'lower', rir: table.easy.atLeast, sd: 0.5, source: 'easy', explicit: true })

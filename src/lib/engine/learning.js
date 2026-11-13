@@ -73,7 +73,12 @@ function anchorFields(e) {
   if (!Number.isInteger(reps) || reps < 1 || reps > 100) return null
   if (e.weight !== undefined && !(Number.isFinite(e.weight) && e.weight > 0 && e.weight <= 10000)) return null
   if (e.weight !== undefined && !['lb', 'kg'].includes(e.unit)) return null
-  return { reps, ...(e.weight !== undefined ? { weight: e.weight, unit: e.unit } : {}) }
+  return {
+    reps,
+    ...(e.weight !== undefined ? { weight: e.weight, unit: e.unit } : {}),
+    // Numbers given as a starting point inform related exercises too.
+    ...(e.scope === 'baseline' ? { scope: 'baseline' } : {}),
+  }
 }
 
 /** Whitelists and bounds saved learning data; corrupt entries are dropped. */
@@ -132,13 +137,14 @@ export const dismissEvent = ({ exId, question, workoutId, at }) => ({
 })
 export const retryEvent = ({ exId, at }) => ({ id: eventId('retry', at), kind: 'retry', exId, at })
 /** "My working weight is W for R reps" (or, without numbers, start learning again). */
-export const anchorEvent = ({ exId, at, weight, reps, unit }) => ({
+export const anchorEvent = ({ exId, at, weight, reps, unit, scope }) => ({
   id: eventId('anchor', at),
   kind: 'anchor',
   exId,
   at,
   ...(reps !== undefined ? { reps } : {}),
   ...(weight !== undefined ? { weight, unit } : {}),
+  ...(scope === 'baseline' && reps !== undefined ? { scope } : {}),
 })
 export const resetEvent = ({ exId = '*', at }) => ({ id: eventId('reset', at), kind: 'reset', exId, at })
 

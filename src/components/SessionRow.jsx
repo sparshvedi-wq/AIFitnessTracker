@@ -13,7 +13,9 @@ export default function SessionRow({ workout, onClick, divider = false }) {
         ? 'Short session'
         : workout.kind === 'recovery'
           ? 'Light movement'
-          : ''
+          : workout.kind === 'baseline'
+            ? 'One set each'
+            : ''
   const volume = workoutVolume(workout)
   const place = recordPlaceLabel(workout)
   return (

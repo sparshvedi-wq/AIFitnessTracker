@@ -3,7 +3,7 @@
 // they are not measurements of physiology, recovery or fatigue.
 // See docs/RECOMMENDATION_ENGINE.md for the reasoning behind each group.
 
-export const ENGINE_VERSION = 'daily-4.2'
+export const ENGINE_VERSION = 'daily-4.3'
 export const RULES = {
   eligibility: 'elig-2',
   exposure: 'expo-2',
@@ -12,11 +12,11 @@ export const RULES = {
   scoring: 'score-5',
   photoFocus: 'photo-1',
   exploration: 'explore-1',
-  selection: 'select-5',
+  selection: 'select-6',
   dose: 'dose-3',
   progression: 'strength-graph-1',
   feedback: 'ask-1',
-  explanation: 'why-2',
+  explanation: 'why-3',
 }
 
 // ── Exposure: how much completed work each set contributes ───────────────

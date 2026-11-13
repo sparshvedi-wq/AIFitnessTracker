@@ -38,7 +38,8 @@ const isWork = (s) => s.kind !== 'warmup' && (!s.status || s.status === 'done')
  *   it isn't there yet)
  */
 export function nextTimeNotes(workout, profile, unit, customExercises = [], context = {}) {
-  if (['sport', 'recovery', 'pump'].includes(workout.kind)) return []
+  // A starting point sets weights for everything; there is no "same again".
+  if (['sport', 'recovery', 'pump', 'baseline'].includes(workout.kind)) return []
   const ended = Number.isFinite(workout.endedAt) ? workout.endedAt : Number.isFinite(workout.startedAt) ? workout.startedAt : Date.now()
   const record = {
     ...workout,
@@ -82,6 +83,7 @@ export function nextTimeNotes(workout, profile, unit, customExercises = [], cont
       // A saved routine keeps its own reps; daily plans use the goal's range.
       ...(record.kind === 'routine' && Number.isFinite(done[0].targetReps) ? { fixedReps: done[0].targetReps } : {}),
       noIncrease: signal?.comfort.status === 'some' || signal?.difficulty === 'hard',
+      offerIncrease: true,
     })
     const note = target ? fromModel(def, meta, done, target, unit, sizes) : fromRules(def, meta, done, record, unit, sizes)
     if (note) notes.push({ exId: def.id, name: def.name, ...note })
@@ -121,6 +123,14 @@ function fromModel(def, meta, done, target, unit, sizes) {
   const harder = assist ? target.weight < lastWeight - 1e-6 : target.weight > lastWeight + 1e-6
   const lighter = assist ? target.weight > lastWeight + 1e-6 : target.weight < lastWeight - 1e-6
   let why
+  if (target.offer)
+    return {
+      change,
+      why: assist
+        ? `You can test ${fmtNum(target.offer.weight)} ${unit} assistance if you feel ready.`
+        : `You can test ${fmtNum(target.offer.weight)} ${unit}${each} if you feel ready.`,
+      up: true,
+    }
   if (target.code === 'deload') why = 'A lighter session to reset after some tough ones.'
   else if (harder) why = assist ? 'A little less help: you’re getting stronger.' : 'You’re ready for the next weight.'
   else if (lighter) why = assist ? 'A little more help, from how those sets went.' : 'A little lighter, from how those sets went.'

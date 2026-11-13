@@ -14,6 +14,7 @@ import { metaOf } from './catalog/index.js'
 import { outcomeFromSession } from './engine/ledger.js'
 import { snapLoad, strengthNote, strengthTarget, trainsAny } from './strength/index.js'
 import { exerciseProfile } from './strength/library.js'
+import { TEST, reserveFor } from './strength/config.js'
 
 // Assisted machines log assistance: less is harder, and it is not lifted load.
 const assisted = (exId) => metaOf(exId)?.load === 'assist'
@@ -143,11 +144,15 @@ export function buildSession(
   const day = routine.strengthContext || {}
   const lighterMuscles = new Set(routine.lighterMuscles || day.lighterMuscles || [])
   const holds = new Set(day.holds || [])
+  // At most a couple of test sets are offered in one workout.
+  let offers = 0
   const exercises = routine.items
     .map((item) => {
       const def = findExercise(item.exId, customExercises)
       if (!def) return null
       const last = lastPerformance(workouts, item.exId, unit)
+      // Past the limit, a planned step up simply holds for today.
+      const offered = (target) => (target?.offer && offers >= TEST.maxPerSession ? { ...target, offer: null } : target)
       const adaptive =
         !routine.lockedTargets && strength
           ? strengthTarget({
@@ -172,6 +177,8 @@ export function buildSession(
               sets: item.sets,
               fixedReps: item.reps,
               cache: strengthCache,
+              // A step up in weight is offered as a test set (strength/config.js TEST).
+              offerIncrease: true,
             })
           : null
       const { target, note, up } = routine.lockedTargets
@@ -188,12 +195,15 @@ export function buildSession(
                 sec: null,
                 weight: adaptive.weight,
               },
-              note: strengthNote(adaptive, unit),
+              note: strengthNote(offered(adaptive), unit),
               up: adaptive.up,
             }
           : suggestTarget(def, item, last, unit)
       if (DUMBBELL_MOVES.includes(def.id)) target.weight = fitAvailableLoad(target.weight, dumbbellWeights)
-      const planned = adaptive ? { ...item, repRange: adaptive.range, targetRir: adaptive.rir } : item
+      const applied = adaptive && (adaptive.weight !== null || adaptive.mode === 'reps') && !routineStartWins(item, adaptive)
+      const offer = routine.lockedTargets ? item.offer : applied ? offered(adaptive).offer : null
+      if (offer) offers++
+      const planned = adaptive ? { ...item, repRange: adaptive.range, targetRir: adaptive.rir, offer } : { ...item, offer }
       return makeSessionExercise(def, planned, target, { last, note, up })
     })
     .filter(Boolean)
@@ -289,6 +299,10 @@ export function makeSessionExercise(def, item, target, { last = null, note = nul
     ...(Number.isFinite(item.targetRir) ? { targetRir: item.targetRir } : {}),
     // First-weight choices estimated from related exercises (strength model).
     ...(Array.isArray(item.startChoices) && item.startChoices.length ? { startChoices: item.startChoices } : {}),
+    // A test set on offer at the next weight up (strength/session.js).
+    ...(item.offer && Number.isFinite(item.offer.weight) && Number.isFinite(item.offer.reps)
+      ? { offer: { weight: item.offer.weight, reps: item.offer.reps, from: item.offer.from, fromReps: item.offer.fromReps } }
+      : {}),
     up,
   }
 }
@@ -753,8 +767,10 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
           targetSec: s.targetSec,
           // How the set felt (one tap) and whether the numbers were typed in.
           ...(s.feel ? { feel: s.feel } : {}),
-          ...(s.feel === 'easy' && [3, 5, 8].includes(s.reserve) ? { reserve: s.reserve } : {}),
+          ...(reserveFor(s.feel, s.reserve) ? { reserve: s.reserve } : {}),
           ...(s.manual ? { manual: true } : {}),
+          // A test set at the next weight up, and how it went.
+          ...(['passed', 'missed'].includes(s.test) ? { test: s.test } : {}),
           ...(Number.isFinite(s.doneAt) ? { at: s.doneAt } : {}),
         })),
     }))
@@ -781,7 +797,7 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
     // Completed, partial, unreached and skipped work with stated reasons (engine/ledger.js).
     outcome: outcomeFromSession(session),
     unfinished:
-      session.kind === 'manual'
+      ['manual', 'baseline'].includes(session.kind)
         ? []
         : session.exercises
             .filter((e) => e.sets.some((s) => s.status !== 'done'))

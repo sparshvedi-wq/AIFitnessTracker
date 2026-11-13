@@ -6,7 +6,7 @@
 // heuristics anchored to published rep–load relationships and RIR research;
 // they are not measurements of physiology. See docs/RECOMMENDATION_ENGINE.md.
 
-export const STRENGTH_VERSION = 'strength-4'
+export const STRENGTH_VERSION = 'strength-5'
 
 // ── Rep–load relationship ────────────────────────────────────────────────
 // Fraction of a one-rep max that can be lifted for R reps to failure:
@@ -45,10 +45,20 @@ export const FEEL_RIR = {
 // That turns a vague "easy" into a real measurement, so a weight that is far
 // too light is corrected in one or two sets instead of creeping up.
 export const RESERVE = {
+  0: { mean: 0.3, sd: 0.6 },
+  1: { mean: 1.5, sd: 0.8, atLeast: 1 },
   3: { mean: 3, sd: 1.0, atLeast: 2 },
   5: { mean: 5, sd: 1.3, atLeast: 4 },
+  // "5 or more": open-ended, so a firm floor and a wide guess above it.
+  6: { mean: 7, sd: 3, atLeast: 5 },
   8: { mean: 9, sd: 2.5, atLeast: 7 },
 }
+// The starting-point session asks the same question after every set ("none",
+// "1 or 2", "3 or 4", "5 or more"), so 0, 1 and 6 exist too. Each count
+// belongs to one answer; any other pairing is ignored.
+export const RESERVE_FEEL = { 0: 'hard', 1: 'good', 3: 'easy', 5: 'easy', 6: 'easy', 8: 'easy' }
+/** The measured reps-in-reserve for a set's answer, or null. */
+export const reserveFor = (feel, reserve) => (RESERVE_FEEL[reserve] === feel ? RESERVE[reserve] : null)
 // Without an answer, completing the logged reps only proves "at least 0 left".
 // Bounds act only when the belief contradicts them, so silence never inflates
 // (or deflates) an estimate on its own.
@@ -63,6 +73,9 @@ export const IMPLICIT = {
   veryHardSession: { atMost: 2, sd: 1.2 },
   // "Too heavy to start": not even one clean rep at that load.
   tooHeavy: { atMost: 0, sd: 0.5 },
+  // "Too heavy" for the planned reps (one tap): fewer than planned were
+  // possible. A judgement made before or during the set, so it is wider.
+  tooHeavyForReps: { atMost: 0, sd: 1.0 },
 }
 // Before any answers, people usually stop a planned set with 2–3 reps left.
 // This is a prior for the very first session only, never treated as data.
@@ -107,7 +120,9 @@ export const LOAD_CEILING_LB = { hand: 250, one: 250, bar: 1300, landmine: 600, 
 // ── Prescription ─────────────────────────────────────────────────────────
 // Plans aim slightly below the best estimate while the model is unsure:
 // weight from (level − CONSERVATISM · sd), with sd capped.
-export const CONSERVATISM = { weight: 0.5, sdFloor: 0.015, sdCap: 0.1, transferWeight: 1.0, transferSdCap: 0.2 }
+// A first guess at reps for a bodyweight movement needs less margin than a
+// first weight: the worst case is stopping a rep or two early.
+export const CONSERVATISM = { weight: 0.5, sdFloor: 0.015, sdCap: 0.1, transferWeight: 1.0, transferSdCap: 0.2, bodyweightTransferWeight: 0.5 }
 // Reps in reserve to aim for.
 export const TARGET_RIR = {
   'Starting out': 3,
@@ -148,3 +163,35 @@ export const MATERIAL_REP_CHANGE = 2
 // the floor moves up; missed, the model learns exactly where the limit is
 // and takes over. Estimates themselves are never inflated.
 export const STEADY_SESSIONS_BEFORE_STEP = 2
+
+// ── Test sets ────────────────────────────────────────────────────────────
+// A planned step up in weight is offered, not imposed: the plan keeps the
+// last weight and the first working set can be tried at the next one. A test
+// passes when every planned rep is done and it was not hard; then the rest of
+// the exercise uses the new weight. Corrections of a weight that was plainly
+// too light ("5 or more left") are applied directly, never offered.
+// At most `maxPerSession` offers in one workout (the first lifts in the
+// plan); the others wait for another day.
+export const TEST = { minSessions: 2, maxPerSession: 2 }
+
+// ── The starting-point session ──────────────────────────────────────────
+// One set per movement, stopped with about two reps left and never past
+// `maxReps`. A second set is added only when the first says little: the
+// answer was open-ended ("5 or more left"), or the weight was too heavy to
+// read well (a few grinding reps).
+export const BASELINE = {
+  targetReps: 10,
+  targetRir: 3,
+  maxReps: 15,
+  secondSetAtReserve: 6,
+  tooFewReps: 4,
+  secondSetReps: 8,
+  // How far below the best estimate a suggested weight sits, in spreads:
+  // more before anything is known, less once earlier movements have been
+  // measured, none for a second set chosen from the first.
+  caution: { prior: 0.5, informed: 0.25, second: 0 },
+  // First guesses scale with bodyweight (strength grows roughly with
+  // bodyweight^(2/3)) within these limits.
+  bodyweightExponent: 0.67,
+  bodyweightLimits: [0.7, 1.35],
+}

@@ -100,7 +100,11 @@ export function FeelPrompt({ session, update, strengthCtx, onShort }) {
     <section className="mb-4 rounded-[20px] border border-accent/30 bg-surface px-4 py-3" aria-label="How did that set feel?">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[15px] font-semibold">
-          {set.manual ? 'You set those numbers. How did it feel?' : 'How did that set feel?'}
+          {set.test
+            ? `How did ${fmtNum(set.weight)} ${session.unit} feel?`
+            : set.manual
+              ? 'You set those numbers. How did it feel?'
+              : 'How did that set feel?'}
         </p>
         <button
           type="button"
@@ -121,6 +125,47 @@ export function FeelPrompt({ session, update, strengthCtx, onShort }) {
         I didn’t get all {set.reps} reps
       </button>
     </section>
+  )
+}
+
+/** Before the first working set: a step up in weight, offered as one test set. */
+export function TestOffer({ offer, unit, assist = false, each = false, onYes, onNo }) {
+  const label = `${fmtNum(offer.weight)} ${unit}${assist ? ' assistance' : each ? ' each' : ''}`
+  return (
+    <section className="mt-4 rounded-[20px] border border-accent/40 bg-accent/10 px-4 py-3" aria-label="Test set offer">
+      <p className="text-[16px] font-semibold">Ready to try {label}?</p>
+      <p className="mt-1 text-[14px] leading-relaxed text-ink2">
+        One set of {offer.reps}. If it goes well it becomes your working weight; if not, you carry on at{' '}
+        {fmtNum(offer.from)} {unit}.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button type="button" className="btn-primary min-h-11 !py-0 text-[15px]" onClick={onYes}>
+          Try it
+        </button>
+        <button type="button" className="btn-secondary min-h-11 !py-0 text-[15px]" onClick={onNo}>
+          Not today
+        </button>
+      </div>
+    </section>
+  )
+}
+
+/** During rest: how the test set just logged turned out. */
+export function TestResult({ session }) {
+  const c = session?.lastLogged
+  const ex = c && session.exercises?.[c.ex]
+  const set = ex?.sets?.[c.set]
+  if (!set || set.status !== 'done' || !['passed', 'missed'].includes(set.test) || !ex.offer) return null
+  const passed = set.test === 'passed'
+  return (
+    <p className="mb-3 flex items-start gap-2 rounded-[16px] bg-surface px-4 py-3 text-[14px] leading-relaxed text-ink2" role="status">
+      <Icon name={passed ? 'check' : 'info'} size={17} className="mt-0.5 shrink-0 text-accent" />
+      <span>
+        {passed
+          ? `${fmtNum(ex.offer.weight)} ${session.unit} is your working weight now.`
+          : `Back to ${fmtNum(ex.offer.from)} ${session.unit} for the rest. It’ll be offered again once this weight feels steady.`}
+      </span>
+    </p>
   )
 }
 
@@ -206,8 +251,8 @@ export function CouldntSheet({ open, onClose, session, coord, mode, initialStep 
           {mode === 'load' && (
             <SheetRow
               icon="minimize"
-              label="Too heavy to lift"
-              detail="It gets lighter right away"
+              label="I couldn’t lift it at all"
+              detail="It gets a lot lighter right away"
               onClick={() => {
                 onTooHeavy()
                 close()

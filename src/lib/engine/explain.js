@@ -85,6 +85,8 @@ export function reasonLines(decision) {
         ? 'Your chosen focus gets priority.'
         : 'A small photo-based emphasis, reviewed with your next check-in.',
     )
+  if (f.weakAreas?.length)
+    lines.push(`A little extra ${f.weakAreas.join(' and ').toLowerCase()} work: it’s behind your other lifts.`)
   if (f.sore?.length) lines.push(`Resting ${f.sore.join(', ').toLowerCase()}.`)
   if (f.pain?.length) lines.push(`Avoiding ${f.pain.join(', ').toLowerCase()}. Stop if anything hurts.`)
   if (f.recentAreas?.length)
@@ -143,6 +145,7 @@ export function itemNote(entry, ctx) {
   else if (codes.includes('step-up'))
     parts.push('A small step up from your level: start light and focus on form.')
   if (pr.code === 'deload') parts.push('A lighter session to reset after some tough ones.')
+  if (pr.offer) parts.push('Ready to test the next weight: you decide when you get there.')
   if (pr.code === 'estimated-start')
     parts.push(
       pr.facts?.source

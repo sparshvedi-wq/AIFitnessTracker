@@ -71,9 +71,9 @@ const codeFor = ({ weight, reps, ref, last }) => {
  *   sets today), transfer (belief borrowed from a related exercise),
  *   noIncrease, allowBigDrop
  */
-export function prescribeLoad(belief, { range, rir, sets = 3, grid, last = null, current = null, before = [], transfer = false, noIncrease = false, allowBigDrop = false, lighterDay = false, floor = null, cautiousLevel = null, plannedA = null, externalOf = null, roomy = false }) {
+export function prescribeLoad(belief, { range, rir, sets = 3, grid, last = null, current = null, before = [], transfer = false, transferCap = null, noIncrease = false, allowBigDrop = false, lighterDay = false, floor = null, cautiousLevel = null, plannedA = null, externalOf = null, roomy = false }) {
   const [lo, hi] = range
-  const sdCap = transfer ? CONSERVATISM.transferSdCap : CONSERVATISM.sdCap
+  const sdCap = transfer ? (isNum(transferCap) ? transferCap : CONSERVATISM.transferSdCap) : CONSERVATISM.sdCap
   const sd = clamp(belief.sd, CONSERVATISM.sdFloor, sdCap)
   const kappa = transfer ? CONSERVATISM.transferWeight : CONSERVATISM.weight
   const k = belief.k
@@ -224,7 +224,7 @@ export function mappedGrid(grid, toEff, toLogged, decreasing = false) {
 export function prescribeAtLoad(belief, { load, range, rir, sets = 3, before = [], last = null, current = null, noIncrease = false, transfer = false, floor = null, plannedA = null, roomy = false }) {
   const [lo, hi] = range
   const sd = clamp(belief.sd, CONSERVATISM.sdFloor, transfer ? CONSERVATISM.transferSdCap : CONSERVATISM.sdCap)
-  const kappa = transfer ? CONSERVATISM.transferWeight : CONSERVATISM.weight
+  const kappa = transfer ? CONSERVATISM.bodyweightTransferWeight : CONSERVATISM.weight
   const a = isNum(plannedA) ? plannedA : plannedFactor({ sets, rir, before, mode: 'load' })
   const cautious = repsAtFraction(load / (Math.exp(belief.level - kappa * sd) * a), belief.k) - rir
   const mean = repsAtFraction(load / (Math.exp(belief.level) * a), belief.k) - rir

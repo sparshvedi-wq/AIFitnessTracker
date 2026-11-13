@@ -13,7 +13,7 @@
 // The same state says how recovered each muscle is, which planning uses to
 // prefer fresh areas, and how much each muscle was stimulated per session,
 // which the strength model uses to decide where training should pay off.
-import { FEEL_RIR } from './config.js'
+import { FEEL_RIR, reserveFor } from './config.js'
 import { MUSCLE_AREA } from '../catalog/vocabulary.js'
 import { MUSCLES, RECOVERY_HALF_LIFE_HOURS } from './library.js'
 import { clamp, isNum } from './math.js'
@@ -161,7 +161,8 @@ export function readiness(state) {
 /** Reps left for fatigue purposes, from a one-tap answer or the session's effort. */
 export function fatigueRir(set, { experience, effort } = {}) {
   const table = experience === 'Starting out' || !experience ? FEEL_RIR.beginner : FEEL_RIR.experienced
-  if (set?.feel === 'easy' && [3, 5, 8].includes(set.reserve)) return set.reserve === 8 ? 9 : set.reserve
+  const measured = reserveFor(set?.feel, set?.reserve)
+  if (measured) return measured.mean
   if (set?.feel && table[set.feel]) return table[set.feel].mean
   const target = Number(set?.targetReps)
   const reps = Number(set?.reps)

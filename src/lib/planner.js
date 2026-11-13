@@ -66,6 +66,9 @@ export const DEFAULT_PROFILE = {
   variety: 'balanced',
   // Specialty equipment at the built-in gym beyond the assumed full set.
   gymExtras: [],
+  // The starting-point session (lib/baseline.js): null until it is done,
+  // typed in or skipped: { status: 'done' | 'typed' | 'skipped', at }.
+  baseline: null,
 }
 export const DEFAULT_READINESS = {
   energy: 'normal',

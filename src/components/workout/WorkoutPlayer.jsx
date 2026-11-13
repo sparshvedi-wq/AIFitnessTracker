@@ -64,18 +64,23 @@ import useFreshTapGuard from '../useFreshTapGuard.js'
 import { profileOf } from '../../lib/planner.js'
 import { strengthNote, strengthTarget } from '../../lib/strength/index.js'
 import {
-  adaptExercise,
+  acceptTest,
   applyManualEntry,
   correctLoggedReps,
+  declineTest,
+  logSet,
   logShortSet,
   markTooHeavy,
   setWorkingWeight,
+  testOffer,
 } from '../../lib/strength/session.js'
 import {
   AdjustedNote,
   CouldntSheet,
   FeelPrompt,
   StrengthFacts,
+  TestOffer,
+  TestResult,
   WorkingWeightSheet,
   exerciseMode,
   useStrengthContext,
@@ -359,6 +364,39 @@ export default function WorkoutPlayer({ session, now, onMinimize, onSaved }) {
           update={update}
           strengthCtx={strengthCtx}
           onCouldnt={() => setCouldnt({ coord: session.cursor, step: 'why' })}
+          onTooHeavy={() => {
+            // One tap: lighter right away, with a way back.
+            const live = getActiveWorkout() || session
+            const at = Date.now()
+            const next = markTooHeavy(live, strengthCtx(at), at, { soft: true })
+            const before = currentSet(live)?.set
+            const after = currentSet(next)?.set
+            if (!before || !after || after.weight === before.weight) {
+              toast('That’s the lightest weight here. Try fewer reps, or swap it.', 'info')
+              return
+            }
+            dispatch({ type: 'SET_ACTIVE_WORKOUT', session: next })
+            const assist = isAssisted(currentSet(next).ex.exId)
+            toast(
+              assist
+                ? `More help: ${fmtNum(after.weight)} ${session.unit} assistance`
+                : `Lighter: ${fmtNum(after.weight)} ${session.unit} × ${after.reps}`,
+              'info',
+              {
+                label: 'Undo',
+                onClick: () => {
+                  const now = getActiveWorkout()
+                  const same =
+                    now?.id === live.id &&
+                    now.cursor?.ex === live.cursor.ex &&
+                    now.cursor?.set === live.cursor.set &&
+                    currentSet(now)?.set.status === 'todo'
+                  if (same) dispatch({ type: 'SET_ACTIVE_WORKOUT', session: live })
+                  else toast('Your workout has moved on. Nothing was undone.', 'info')
+                },
+              },
+            )
+          }}
           onForm={() => setFormOpen(true)}
           onEdit={(field) => {
             setEditingField(field)
@@ -748,6 +786,7 @@ function Rest({ session, update, strengthCtx, onShort, onQuick, onEdit, onForm }
           </div>
         </div>
       </div>
+      <TestResult session={session} />
       <FeelPrompt session={session} update={update} strengthCtx={strengthCtx} onShort={onShort} />
       {cur && (
         <div className="flex items-center gap-3 rounded-[20px] bg-surface px-4 py-2">
@@ -821,7 +860,7 @@ function RestClock({ session }) {
   )
 }
 
-function Work({ session, now, update, strengthCtx, onCouldnt, onForm, onEdit, onQuick }) {
+function Work({ session, now, update, strengthCtx, onCouldnt, onTooHeavy, onForm, onEdit, onQuick }) {
   const { state } = useApp()
   // Simple (default): the app sets the numbers; tap one to change it.
   // Advanced: +/− buttons under each number too.
@@ -868,8 +907,10 @@ function Work({ session, now, update, strengthCtx, onCouldnt, onForm, onEdit, on
         }),
       )
     // A plain Done changes nothing; typed reps above or below the plan re-plan the rest.
-    else update((s, n) => adaptExercise(completeSet(s, n), s.cursor.ex, strengthCtx(n), { reason: 'logged' }))
+    else update((s, n) => logSet(s, strengthCtx(n), n))
   }
+  const offer = !running && loadReady(ex, set) ? testOffer(session) : null
+  const loadMode = exerciseMode(ex, state.customExercises) === 'load'
 
   return (
     <section className="workout-stage mt-7 flex flex-1 flex-col">
@@ -907,6 +948,21 @@ function Work({ session, now, update, strengthCtx, onCouldnt, onForm, onEdit, on
         <p className="mt-2 text-[14px] leading-relaxed text-ink2">
           {exerciseNote(state.settings.exerciseNotes, ex.exId, session.location)}
         </p>
+      )}
+      {set.test === 'pending' && ex.offer && (
+        <p className="mt-2 text-[13px] text-accent" role="status">
+          Test set. {fmtNum(ex.offer.from)} {unit} stays your working weight unless this goes well.
+        </p>
+      )}
+      {offer && (
+        <TestOffer
+          offer={offer}
+          unit={unit}
+          assist={isAssisted(ex.exId)}
+          each={metaOf(ex.exId)?.load === 'hand'}
+          onYes={() => update(acceptTest)}
+          onNo={() => update(declineTest)}
+        />
       )}
       {ex.sideExtra && session.cursor.set === ex.sets.length - 1 && (
         <p className="mt-2 text-[13px] text-accent">
@@ -976,7 +1032,17 @@ function Work({ session, now, update, strengthCtx, onCouldnt, onForm, onEdit, on
                   : 'Log set'}
           </button>
         )}
-        {loadReady(ex, set) && set.kind !== 'warmup' && !running && (
+        {loadReady(ex, set) && set.kind !== 'warmup' && !running && loadMode && (
+          <div className="mt-2 grid shrink-0 grid-cols-2 gap-2">
+            <button onClick={guard(onTooHeavy)} className="btn-secondary min-h-12 text-[15px]">
+              Too heavy
+            </button>
+            <button onClick={onCouldnt} className="btn-secondary min-h-12 text-[15px]">
+              Other problem
+            </button>
+          </div>
+        )}
+        {loadReady(ex, set) && set.kind !== 'warmup' && !running && !loadMode && (
           <button
             onClick={onCouldnt}
             className="btn-ghost mt-1 min-h-11 w-full shrink-0 text-[15px] font-semibold text-ink2"

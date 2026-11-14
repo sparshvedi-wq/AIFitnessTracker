@@ -203,7 +203,9 @@ export function TallyCard({ workouts, today, fresh = 0 }) {
         {total ? (
           <Strokes count={total} fresh={fresh} />
         ) : (
-          <span className="text-[15px] text-muted">No marks yet</span>
+          <span className="flex h-full items-center justify-center text-center text-[15px] text-muted">
+            No marks yet
+          </span>
         )}
       </div>
     </div>

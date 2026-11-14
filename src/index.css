@@ -1929,3 +1929,38 @@ img:not([data-loaded]) {
 .tally-reduce-motion .recovery-track > span {
   transition: none;
 }
+
+/* Quiet mode's label opens help; the separate switch changes the setting. */
+.quiet-help-trigger {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px 0 0;
+  border-radius: 10px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 650;
+  touch-action: manipulation;
+}
+.quiet-help-trigger > svg {
+  flex-shrink: 0;
+  color: rgb(var(--muted));
+}
+.quiet-help-trigger:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 3px;
+}
+.photo-consent {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.photo-consent input {
+  accent-color: rgb(var(--accent));
+}

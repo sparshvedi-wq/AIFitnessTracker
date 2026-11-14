@@ -461,10 +461,10 @@ export default function PhotoCheckins({
               {onboarding && (
                 <button
                   disabled={Boolean(busy)}
-                  className="mx-auto mt-2 block min-h-11 px-3 text-[15px] font-semibold text-ink2"
+                  className="mx-auto mt-2 block min-h-11 px-3 text-[14px] font-semibold text-ink2"
                   onClick={onManual}
                 >
-                  Skip photos, enter details instead
+                  Use measurements instead
                 </button>
               )}
             </div>
@@ -495,10 +495,10 @@ export default function PhotoCheckins({
                 Use this starting point
               </button>
               <button
-                className="mx-auto mt-2 block min-h-11 px-3 text-[15px] font-semibold text-ink2"
+                className="mx-auto mt-2 block min-h-11 px-3 text-[14px] font-semibold text-ink2"
                 onClick={onManual}
               >
-                Skip photos, enter details instead
+                Use measurements instead
               </button>
             </div>
           ) : (
@@ -523,11 +523,7 @@ export default function PhotoCheckins({
           )
         }
       >
-        {onboarding && adding && !reviewing && (
-          <GuideBubble note="Optional. A before-and-after you keep, and a hint at what to focus on.">
-            Your starting photos
-          </GuideBubble>
-        )}
+        {onboarding && adding && !reviewing && <GuideBubble>Your starting photos</GuideBubble>}
         {reviewing ? (
           <PhotoReviewLoading status={busy} previews={photos} />
         ) : adding ? (
@@ -581,9 +577,6 @@ export default function PhotoCheckins({
                 </div>
               )}
             </div>
-            {!photos[angle] && (
-              <p className="mt-3 text-[14px] text-muted">Stand relaxed, whole body in frame.</p>
-            )}
             {checks[angle] && (
               <p
                 role="status"
@@ -624,18 +617,14 @@ export default function PhotoCheckins({
             />
             {!simulate && (
               <div className="mt-5 space-y-3">
-                <label className="flex items-start gap-3 text-[15px] leading-relaxed">
+                <label className="photo-consent">
                   <input
-                    className="mt-1 h-5 w-5 shrink-0"
+                    className="h-5 w-5 shrink-0"
                     type="checkbox"
                     checked={consent}
                     onChange={(e) => setConsent(e.target.checked)}
                   />
-                  <span>
-                    {synthetic
-                      ? 'Allow an OpenAI review of these fictional adult test photos.'
-                      : 'These are my photos. Send them to OpenAI for a review.'}
-                  </span>
+                  <span>{synthetic ? 'Review test photos with OpenAI' : 'Review my photos with OpenAI'}</span>
                 </label>
                 {!synthetic && p.ageGroup === '13-17' && (
                   <label className="flex items-start gap-3 text-[13px]">
@@ -651,9 +640,7 @@ export default function PhotoCheckins({
               </div>
             )}
             <details className="mt-4 border-t border-line">
-              <summary className="min-h-11 cursor-pointer py-3 text-[13px] text-muted">
-                Privacy & other options
-              </summary>
+              <summary className="min-h-11 cursor-pointer py-3 text-[13px] text-muted">Privacy</summary>
               <p className="text-[13px] leading-relaxed text-muted">
                 Not posted to other users. Reviews pass through our server to OpenAI under its API policies;
                 our server does not save your photos. Your last 20 check-ins stay on this device.
@@ -994,7 +981,9 @@ function PhotoComparison({ current, checkins, angle, setAngle, onZoom }) {
             key={c.id}
             className="rounded-2xl bg-surface p-2"
             aria-label={`Enlarge ${angle} view from ${photoLabel(c, checkins)}`}
-            onClick={() => onZoom({ src: c.previews[angle], label: `${viewName(angle)} · ${shortLabel(c.date)}` })}
+            onClick={() =>
+              onZoom({ src: c.previews[angle], label: `${viewName(angle)} · ${shortLabel(c.date)}` })
+            }
           >
             <img className="h-56 w-full object-contain" src={c.previews[angle]} alt={`${angle} view`} />
             <span className="mt-2 block text-[12px] text-muted">{photoLabel(c, checkins)}</span>

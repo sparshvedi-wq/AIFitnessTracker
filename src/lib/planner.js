@@ -64,6 +64,7 @@ export const DEFAULT_PROFILE = {
   onTheGo: { ...DEFAULT_ON_THE_GO },
   // familiar | balanced | more: how often new exercises are tried.
   variety: 'balanced',
+  onboardingBarriers: [],
   // Specialty equipment at the built-in gym beyond the assumed full set.
   gymExtras: [],
   // The starting-point session (lib/baseline.js): null until it is done,

@@ -164,7 +164,7 @@ export default function You({ nav }) {
             pct={hasTarget ? Math.min(100, (progress.count / goal) * 100) : null}
             note={
               !hasTarget
-                ? 'No weekly target.'
+                ? null
                 : progress.count >= goal
                   ? 'Target met. Rest when you need to.'
                   : 'Any seven days. Nothing to make up.'
@@ -331,9 +331,6 @@ export default function You({ nav }) {
             <span className="flex-1 text-[15px] text-danger">Erase all data</span>
           </button>
         </div>
-        <p className="mt-3 px-1 text-[13px] leading-relaxed text-muted">
-          Stored on this device. Backups skip photos.
-        </p>
         <input
           ref={fileRef}
           type="file"
@@ -431,7 +428,7 @@ function GoalCard({ title, value, pct, note, onClick }) {
           <span className="block h-1.5 rounded-full bg-accent" style={{ width: `${pct}%` }} />
         </span>
       )}
-      <span className="mt-2 block text-[13px] text-muted">{note}</span>
+      {note && <span className="mt-2 block text-[13px] text-muted">{note}</span>}
     </button>
   )
 }

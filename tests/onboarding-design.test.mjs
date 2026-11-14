@@ -145,7 +145,7 @@ test('the five chapter segments fill in order and never run backwards', () => {
       )
       assert.ok(fills[here] > 0 && fills[here] <= 1, step)
       const total = fills.reduce((n, f) => n + f, 0)
-      assert.ok(total > before, `${step}: ${total} after ${before}`)
+      assert.ok(step === 'offer' ? total === before : total > before, `${step}: ${total} after ${before}`)
       before = total
       // The recap completes the chapter.
       if (shouldShowOnboardingResponse(step, p)) assert.equal(chapterFills(step, p, true)[here], 1)

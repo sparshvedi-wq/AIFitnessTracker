@@ -3,11 +3,19 @@ export function onboardingSteps(p) {
   return [
     'welcome',
     'goal',
+    'goal-demo',
     'physique',
     'experience',
+    'barriers',
+    'why-demo',
+    'barrier-demo',
+    'variety',
     'about',
+    'gender',
+    'age',
     'sports',
     ...(p.wantsSport || p.sports.length ? ['sport-choice', 'priority'] : []),
+    ...(p.sports.length ? ['sport-demo'] : []),
     'location',
     ...(p.location === 'home' ? [] : ['home']),
     ...(p.hasHomeSetup || p.location === 'home' ? ['equipment'] : []),
@@ -15,22 +23,43 @@ export function onboardingSteps(p) {
       ? ['home-loads']
       : []),
     ...(p.location === 'on-the-go' ? ['movement'] : []),
+    'equipment-demo',
     'time',
+    'time-demo',
     'rhythm',
+    'consistency-demo',
+    'planning-demo',
     'comfort',
+    'recovery-demo',
+    'commit',
     'photos',
     ...(p.baselineMode === 'manual' ? ['manual'] : []),
+    'building-demo',
     'review',
+    'offer',
   ]
 }
-// Setup is five chapters. Each of the first four ends with one recap of what
-// its answers change (chapterRecap); the last ends with the plan.
+// Five internal chapters keep progress stable across conditional branches.
+// Interactive demonstrations follow decisions; the plan precedes the offer.
 const CHAPTERS = [
-  ['welcome', 'goal', 'physique', 'experience', 'about'],
-  ['sports', 'sport-choice', 'priority'],
-  ['location', 'home', 'equipment', 'home-loads', 'movement'],
-  ['time', 'rhythm', 'comfort'],
-  ['photos', 'manual', 'review'],
+  [
+    'welcome',
+    'goal',
+    'goal-demo',
+    'physique',
+    'experience',
+    'barriers',
+    'why-demo',
+    'barrier-demo',
+    'variety',
+    'about',
+    'gender',
+    'age',
+  ],
+  ['sports', 'sport-choice', 'priority', 'sport-demo'],
+  ['location', 'home', 'equipment', 'home-loads', 'movement', 'equipment-demo'],
+  ['time', 'time-demo', 'rhythm', 'consistency-demo', 'planning-demo', 'comfort', 'recovery-demo', 'commit'],
+  ['photos', 'manual', 'building-demo', 'review', 'offer'],
 ]
 const CHAPTER_LABELS = ['About you', 'Sport', 'Your setup', 'Your day', 'Your body']
 export function onboardingStage(step) {
@@ -51,17 +80,19 @@ export function chapterFills(step, p, done = false) {
   return CHAPTERS.map((_, i) => {
     if (i < here) return 1
     if (i > here) return 0
-    if (done || step === 'review') return 1
+    if (done || ['review', 'offer'].includes(step)) return 1
     const mine = steps.filter((s) => onboardingStage(s).index === i)
     return (Math.max(0, mine.indexOf(step)) + 1) / (mine.length + 1)
   })
 }
 export function nextOnboardingStep(step, p, editingGroup = null) {
-  const steps = onboardingSteps(p),
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || (!s.endsWith('-demo') && s !== 'offer')),
     next = steps[steps.indexOf(step) + 1]
   const finished =
     (editingGroup === 'goal' && step === 'physique') ||
     (editingGroup === 'experience' && step === 'experience') ||
+    (editingGroup === 'barriers' && step === 'barriers') ||
+    (editingGroup === 'variety' && step === 'variety') ||
     (editingGroup === 'time' && step === 'rhythm') ||
     (editingGroup === 'sports' &&
       ((step === 'sports' && !p.wantsSport && !p.sports.length) || step === 'priority')) ||
@@ -81,7 +112,13 @@ export function shouldShowOnboardingResponse(step, p) {
 export function chapterRecap(step, p) {
   const stage = onboardingStage(step)
   if (stage.index > 3) return null
-  const mine = onboardingSteps(p).filter((s) => s !== 'welcome' && onboardingStage(s).index === stage.index)
+  // Legacy saved chapter recaps can still resume; the new flow uses live demos.
+  const mine = onboardingSteps(p).filter(
+    (s) =>
+      !['welcome', 'gender', 'age', 'barriers', 'variety', 'commit'].includes(s) &&
+      !s.endsWith('-demo') &&
+      onboardingStage(s).index === stage.index,
+  )
   if (mine.at(-1) !== step) return null
   const said = (s) => onboardingResponse(s, p)
   const has = (s) => mine.includes(s)

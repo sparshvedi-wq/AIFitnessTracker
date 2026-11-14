@@ -8,6 +8,7 @@ import { Choice, Field } from './Fields.jsx'
 import { Toggle } from '../Ink.jsx'
 import { EQUIPMENT_ICON } from './SetupVisuals.jsx'
 import Icon from '../Icon.jsx'
+import Modal from '../Modal.jsx'
 
 export default function EnvironmentFields({
   place,
@@ -197,29 +198,32 @@ export default function EnvironmentFields({
         </Field>
       )}
       {place.type !== 'gym' && section !== 'loads' && (
-        <div className="mt-5 flex min-h-12 items-start gap-3">
-          <div className="min-w-0 flex-1 text-[14px] font-semibold">
-            <span className="inline-flex items-center gap-1">
-              Keep it quiet{' '}
-              <button
-                type="button"
-                className="icon-btn !h-11 !w-11"
-                aria-label="About quiet workouts"
-                aria-expanded={quietHelp}
-                onClick={() => setQuietHelp(!quietHelp)}
-              >
-                <Icon name="info" size={17} />
-              </button>
-            </span>
-            {quietHelp && (
-              <p className="mt-1 text-[13px] font-normal leading-relaxed text-muted">
-                Skip jumping and noisy movements. Useful for apartments, shared rooms or early starts.
-              </p>
-            )}
-          </div>
+        <div className="mt-5 flex min-h-12 items-center justify-between gap-4">
+          <button
+            type="button"
+            className="quiet-help-trigger"
+            aria-label="About quiet workouts"
+            aria-haspopup="dialog"
+            onClick={() => setQuietHelp(true)}
+          >
+            <span>Keep it quiet</span>
+            <Icon name="info" size={18} />
+          </button>
           <Toggle checked={place.quiet} onChange={(quiet) => onChange({ quiet })} label="Keep it quiet" />
         </div>
       )}
+      <Modal
+        open={quietHelp}
+        title="Quiet workouts"
+        onClose={() => setQuietHelp(false)}
+        footer={
+          <button className="btn-primary w-full" onClick={() => setQuietHelp(false)}>
+            Got it
+          </button>
+        }
+      >
+        <p className="py-3 text-[16px] text-ink2">No jumping or noisy movements.</p>
+      </Modal>
     </>
   )
 }

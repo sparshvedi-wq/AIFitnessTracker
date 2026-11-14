@@ -817,13 +817,18 @@
   }
 }
 
-/* Five chapters, always visible: the length of setup is never a surprise. */
+/* One continuous progress line below the brand. */
 .setup-chapters {
   display: flex;
   min-width: 0;
   flex-direction: column;
   align-items: center;
   gap: 7px;
+  grid-column: 1 / -1;
+  width: 100%;
+}
+.setup-progress-track {
+  width: 100%;
 }
 .setup-chapter-track {
   display: grid;
@@ -846,19 +851,11 @@
   transform-origin: left center;
   transition: transform 360ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
-.setup-chapter-label {
-  color: rgb(var(--muted));
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.01em;
-}
 .setup-header:has(.setup-chapters) {
-  align-items: start;
-  padding-bottom: 4px;
+  align-items: center;
 }
 .setup-header:has(.setup-chapters) .setup-chapters {
-  padding-top: 13px;
+  padding-top: 0;
 }
 
 /* An option says what it changes. */
@@ -1033,4 +1030,1018 @@
 }
 .tally-reduce-motion .setup-recap-lines > li {
   animation: none;
+}
+
+/* Time is one decision: a number, its unit, and the selected state. */
+.setup-options--time .onboarding-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 96px;
+  padding: 18px 16px;
+}
+.setup-options--time .time-duration .onboarding-choice-title {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+.time-choice-number {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 38px;
+  font-weight: 520;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.time-choice-unit {
+  font-size: 14px;
+  color: rgb(var(--muted));
+}
+.time-duration[aria-pressed='true'] .time-choice-unit {
+  color: rgb(var(--accent-ink));
+}
+.setup-options--time .time-flexible {
+  grid-column: 1 / -1;
+  min-height: 64px;
+}
+.setup-options--time .time-flexible .setup-art {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+}
+.setup-options--time .time-flexible .onboarding-choice-title {
+  font-size: 16px;
+}
+
+/* Live onboarding previews share the app's actual recommendation engine. */
+.demo-obstacle-switch {
+  display: block;
+  margin-top: 12px;
+}
+.demo-obstacle-switch > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--muted));
+}
+.demo-obstacle-switch select {
+  min-height: 48px;
+  font-size: 14px;
+}
+.onboarding-demo,
+.funnel-welcome,
+.funnel-plan-preview {
+  width: 100%;
+  max-width: 420px;
+  margin-inline: auto;
+}
+.funnel-heading {
+  margin: 20px 0 24px;
+}
+.funnel-eyebrow,
+.demo-example {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgb(var(--muted));
+}
+.funnel-eyebrow {
+  color: rgb(var(--accent-ink));
+  margin-bottom: 10px;
+}
+.funnel-heading h3,
+.funnel-welcome h3,
+.funnel-plan-preview h3 {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(29px, 7.5vw, 36px);
+  font-weight: 520;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+  outline: none;
+}
+.funnel-heading > p {
+  margin-top: 12px;
+  font-size: 16px;
+  color: rgb(var(--ink-2));
+  line-height: 1.4;
+}
+.demo-switches {
+  display: flex;
+  gap: 6px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 18px;
+  background: rgb(var(--surface));
+  padding: 5px;
+  margin: 16px 0;
+}
+.demo-switches button {
+  flex: 1;
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  padding: 8px 6px;
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 750;
+  color: rgb(var(--muted));
+  transition:
+    background 180ms,
+    color 180ms;
+}
+.demo-switches button[aria-pressed='true'] {
+  color: rgb(var(--accent-ink));
+  background: rgb(var(--accent) / 0.13);
+  border-color: rgb(var(--accent) / 0.55);
+}
+.demo-session,
+.demo-guide,
+.rollover-demo,
+.demo-goal-card,
+.consistency-chart,
+.planning-example {
+  border: 1px solid rgb(var(--line));
+  border-radius: 24px;
+  background: rgb(var(--surface));
+  padding: 18px;
+}
+.demo-session {
+  animation: demo-arrive 260ms ease-out both;
+}
+.demo-session-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 750;
+}
+.demo-session-top > span:last-child {
+  color: rgb(var(--accent-ink));
+  white-space: nowrap;
+}
+.demo-moves {
+  list-style: none;
+}
+.demo-moves li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+}
+.demo-moves li + li {
+  border-top: 1px solid rgb(var(--line) / 0.7);
+}
+.demo-move-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 58px;
+  height: 58px;
+  border-radius: 14px;
+  background: rgb(var(--bg));
+  overflow: hidden;
+  color: rgb(var(--muted));
+}
+.demo-move-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.demo-move-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 700;
+}
+.demo-move-name small {
+  display: block;
+  margin-top: 5px;
+  color: rgb(var(--muted));
+  font-size: 12px;
+  font-weight: 500;
+}
+.demo-dose {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: rgb(var(--ink-2));
+}
+.demo-session-foot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 12px;
+  padding-top: 13px;
+  border-top: 1px solid rgb(var(--line));
+  font-size: 12px;
+  color: rgb(var(--muted));
+}
+.demo-session-foot svg {
+  margin-left: auto;
+  color: rgb(var(--accent-ink));
+}
+.demo-empty {
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+  padding: 12px 0;
+}
+.funnel-welcome h3 {
+  text-align: center;
+}
+.funnel-welcome-art .setup-scene {
+  height: clamp(120px, 20dvh, 175px);
+  margin: 0 0 16px;
+}
+.funnel-welcome .demo-moves li {
+  padding-block: 9px;
+}
+.funnel-welcome .demo-move-art {
+  height: 44px;
+  flex-basis: 48px;
+}
+.funnel-welcome .demo-session {
+  padding: 14px 16px;
+}
+.funnel-welcome .demo-session-foot {
+  display: none;
+}
+.demo-guide > img {
+  width: 100%;
+  height: clamp(170px, 28dvh, 230px);
+  object-fit: contain;
+  border-radius: 16px;
+  background: rgb(var(--bg));
+}
+.demo-guide h4,
+.demo-goal-card h4 {
+  font-size: 20px;
+  font-weight: 750;
+  margin-top: 16px;
+}
+.demo-guide-dose {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  color: rgb(var(--muted));
+}
+.demo-cues {
+  margin-top: 16px;
+}
+.demo-cues li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-block: 9px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.demo-cues li > span {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgb(var(--accent) / 0.12);
+  color: rgb(var(--accent-ink));
+  font-size: 12px;
+  font-weight: 700;
+}
+.rollover-demo .demo-example {
+  margin-bottom: 14px;
+}
+.rollover-move {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  column-gap: 12px;
+  align-items: center;
+  padding: 16px 0;
+}
+.rollover-move + .rollover-move {
+  border-top: 1px solid rgb(var(--line));
+}
+.rollover-move > svg {
+  grid-row: span 2;
+  color: rgb(var(--muted));
+}
+.rollover-move > span {
+  font-size: 16px;
+  font-weight: 700;
+}
+.rollover-move small {
+  color: rgb(var(--muted));
+  margin-top: 4px;
+  font-size: 12px;
+}
+.rollover-move.is-done > svg,
+.rollover-move.is-later > svg {
+  color: rgb(var(--accent-ink));
+}
+.rollover-move.is-later {
+  animation: demo-arrive 260ms ease-out;
+}
+.demo-takeaway,
+.recovery-demo-signal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 16px;
+  padding: 16px;
+  background: rgb(var(--accent) / 0.1);
+  color: rgb(var(--accent-ink));
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.35;
+  margin: 16px 0;
+}
+.demo-takeaway > svg,
+.recovery-demo-signal > svg {
+  flex-shrink: 0;
+}
+.demo-muscle-bars {
+  margin-top: 24px;
+}
+.demo-muscle-bars > div {
+  display: grid;
+  grid-template-columns: 60px 1fr 20px;
+  align-items: center;
+  gap: 10px;
+  margin-block: 22px;
+  font-size: 13px;
+}
+.demo-muscle-bars i {
+  height: 12px;
+  background: rgb(var(--line));
+  border-radius: 12px;
+  overflow: hidden;
+}
+.demo-muscle-bars b {
+  display: block;
+  height: 100%;
+  background: rgb(var(--accent));
+  border-radius: inherit;
+  animation: demo-bar 500ms ease-out both;
+  transform-origin: left;
+}
+.demo-muscle-bars strong {
+  text-align: right;
+}
+.demo-caption {
+  margin: 16px 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgb(var(--muted));
+  text-align: center;
+}
+.consistency-chart svg {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  overflow: visible;
+}
+.consistency-chart svg text {
+  fill: rgb(var(--muted));
+  font-size: 11px;
+  font-family: inherit;
+}
+.chart-grid {
+  stroke: rgb(var(--line));
+  stroke-width: 1;
+}
+.chart-steady,
+.chart-occasional {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 4;
+}
+.chart-steady {
+  stroke: rgb(var(--accent));
+}
+.chart-occasional {
+  stroke: rgb(var(--muted) / 0.65);
+  stroke-dasharray: 4 7;
+  stroke-width: 2.5;
+}
+.chart-dot {
+  fill: rgb(var(--accent));
+}
+.chart-legend {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+.chart-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+}
+.chart-legend i {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+}
+.chart-legend > span:last-child i {
+  background: rgb(var(--muted));
+}
+.chart-legend strong {
+  margin-left: auto;
+  font-size: 14px;
+}
+.planning-total {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 4px;
+}
+.planning-total strong {
+  color: rgb(var(--accent-ink));
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 82px;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.planning-total > span {
+  color: rgb(var(--ink-2));
+  font-size: 15px;
+  line-height: 1.4;
+}
+.planning-blocks {
+  display: flex;
+  align-items: flex-end;
+  gap: 5px;
+  height: 80px;
+  margin-top: 10px;
+}
+.planning-blocks > span {
+  flex: 1;
+  border-radius: 6px 6px 2px 2px;
+  background: rgb(var(--accent));
+  transition: height 280ms ease-out;
+}
+.planning-blocks > span:nth-child(3n) {
+  opacity: 0.55;
+}
+.planning-example > p {
+  margin-top: 18px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgb(var(--muted));
+}
+.barrier-options .onboarding-choice {
+  min-height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+}
+.barrier-icon {
+  color: rgb(var(--accent-ink));
+  flex-shrink: 0;
+}
+.barrier-options .onboarding-choice-title {
+  flex: 1;
+  text-align: left;
+  font-size: 16px;
+}
+.funnel-plan-check {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgb(var(--accent) / 0.14);
+  color: rgb(var(--accent-ink));
+  margin: 18px 0 22px;
+}
+.funnel-plan-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 20px 0;
+}
+.funnel-plan-tags > span {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+  border-radius: 50px;
+}
+.funnel-all-moves > summary,
+.funnel-edit-answers > summary {
+  cursor: pointer;
+  min-height: 48px;
+  padding: 16px 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: rgb(var(--ink-2));
+}
+.funnel-all-moves,
+.funnel-edit-answers {
+  margin-top: 12px;
+}
+.baseline-preview-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 2px;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.baseline-preview-option input {
+  width: 22px;
+  height: 22px;
+  accent-color: rgb(var(--accent));
+  flex-shrink: 0;
+}
+.baseline-preview-option small {
+  display: block;
+  font-weight: 500;
+  font-size: 12px;
+  color: rgb(var(--muted));
+  margin-top: 5px;
+}
+.placeholder-paywall {
+  padding: 24px 0;
+}
+.placeholder-paywall h3 {
+  font-size: 28px;
+  font-weight: 700;
+  outline: none;
+}
+.placeholder-paywall > p {
+  margin: 14px 0 24px;
+  line-height: 1.5;
+}
+.placeholder-paywall fieldset {
+  border: 1px solid rgb(var(--line));
+  padding: 16px;
+  margin: 24px 0;
+}
+.placeholder-paywall legend {
+  padding-inline: 6px;
+  font-size: 14px;
+}
+.placeholder-paywall label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  font-size: 14px;
+}
+.placeholder-paywall label strong {
+  margin-left: auto;
+}
+.placeholder-paywall input {
+  accent-color: rgb(var(--accent));
+}
+.placeholder-paywall button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+@keyframes demo-arrive {
+  from {
+    opacity: 0.4;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes demo-bar {
+  from {
+    transform: scaleX(0.1);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+@media (max-height: 700px) {
+  .funnel-welcome-art .setup-scene {
+    height: 90px;
+    margin-bottom: 12px;
+  }
+  .funnel-welcome h3 {
+    font-size: 28px;
+  }
+  .funnel-welcome .demo-moves li:nth-child(3) {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-demo *,
+  .funnel-welcome *,
+  .funnel-plan-preview * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.tally-reduce-motion .onboarding-demo *,
+.tally-reduce-motion .funnel-welcome *,
+.tally-reduce-motion .funnel-plan-preview * {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ── Conversion pass ─────────────────────────────────────────────────── */
+/* Welcome: the promise, then proof, then what it costs to find out. */
+.funnel-welcome-copy {
+  max-width: 30ch;
+  margin: 10px auto 0;
+  color: rgb(var(--ink-2));
+  font-size: 16px;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+}
+.funnel-welcome-note {
+  margin-top: 14px;
+  color: rgb(var(--muted));
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+}
+
+/* Why plans fail: one figure, one reframe, then their own words answered. */
+.why-stat {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-radius: 24px;
+  background: rgb(var(--surface));
+  box-shadow: inset 0 0 0 2px rgb(var(--line));
+  padding: 18px 20px;
+}
+.why-stat > strong {
+  flex-shrink: 0;
+  color: rgb(var(--accent-ink));
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 46px;
+  font-weight: 520;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.why-stat > span {
+  color: rgb(var(--ink));
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.why-stat small {
+  display: block;
+  margin-top: 5px;
+  color: rgb(var(--muted));
+  font-size: 12px;
+  font-weight: 550;
+}
+.why-copy {
+  margin: 18px 2px 0;
+  color: rgb(var(--ink-2));
+  font-size: 16px;
+  line-height: 1.5;
+}
+.why-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+.why-answers > li {
+  border-radius: 20px;
+  background: rgb(var(--lit));
+  box-shadow: inset 0 0 0 2px rgb(var(--accent) / 0.3);
+  padding: 13px 16px 14px;
+  animation: recap-line 360ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.why-answers > li:nth-child(2) {
+  animation-delay: 120ms;
+}
+.why-answers > li:nth-child(3) {
+  animation-delay: 240ms;
+}
+.why-answers > li:nth-child(n + 4) {
+  animation-delay: 360ms;
+}
+.why-said {
+  display: block;
+  color: rgb(var(--muted));
+  font-size: 13px;
+  font-weight: 650;
+}
+.why-answer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 5px;
+  color: rgb(var(--ink));
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.why-answer > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgb(var(--accent-ink));
+}
+
+/* The time spent deciding, counted in the person's own workouts. */
+.planning-equivalent {
+  margin-top: 4px !important;
+  color: rgb(var(--ink)) !important;
+  font-size: 15px !important;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Building the plan: each true line ticks in. */
+.building-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 24px;
+  background: rgb(var(--surface));
+  box-shadow: inset 0 0 0 2px rgb(var(--line));
+  padding: 8px 18px;
+}
+.building-list > li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  color: rgb(var(--ink));
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.3;
+  animation: building-line 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.building-list > li + li {
+  border-top: 1px solid rgb(var(--line));
+}
+.building-list > li > span {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  color: rgb(var(--bg));
+}
+@keyframes building-line {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Plan reveal: why it fits, then what the first weeks hold. */
+.funnel-plan-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 18px;
+}
+.funnel-plan-reasons > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: rgb(var(--ink));
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.funnel-plan-reasons > li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgb(var(--accent-ink));
+}
+.funnel-weeks {
+  margin-top: 26px;
+}
+.funnel-weeks > h4 {
+  font-size: 16px;
+  font-weight: 750;
+}
+.funnel-weeks > ol {
+  position: relative;
+  margin-top: 14px;
+  padding-left: 26px;
+}
+.funnel-weeks > ol::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  bottom: 12px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgb(var(--line));
+}
+.funnel-weeks li {
+  position: relative;
+  padding-bottom: 16px;
+}
+.funnel-weeks li:last-child {
+  padding-bottom: 0;
+}
+.funnel-weeks li > span {
+  position: absolute;
+  left: -26px;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  border: 3px solid rgb(var(--bg));
+  border-radius: 50%;
+  background: rgb(var(--outline));
+}
+.funnel-weeks li:first-child > span {
+  background: rgb(var(--accent));
+}
+.funnel-weeks li > strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 750;
+}
+.funnel-weeks li > p {
+  margin-top: 2px;
+  color: rgb(var(--ink-2));
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* The offer: what they keep, the two prices, and their doubts answered. */
+.offer {
+  padding: 20px 0 8px;
+}
+.offer > h3 {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(29px, 7.5vw, 36px);
+  font-weight: 520;
+  letter-spacing: -0.035em;
+  line-height: 1.12;
+  text-wrap: balance;
+  outline: none;
+}
+.offer-copy {
+  margin-top: 10px;
+  color: rgb(var(--ink-2));
+  font-size: 16px;
+  line-height: 1.45;
+}
+.offer-points {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+.offer-points > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.offer-points > li > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: rgb(var(--accent-ink));
+}
+.offer-plans {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 24px;
+}
+.offer-plan {
+  display: flex;
+  width: 100%;
+  min-height: 72px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 20px;
+  background: rgb(var(--surface));
+  box-shadow:
+    inset 0 0 0 2px rgb(var(--line)),
+    0 4px 0 rgb(var(--depth));
+  padding: 12px 16px;
+  text-align: left;
+  transition:
+    background-color 180ms,
+    box-shadow 180ms;
+}
+.offer-plan.is-on {
+  background: rgb(var(--lit));
+  box-shadow:
+    inset 0 0 0 2px rgb(var(--accent)),
+    0 4px 0 rgb(var(--lit-edge));
+}
+.offer-plan-name {
+  min-width: 0;
+  flex: 1;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.2;
+}
+.offer-plan-name > em {
+  margin-left: 8px;
+  border-radius: 99px;
+  background: rgb(var(--accent));
+  padding: 3px 8px;
+  color: rgb(var(--bg));
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 750;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+.offer-plan-name > small {
+  display: block;
+  margin-top: 3px;
+  color: rgb(var(--muted));
+  font-size: 13px;
+  font-weight: 600;
+}
+.offer-plan-week {
+  flex-shrink: 0;
+  text-align: right;
+}
+.offer-plan-week > strong {
+  display: block;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 24px;
+  font-weight: 520;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.offer-plan-week > small {
+  color: rgb(var(--muted));
+  font-size: 12px;
+  font-weight: 600;
+}
+.offer-anchor {
+  margin-top: 14px;
+  color: rgb(var(--ink-2));
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  text-wrap: balance;
+}
+.offer-questions {
+  margin-top: 22px;
+  border-top: 1px solid rgb(var(--line));
+}
+.offer-questions > details {
+  border-bottom: 1px solid rgb(var(--line));
+}
+.offer-questions summary {
+  display: flex;
+  min-height: 52px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.offer-questions details > p {
+  padding: 0 0 14px;
+  color: rgb(var(--ink-2));
+  font-size: 14px;
+  line-height: 1.5;
+}
+.offer-note {
+  margin-top: 16px;
+  color: rgb(var(--muted));
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .why-answers > li,
+  .building-list > li {
+    animation: none;
+  }
+}
+.tally-reduce-motion .why-answers > li,
+.tally-reduce-motion .building-list > li {
+  animation: none !important;
 }

@@ -128,29 +128,21 @@ export function TallyStrokes({ count, height = 22, className = '', highlightFrom
   )
 }
 
-// Setup is five chapters; the bar shows all five, so the length is never a
-// surprise. Each segment fills as its chapter is answered.
+// A continuous bar uses the five internal chapters without showing counters.
 export function SetupChapters({ fills, label }) {
-  const done = fills.filter((f) => f >= 1).length
+  const progress = fills.reduce((n, f) => n + Math.max(0, Math.min(1, f)), 0) / fills.length
   return (
     <div
       className="setup-chapters"
       role="progressbar"
       aria-label={`Setup: ${label}`}
       aria-valuemin={0}
-      aria-valuemax={fills.length}
-      aria-valuenow={done}
-      aria-valuetext={`${label}, part ${Math.min(fills.length, done + 1)} of ${fills.length}`}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(progress * 100)}
+      aria-valuetext={label}
     >
-      <span className="setup-chapter-track" aria-hidden="true">
-        {fills.map((fill, i) => (
-          <span key={i} className="setup-chapter">
-            <span style={{ transform: `scaleX(${Math.max(0, Math.min(1, fill))})` }} />
-          </span>
-        ))}
-      </span>
-      <span className="setup-chapter-label" aria-hidden="true">
-        {label}
+      <span className="setup-chapter setup-progress-track" aria-hidden="true">
+        <span style={{ transform: `scaleX(${progress})` }} />
       </span>
     </div>
   )
@@ -167,15 +159,12 @@ export function SetupHeader({ fills = null, label = '', onBack, action }) {
       ) : (
         <span className="setup-header-space" />
       )}
-      {fills === null ? (
-        <span className="setup-brand">
-          <TallyLogo width={27} />
-          <span>tally</span>
-        </span>
-      ) : (
-        <SetupChapters fills={fills} label={label} />
-      )}
-      <span className="setup-header-space">{action || (fills !== null && <TallyLogo width={22} />)}</span>
+      <span className="setup-brand">
+        <TallyLogo width={27} />
+        <span>tally</span>
+      </span>
+      <span className="setup-header-space">{action}</span>
+      {fills !== null && <SetupChapters fills={fills} label={label} />}
     </div>
   )
 }
@@ -309,46 +298,25 @@ export function SetupWelcome({ headingRef }) {
         <img className="ghost-figure welcome-ghost welcome-ghost--3" src={ONBOARDING_ART.muscle} alt="" />
         <img className="ghost-figure welcome-ghost welcome-ghost--4" src={ONBOARDING_ART.neutral} alt="" />
         <img className="welcome-hero" src={ONBOARDING_ART.welcome} alt="" decoding="async" />
-        <span className="welcome-bubble">
-          <strong>Hi, I’m M1.</strong>
-          <span>I’ll train with you.</span>
-        </span>
       </div>
       <h3 ref={headingRef} tabIndex={-1} className="setup-welcome-title">
         Training that fits your day.
       </h3>
-      <p className="setup-welcome-copy">
-        A few questions, about two minutes. You can change any answer later.
-      </p>
     </div>
   )
 }
 
 // The end of a chapter: the lit figure, one headline, and what the answers change.
-export function SetupRecap({ scene, chapter, title, lines = [], headingRef }) {
+export function SetupRecap({ scene, chapter, title, headingRef }) {
   return (
-    <div className="setup-response" role="status">
+    <div className="setup-response" role="status" aria-label={chapter}>
       <div className="setup-response-stage" aria-hidden="true">
         <span className="setup-response-aura" />
         <SetupIllustration scene={scene} variant="recap" />
       </div>
-      <p className="setup-recap-chapter">
-        <Icon name="check" size={13} strokeWidth={3.2} />
-        {chapter}
-      </p>
       <h3 ref={headingRef} tabIndex={-1} className="setup-response-title">
         {title}
       </h3>
-      {lines.length > 0 && (
-        <ul className="setup-recap-lines">
-          {lines.map((line) => (
-            <li key={line}>
-              <span aria-hidden="true" />
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
     </div>
   )
 }

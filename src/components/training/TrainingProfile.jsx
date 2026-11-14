@@ -15,7 +15,6 @@ import {
   onboardingStage,
   chapterFills,
   chapterRecap,
-  shouldShowOnboardingResponse,
   restoredOnboardingResponse,
 } from '../../lib/onboarding.js'
 import { BASELINE_MINUTES, baselineMoves } from '../../lib/baseline.js'
@@ -33,8 +32,18 @@ import {
   SetupHeader,
   SetupIllustration,
   SetupRecap,
-  SetupWelcome,
 } from './SetupVisuals.jsx'
+import OnboardingDemo, {
+  ProductWelcome,
+  OnboardingPlanPreview,
+  PlaceholderPaywall,
+} from './OnboardingDemos.jsx'
+import {
+  isOnboardingDemo,
+  ONBOARDING_BARRIERS,
+  FIRST_SESSION_OPTIONS,
+  toggleOnboardingBarrier,
+} from '../../lib/onboarding-demo.js'
 import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
@@ -53,7 +62,12 @@ const TITLES = {
   goal: 'What’s your main goal?',
   physique: 'What would you like to build toward?',
   experience: 'How familiar is training?',
-  about: 'A little about you',
+  barriers: 'What’s stopped you before?',
+  commit: 'When will you do your first session?',
+  variety: 'What keeps training interesting?',
+  about: 'What should we call you?',
+  gender: 'How do you describe yourself?',
+  age: 'Which age group?',
   sports: 'Do you play a sport?',
   'sport-choice': 'Which sports?',
   priority: 'What comes first?',
@@ -68,16 +82,42 @@ const TITLES = {
   photos: 'Your starting photos',
   manual: 'Your details',
   review: 'Your plan',
+  offer: 'Keep this plan going',
+  'goal-demo': 'Your goal in action',
+  'why-demo': 'Why most plans don’t last',
+  'building-demo': 'Building your plan',
+  'barrier-demo': 'Your training, adapted',
+  'sport-demo': 'Your sport warm-up',
+  'equipment-demo': 'Train in different places',
+  'time-demo': 'Training that fits your time',
+  'consistency-demo': 'Small sessions add up',
+  'planning-demo': 'Less time choosing workouts',
+  'recovery-demo': 'Training with how you feel',
 }
 const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
+  barriers: 'Pick all that apply. Your plan is built around them.',
+  time: 'Be honest: the plan that fits is the one you keep.',
+  commit: 'Picking a time makes it far more likely to happen.',
+}
+// What the main button says where "Continue" would undersell the moment.
+const NEXT_LABEL = {
+  'why-demo': 'Show me',
+  'barrier-demo': 'That works for me',
+  'building-demo': 'See my plan',
+  commit: 'I’m in',
 }
 // What M1 says on each question. Shorter than the plain title, same meaning.
 const GUIDE = {
-  goal: 'What are we training for?',
-  physique: 'What would you like your build to look like?',
-  experience: 'How familiar is training?',
-  about: 'A little about you',
+  goal: 'What do you want most?',
+  physique: 'Which build are you working toward?',
+  experience: 'Where are you starting from?',
+  barriers: 'What’s stopped you before?',
+  commit: 'When will you do your first session?',
+  variety: 'What keeps you coming back?',
+  about: 'What should I call you?',
+  gender: 'How do you describe yourself?',
+  age: 'Which age group?',
   sports: 'Play any sports?',
   'sport-choice': 'Which ones?',
   priority: 'What comes first?',
@@ -86,9 +126,9 @@ const GUIDE = {
   equipment: 'What’s at home?',
   'home-loads': 'Which dumbbells are there?',
   movement: 'What works in your space?',
-  time: 'How much time usually works?',
-  rhythm: 'How much structure feels right?',
-  comfort: 'Any areas to avoid?',
+  time: 'How long can you realistically train?',
+  rhythm: 'How much structure helps you?',
+  comfort: 'Anything sore or injured to work around?',
   manual: 'A few details instead',
   review: 'Here’s your plan',
 }
@@ -96,13 +136,6 @@ const GUIDE = {
 // Where the options need the room, the scene is a smaller one.
 const STAGED = ['experience', 'priority', 'home', 'movement', 'time', 'rhythm']
 const COMPACT_SCENE = ['time']
-// What each answer changes, in a few words under the option.
-const EXPERIENCE_DETAIL = {
-  'Starting out': 'Simple moves, fewer sets at first',
-  'Some experience': 'More exercises to choose from',
-  Experienced: 'Every exercise, more sets',
-}
-const PLACE_DETAIL = { gym: 'Full equipment', home: 'Only what you own', 'on-the-go': 'No equipment needed' }
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
@@ -118,7 +151,11 @@ export default function TrainingProfile({ onClose }) {
     state.settings.training.completed && state.settings.training.onboardingVersion === ONBOARDING_VERSION
   // After enough consistent training, suggest the next level (never automatic).
   const suggestedLevel = returning
-    ? experienceSuggestion({ workouts: state.workouts, experience: state.settings.training.experience, today })
+    ? experienceSuggestion({
+        workouts: state.workouts,
+        experience: state.settings.training.experience,
+        today,
+      })
     : null
   const [current, setCurrent] = useState(draft?.step || (returning ? 'review' : 'welcome'))
   const [responseFor, setResponseFor] = useState(() =>
@@ -128,31 +165,19 @@ export default function TrainingProfile({ onClose }) {
   const [allSports, setAllSports] = useState(false)
   const [editingGroup, setEditingGroup] = useState(draft?.editingGroup || null)
   const [environmentValid, setEnvironmentValid] = useState(true)
-  const steps = onboardingSteps(p)
+  const [demoNow] = useState(Date.now)
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || (!isOnboardingDemo(s) && s !== 'offer'))
   const step = steps.includes(current) ? current : 'welcome'
   const index = steps.indexOf(step)
   const heading = useRef(null)
   const recap = responseFor ? chapterRecap(responseFor, { ...p, goalMode, weeklyGoal, name }) : null
   const nextStep = nextOnboardingStep(step, p, editingGroup)
   // Welcome carries the brand; every question after it shows the five chapters.
-  const fills = step === 'welcome' ? null : editingGroup ? [1, 1, 1, 1, 1] : chapterFills(step, p, Boolean(recap))
-  // What each session length would hold, from this person's own answers.
-  const timeDetail = useMemo(() => {
-    if (step !== 'time') return {}
-    const out = {}
-    for (const minutes of new Set([15, 30, 45, 60, p.minutes])) {
-      try {
-        const plan = buildDailyPlan({ ...state, settings: { ...state.settings, training: p } }, { today, minutes })
-        const sets = plan.items.reduce((n, it) => n + (it.sets || 0), 0)
-        if (plan.items.length) out[minutes] = `${count(plan.items.length, 'move')} · ${count(sets, 'set')}`
-      } catch {
-        // A length with nothing to show simply has no line.
-      }
-    }
-    return out
-    // The profile only changes this step's numbers through the fields listed.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, p.goal, p.experience, p.location, p.equipment, p.avoidMuscles, today])
+  const fills = ['welcome', 'goal'].includes(step)
+    ? null
+    : editingGroup
+      ? [1, 1, 1, 1, 1]
+      : chapterFills(step, p, Boolean(recap))
   // Someone new starts with the starting-point session (lib/baseline.js);
   // the review says so, and lets them skip it.
   const startingMoves = useMemo(() => {
@@ -235,6 +260,8 @@ export default function TrainingProfile({ onClose }) {
     if (next === 'review') setEditingGroup(null)
   }
   const manualEntry = p.manualEntry || manualEntryOf(p.manualBaseline, state.settings.weightUnit)
+  // First time through, the plan is shown being put together before it is revealed.
+  const planEntry = returning || editingGroup ? 'review' : 'building-demo'
   const skipStart = p.baseline?.status === 'skipped'
   const baselineReady = hasStartingProfile(p, state.checkins, DEV)
   const advance = () => {
@@ -243,6 +270,16 @@ export default function TrainingProfile({ onClose }) {
       return
     }
     if (step === 'review') {
+      if (!baselineReady) {
+        move(p.baselineMode === 'manual' ? 'manual' : 'photos')
+        return
+      }
+      if (!returning) {
+        move('offer')
+        return
+      }
+    }
+    if (step === 'offer' || (step === 'review' && returning)) {
       if (!baselineReady) {
         move(p.baselineMode === 'manual' ? 'manual' : 'photos')
         return
@@ -275,12 +312,7 @@ export default function TrainingProfile({ onClose }) {
     if (step === 'manual') {
       const result = readManualBaseline(manualEntry)
       if (!result.valid) return
-      move('review', { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
-      return
-    }
-    if (!returning && !editingGroup && shouldShowOnboardingResponse(step, p)) {
-      setResponseFor(step)
-      persist(step, p, editingGroup, step)
+      move(planEntry, { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
       return
     }
     move(nextStep)
@@ -300,7 +332,9 @@ export default function TrainingProfile({ onClose }) {
       move('photos', { ...p, baselineMode: 'photos' })
       return
     }
-    move(steps[Math.max(0, index - 1)])
+    // Back from the plan returns to the last question, not to the screen that built it.
+    const previous = steps[Math.max(0, index - 1)]
+    move(previous === 'building-demo' && step === 'review' ? steps[Math.max(0, index - 2)] : previous)
   }
   const testExit =
     !returning && DEV ? (
@@ -315,7 +349,18 @@ export default function TrainingProfile({ onClose }) {
     ) : null
   const plan =
     step === 'review'
-      ? buildDailyPlan({ ...state, settings: { ...state.settings, training: p } }, { today })
+      ? buildDailyPlan(
+          {
+            ...state,
+            readiness: null,
+            settings: {
+              ...state.settings,
+              training: p,
+              workout: { ...state.settings.workout, weeklyGoal, goalMode },
+            },
+          },
+          { today, now: demoNow },
+        )
       : null
   if (step === 'photos')
     return (
@@ -323,10 +368,10 @@ export default function TrainingProfile({ onClose }) {
         onboarding
         profile={p}
         onClose={close}
-        onBack={() => move('comfort')}
+        onBack={() => move(editingGroup === 'photos' ? 'review' : 'commit')}
         onManual={() => move('manual', { ...p, baselineMode: 'manual', manualEntry })}
         onComplete={(checkin, focusPatch) =>
-          move('review', {
+          move(planEntry, {
             ...p,
             ...focusPatch,
             baselineMode: checkin.synthetic ? 'test' : 'photos',
@@ -371,6 +416,8 @@ export default function TrainingProfile({ onClose }) {
             disabled={
               (['equipment', 'home-loads'].includes(step) && !environmentValid) ||
               (step === 'sport-choice' && !p.sports.length) ||
+              (step === 'barriers' && !p.onboardingBarriers?.length) ||
+              (step === 'commit' && !p.firstSession) ||
               (step === 'manual' && !readManualBaseline(manualEntry).valid)
             }
             onClick={advance}
@@ -378,14 +425,16 @@ export default function TrainingProfile({ onClose }) {
             {responseFor
               ? 'Continue'
               : step === 'welcome'
-                ? 'Get started'
+                ? 'Build my plan'
                 : step === 'review'
                   ? !baselineReady
                     ? 'Add photos or details'
                     : returning
                       ? 'Save changes'
-                      : 'Open my dashboard'
-                  : 'Continue'}
+                      : 'Continue'
+                  : step === 'offer'
+                    ? 'Continue to Tally'
+                    : NEXT_LABEL[step] || 'Continue'}
           </button>
         </div>
       }
@@ -398,12 +447,21 @@ export default function TrainingProfile({ onClose }) {
             scene={onboardingScene(step, p, true)}
             chapter={recap.chapter}
             title={recap.title}
-            lines={recap.lines}
             headingRef={heading}
+          />
+        ) : isOnboardingDemo(step) ? (
+          <OnboardingDemo
+            key={step}
+            step={step}
+            state={state}
+            profile={p}
+            name={name}
+            today={today}
+            now={demoNow}
           />
         ) : (
           <>
-            {!returning && step !== 'welcome' && (
+            {!returning && !['welcome', 'offer', 'review'].includes(step) && (
               <GuideBubble headingRef={heading}>{GUIDE[step] || TITLES[step]}</GuideBubble>
             )}
             {!returning && STAGED.includes(step) && (
@@ -414,7 +472,17 @@ export default function TrainingProfile({ onClose }) {
             )}
             {!returning && step === 'sport-choice' && <SetupIllustration scene="sports" variant="sports" />}
             {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
-            {step === 'welcome' && <SetupWelcome headingRef={heading} />}
+            {step === 'welcome' && (
+              <ProductWelcome state={state} profile={p} today={today} now={demoNow} headingRef={heading} />
+            )}
+            {step === 'offer' && <PlaceholderPaywall headingRef={heading} profile={p} name={name} />}
+            {step === 'commit' && (
+              <Cards
+                values={FIRST_SESSION_OPTIONS}
+                value={p.firstSession || null}
+                onChange={(firstSession) => set({ firstSession })}
+              />
+            )}
             {step === 'goal' && (
               <ImageChoices
                 label="Main goal"
@@ -453,66 +521,105 @@ export default function TrainingProfile({ onClose }) {
               <Cards
                 kind="experience"
                 values={[
-                  ['Starting out', 'New or returning', EXPERIENCE_DETAIL['Starting out']],
-                  ['Some experience', 'I know the basics', EXPERIENCE_DETAIL['Some experience']],
-                  ['Experienced', 'I train regularly', EXPERIENCE_DETAIL.Experienced],
+                  ['Starting out', 'New or returning'],
+                  ['Some experience', 'I know the basics'],
+                  ['Experienced', 'I train regularly'],
                 ]}
                 value={p.experience}
                 onChange={(experience) => set({ experience })}
               />
             )}
             {step === 'about' && (
-              <>
-                <Field label="Name (optional)">
-                  <input
-                    className="input"
-                    aria-label="Your name"
-                    value={name}
-                    maxLength={60}
-                    placeholder="First name"
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </Field>
-                <Field label="Gender">
-                  <div className="grid grid-cols-2 gap-2">
-                    {['Man', 'Woman', 'Non-binary', 'Prefer not to say'].map((v) => (
-                      <Choice
-                        key={v}
-                        value={v}
-                        selected={p.gender === v}
-                        onClick={(gender) => set({ gender })}
-                      />
-                    ))}
-                  </div>
-                </Field>
-                <Field label="Age group">
-                  <div className="grid grid-cols-2 gap-2">
-                    {['13-17', '18+'].map((v) => (
-                      <Choice
-                        key={v}
-                        value={v}
-                        selected={p.ageGroup === v}
-                        onClick={(ageGroup) =>
-                          set({
-                            ageGroup,
-                            ...(ageGroup === '13-17' && p.goal === 'Lose weight'
-                              ? { goal: 'General fitness' }
-                              : {}),
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </Field>
-              </>
+              <Field label="Name (optional)">
+                <input
+                  className="input"
+                  aria-label="Your name"
+                  value={name}
+                  maxLength={60}
+                  placeholder="First name"
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </Field>
+            )}
+            {step === 'gender' && (
+              <Field label="Gender">
+                <div className="grid grid-cols-2 gap-2">
+                  {['Man', 'Woman', 'Non-binary', 'Prefer not to say'].map((v) => (
+                    <Choice
+                      key={v}
+                      value={v}
+                      selected={p.gender === v}
+                      onClick={(gender) => set({ gender })}
+                    />
+                  ))}
+                </div>
+              </Field>
+            )}
+            {step === 'age' && (
+              <Field label="Age group">
+                <div className="grid grid-cols-2 gap-2">
+                  {['13-17', '18+'].map((v) => (
+                    <Choice
+                      key={v}
+                      value={v}
+                      selected={p.ageGroup === v}
+                      onClick={(ageGroup) =>
+                        set({
+                          ageGroup,
+                          ...(ageGroup === '13-17' && p.goal === 'Lose weight'
+                            ? { goal: 'General fitness' }
+                            : {}),
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </Field>
+            )}
+            {step === 'barriers' && (
+              <div className="setup-options barrier-options" role="group" aria-label="Training obstacles">
+                {ONBOARDING_BARRIERS.map(([id, label, icon]) => (
+                  <button
+                    type="button"
+                    key={id}
+                    className="tile onboarding-choice"
+                    aria-pressed={p.onboardingBarriers?.includes(id) || false}
+                    onClick={() =>
+                      set({ onboardingBarriers: toggleOnboardingBarrier(p.onboardingBarriers, id) })
+                    }
+                  >
+                    <span className="barrier-icon">
+                      <Icon name={icon} size={21} />
+                    </span>
+                    <span className="onboarding-choice-title">{label}</span>
+                    <span
+                      className={`choice-ring ${p.onboardingBarriers?.includes(id) ? 'is-on' : ''}`}
+                      aria-hidden="true"
+                    >
+                      {p.onboardingBarriers?.includes(id) && <Icon name="check" size={14} />}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {step === 'variety' && (
+              <Cards
+                values={[
+                  ['familiar', 'Keep it familiar'],
+                  ['balanced', 'A mix of both'],
+                  ['more', 'Try new exercises'],
+                ]}
+                value={p.variety}
+                onChange={(variety) => set({ variety })}
+              />
             )}
             {step === 'sports' && (
               <ImageChoices
                 label="Sport"
                 layout="rows"
                 options={[
-                  [true, 'Yes, I play', 'sports', 'Warm-ups, and lighter days near games'],
-                  [false, 'No sport right now', 'neutral', 'You can add one later'],
+                  [true, 'Yes, I play', 'sports'],
+                  [false, 'No sport right now', 'neutral'],
                 ]}
                 value={Boolean(p.wantsSport || p.sports.length)}
                 onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
@@ -562,14 +669,13 @@ export default function TrainingProfile({ onClose }) {
             {step === 'priority' && (
               <Cards
                 values={[
-                  ['goal', p.goal === 'General fitness' ? 'Feeling fitter' : p.goal, 'With room for your sport'],
-                  ['balanced', 'A balance of both', 'Training adjusts around games'],
+                  ['goal', p.goal === 'General fitness' ? 'Feeling fitter' : p.goal],
+                  ['balanced', 'A balance of both'],
                   [
                     'sport',
                     p.sports.length === 1
                       ? SPORTS.find((s) => s.id === p.sports[0])?.name || 'My sport'
                       : 'My sports',
-                    'Lighter training near games',
                   ],
                 ]}
                 value={p.sportPriority}
@@ -584,7 +690,6 @@ export default function TrainingProfile({ onClose }) {
                   place.id,
                   place.name,
                   LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
-                  PLACE_DETAIL[place.id] || PLACE_DETAIL[place.base],
                 ])}
                 value={p.location}
                 onChange={(location) =>
@@ -595,8 +700,8 @@ export default function TrainingProfile({ onClose }) {
             {step === 'home' && (
               <Cards
                 values={[
-                  [true, 'Yes, sometimes', 'Home gets its own equipment list'],
-                  [false, 'Not for now', 'Add it whenever you like'],
+                  [true, 'Yes, sometimes'],
+                  [false, 'Not for now'],
                 ]}
                 value={Boolean(p.hasHomeSetup)}
                 onChange={(hasHomeSetup) => set({ hasHomeSetup })}
@@ -620,14 +725,14 @@ export default function TrainingProfile({ onClose }) {
               <Cards
                 kind="time"
                 values={[
-                  [15, 'Keep it short', timeDetail[15]],
-                  [30, 'Half an hour', timeDetail[30]],
-                  [45, 'A little longer', timeDetail[45]],
-                  [60, 'About an hour', timeDetail[60]],
+                  [15, '15 min'],
+                  [30, '30 min'],
+                  [45, '45 min'],
+                  [60, '60 min'],
                   ...(![15, 30, 45, 60].includes(p.minutes) && !p.flexibleTime
-                    ? [[p.minutes, 'My usual session', timeDetail[p.minutes]]]
+                    ? [[p.minutes, `${p.minutes} min`]]
                     : []),
-                  ['flexible', 'It changes', 'Choose before each workout'],
+                  ['flexible', 'It varies'],
                 ]}
                 value={p.flexibleTime ? 'flexible' : p.minutes}
                 onChange={(minutes) =>
@@ -640,8 +745,8 @@ export default function TrainingProfile({ onClose }) {
                 <Cards
                   kind="rhythm"
                   values={[
-                    ['flexible', 'Take it as it comes', 'No target, nothing to make up'],
-                    ['target', 'A rough weekly target', 'Any seven days, never a streak'],
+                    ['flexible', 'Take it as it comes'],
+                    ['target', 'A rough weekly target'],
                   ]}
                   value={goalMode}
                   onChange={setGoalMode}
@@ -679,130 +784,139 @@ export default function TrainingProfile({ onClose }) {
             )}
             {step === 'review' && (
               <>
+                {!returning && (
+                  <OnboardingPlanPreview
+                    plan={plan}
+                    profile={p}
+                    name={name}
+                    customExercises={state.customExercises}
+                    headingRef={heading}
+                    title={startingMoves > 0 && !skipStart ? 'A typical session' : 'Your first workout'}
+                    startingPoint={startingMoves > 0 && !skipStart}
+                  />
+                )}
                 {startingMoves > 0 && !returning && (
-                  <section className="lit-card mt-5 p-4" aria-label="First up">
-                    <p className="text-[13px] font-bold text-accent-ink">First up</p>
-                    <h4 className="mt-2 font-display text-[26px] leading-tight">Find your starting point</h4>
+                  <label className="baseline-preview-option">
+                    <input
+                      type="checkbox"
+                      checked={!skipStart}
+                      onChange={(e) =>
+                        set({ baseline: e.target.checked ? null : { status: 'skipped', at: Date.now() } })
+                      }
+                    />
+                    <span>
+                      Find my starting weights first<small>{BASELINE_MINUTES} min · Optional</small>
+                    </span>
+                  </label>
+                )}
+                {returning && (
+                  <section className="lit-card mt-5 p-4" aria-label="Session preview">
+                    <p className="text-[13px] font-bold text-accent-ink">Current plan</p>
+                    <h4 className="mt-2 font-display text-[28px] leading-tight">{plan.name}</h4>
                     <p className="mt-1 text-[14px] font-semibold text-ink2">
-                      {BASELINE_MINUTES} min · {count(startingMoves, 'movement')} · one set each
+                      {count(plan.items.length, 'exercise')} · {plan.requestedMinutes} min
                     </p>
-                    <p className="mt-3 text-[14px] leading-relaxed text-ink2">
-                      {skipStart
-                        ? 'Skipped. Your weights are found as you train instead. It stays on the You tab if you change your mind.'
-                        : 'One easy set of each movement, so every weight in your plan starts in the right place.'}
-                    </p>
-                    <div className="segmented mt-3" role="radiogroup" aria-label="Starting point">
-                      {[
-                        [false, 'Start with it'],
-                        [true, 'Skip it'],
-                      ].map(([skip, label]) => (
-                        <button
-                          key={label}
-                          type="button"
-                          role="radio"
-                          aria-checked={skipStart === skip}
-                          className={`segment ${skipStart === skip ? 'segment-active' : ''}`}
-                          onClick={() => set({ baseline: skip ? { status: 'skipped', at: Date.now() } : null })}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
+                    <ExerciseThumbs items={plan.items} className="mt-4" />
+                    <details className="mt-3">
+                      <summary className="min-h-11 cursor-pointer text-[14px] font-semibold">
+                        All exercises
+                      </summary>
+                      <PlanRibbon items={plan.items} findExercise={findExercise} />
+                      <div className="mt-2 divide-y divide-line/70">
+                        {plan.items.map((it) => (
+                          <div key={it.exId} className="flex items-center justify-between gap-3 py-3">
+                            <span className="text-[15px]">{findExercise(it.exId)?.name}</span>
+                            <span className="shrink-0 text-[13px] text-muted">
+                              {it.sets} {it.sets === 1 ? 'set' : 'sets'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
                   </section>
                 )}
-                <section
-                  className={`${startingMoves > 0 && !returning ? 'plain-card mt-3' : 'lit-card mt-5'} p-4`}
-                  aria-label="Session preview"
-                >
-                  <p className={`text-[13px] font-bold ${startingMoves > 0 && !returning ? 'text-muted' : 'text-accent-ink'}`}>
-                    {returning
-                      ? 'Current plan'
-                      : startingMoves > 0
-                        ? skipStart
-                          ? 'Your first session'
-                          : 'Then, a typical session'
-                        : name.trim()
-                          ? `${name.trim().split(' ')[0]}’s first session`
-                          : 'Built from your answers'}
-                  </p>
-                  <h4 className="mt-2 font-display text-[28px] leading-tight">{plan.name}</h4>
-                  <p className="mt-1 text-[14px] font-semibold text-ink2">
-                    {count(plan.items.length, 'exercise')} · {plan.requestedMinutes} min
-                  </p>
-                  <ExerciseThumbs items={plan.items} className="mt-4" />
-                  <details className="mt-3">
-                    <summary className="min-h-11 cursor-pointer text-[14px] font-semibold">
-                      All exercises
-                    </summary>
-                    <PlanRibbon items={plan.items} findExercise={findExercise} />
-                    <div className="mt-2 divide-y divide-line/70">
-                      {plan.items.map((it) => (
-                        <div key={it.exId} className="flex items-center justify-between gap-3 py-3">
-                          <span className="text-[15px]">{findExercise(it.exId)?.name}</span>
-                          <span className="shrink-0 text-[13px] text-muted">
-                            {it.sets} {it.sets === 1 ? 'set' : 'sets'}
+                <details className="funnel-edit-answers" open={returning || undefined}>
+                  <summary>Edit answers</summary>
+                  <div className="checklist mt-2.5">
+                    {[
+                      ['goal', p.goal === 'General fitness' ? 'Feel fitter' : p.goal],
+                      // Experience changes sets, exercise options and targets, so it stays one tap away.
+                      ['experience', p.experience],
+                      [
+                        'barriers',
+                        p.onboardingBarriers
+                          ?.filter((id) => id !== 'none')
+                          .map((id) => ONBOARDING_BARRIERS.find(([key]) => key === id)?.[1])
+                          .join(', ') || 'Nothing right now',
+                      ],
+                      [
+                        'variety',
+                        {
+                          familiar: 'Keep it familiar',
+                          balanced: 'A mix of both',
+                          more: 'Try new exercises',
+                        }[p.variety],
+                      ],
+                      [
+                        'time',
+                        `${p.flexibleTime ? 'Time varies' : `${p.minutes} min`} · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
+                      ],
+                      ['location', p.location === 'home' ? 'Home setup' : resolvePlace(p, p.location).name],
+                      [
+                        'sports',
+                        p.sports.length
+                          ? p.sports.map((id) => SPORTS.find((s) => s.id === id)?.name).join(', ')
+                          : 'No sport',
+                      ],
+                      [
+                        p.baselineMode === 'manual' ? 'manual' : 'photos',
+                        p.baselineMode === 'manual'
+                          ? 'Height and weight'
+                          : p.baselineMode === 'test'
+                            ? 'Starting photos'
+                            : baselineReady
+                              ? 'Starting photos added'
+                              : 'Add photos or details',
+                      ],
+                    ].map(([group, label]) => {
+                      const pending = ['photos', 'manual'].includes(group) && !baselineReady
+                      return (
+                        <button
+                          key={group}
+                          className="checklist-row"
+                          aria-label={`Edit ${CHECK_LABEL[group]}: ${label}`}
+                          onClick={() => {
+                            setCurrent(group)
+                            setEditingGroup(group)
+                          }}
+                        >
+                          <span
+                            className={`checklist-mark ${pending ? 'is-pending' : ''}`}
+                            aria-hidden="true"
+                          >
+                            {!pending && <Icon name="check" size={13} strokeWidth={3.2} />}
                           </span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                </section>
-                <h4 className="mt-6 text-[14px] font-bold text-muted">Your answers · tap to change</h4>
-                <div className="checklist mt-2.5">
-                  {[
-                    ['goal', p.goal === 'General fitness' ? 'Feel fitter' : p.goal],
-                    // Experience changes sets, exercise options and targets, so it stays one tap away.
-                    ['experience', p.experience],
-                    [
-                      'time',
-                      `${p.flexibleTime ? 'Time varies' : `${p.minutes} min`} · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
-                    ],
-                    ['location', p.location === 'home' ? 'Home setup' : resolvePlace(p, p.location).name],
-                    [
-                      'sports',
-                      p.sports.length
-                        ? p.sports.map((id) => SPORTS.find((s) => s.id === id)?.name).join(', ')
-                        : 'No sport',
-                    ],
-                    [
-                      p.baselineMode === 'manual' ? 'manual' : 'photos',
-                      p.baselineMode === 'manual'
-                        ? 'Height and weight'
-                        : p.baselineMode === 'test'
-                          ? 'Starting photos'
-                          : baselineReady
-                            ? 'Starting photos added'
-                            : 'Add photos or details',
-                    ],
-                  ].map(([group, label]) => {
-                    const pending = ['photos', 'manual'].includes(group) && !baselineReady
-                    return (
-                      <button
-                        key={group}
-                        className="checklist-row"
-                        aria-label={`Edit ${CHECK_LABEL[group]}: ${label}`}
-                        onClick={() => {
-                          setCurrent(group)
-                          setEditingGroup(group)
-                        }}
-                      >
-                        <span className={`checklist-mark ${pending ? 'is-pending' : ''}`} aria-hidden="true">
-                          {!pending && <Icon name="check" size={13} strokeWidth={3.2} />}
-                        </span>
-                        <span className="w-[74px] shrink-0 text-[14px] text-muted">{CHECK_LABEL[group]}</span>
-                        <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{label}</span>
-                        <Icon name="edit" size={15} className="shrink-0 text-muted" />
-                      </button>
-                    )
-                  })}
-                </div>
+                          <span className="w-[74px] shrink-0 text-[14px] text-muted">
+                            {CHECK_LABEL[group]}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{label}</span>
+                          <Icon name="edit" size={15} className="shrink-0 text-muted" />
+                        </button>
+                      )
+                    })}
+                  </div>
+                </details>
                 {returning && suggestedLevel && suggestedLevel !== p.experience && (
                   <div className="mt-4 rounded-2xl border border-accent/30 p-3 text-[14px] leading-relaxed">
                     <p>
-                      You’ve trained consistently for a while. “{suggestedLevel}” would add more sets and unlock more
-                      exercises.
+                      You’ve trained consistently for a while. “{suggestedLevel}” would add more sets and
+                      unlock more exercises.
                     </p>
-                    <button type="button" className="btn-secondary mt-2 min-h-11 w-full" onClick={() => set({ experience: suggestedLevel })}>
+                    <button
+                      type="button"
+                      className="btn-secondary mt-2 min-h-11 w-full"
+                      onClick={() => set({ experience: suggestedLevel })}
+                    >
                       Switch to {suggestedLevel}
                     </button>
                   </div>
@@ -830,6 +944,8 @@ export default function TrainingProfile({ onClose }) {
 const CHECK_LABEL = {
   goal: 'Goal',
   experience: 'Level',
+  barriers: 'Obstacles',
+  variety: 'Variety',
   time: 'Time',
   location: 'Place',
   sports: 'Sports',
@@ -838,22 +954,32 @@ const CHECK_LABEL = {
 }
 function Cards({ values, value, onChange, kind }) {
   return (
-    <div className={`setup-options ${kind === 'time' ? 'setup-options--grid' : ''}`}>
+    <div className={`setup-options ${kind === 'time' ? 'setup-options--grid setup-options--time' : ''}`}>
       {values.map(([id, title, detail]) => {
         const on = value === id
-        const art = kind ? <ChoiceArt kind={kind} value={id} /> : null
+        const numericTime = kind === 'time' && typeof id === 'number'
+        const art = kind && !numericTime ? <ChoiceArt kind={kind} value={id} /> : null
         return (
           <button
             key={String(id)}
             type="button"
-            aria-label={kind === 'time' && typeof id === 'number' ? `${id} minutes, ${title}` : undefined}
+            aria-label={numericTime ? `${id} minutes` : undefined}
             aria-pressed={on}
             onClick={() => onChange(id)}
-            className="tile onboarding-choice"
+            className={`tile onboarding-choice ${kind === 'time' ? (numericTime ? 'time-duration' : 'time-flexible') : ''}`}
           >
             {art}
             <span className="onboarding-choice-text">
-              <span className="onboarding-choice-title">{title}</span>
+              <span className="onboarding-choice-title">
+                {numericTime ? (
+                  <>
+                    <span className="time-choice-number">{id}</span>
+                    <span className="time-choice-unit">min</span>
+                  </>
+                ) : (
+                  title
+                )}
+              </span>
               {detail && <span className="onboarding-choice-detail">{detail}</span>}
             </span>
             <span className={`choice-ring ${on ? 'is-on' : ''}`} aria-hidden="true">

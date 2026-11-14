@@ -59,10 +59,6 @@ export function BaselineCard({ nav }) {
           [1, 'set each'],
         ]}
       />
-      <p className="training-card-note">
-        <Icon name="info" size={18} />
-        <span>One easy set of each. Tally learns your weights and fills in the rest.</span>
-      </p>
       <button onClick={start} className="btn-primary mt-5 w-full" disabled={!moves.length}>
         Start
         <Icon name="arrowRight" size={17} />
@@ -247,24 +243,17 @@ export function BalanceSection({ nav }) {
     <section className="page-section">
       <SectionHead title="Strength balance" />
       <div className="mt-3 rounded-tuck bg-surface px-5 py-[18px]">
-        {measured ? (
-          <StrengthBalance balance={balance} />
-        ) : (
-          <p className="text-[14px] leading-relaxed text-ink2">
-            See how your chest, back, legs and the rest compare with each other, and what your plan does about
-            the ones that are behind. It fills in as you train, or in one go with a starting point.
-          </p>
-        )}
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        {measured ? <StrengthBalance balance={balance} /> : null}
+        <div className={`${measured ? 'mt-4 ' : ''}grid grid-cols-2 gap-2`}>
           <button
             className="btn-secondary min-h-11 !px-3 text-[14px]"
             onClick={start}
             disabled={Boolean(state.activeWorkout)}
           >
-            {status === 'done' ? 'Redo starting point' : 'Starting point · 30 min'}
+            {status === 'done' ? 'Redo check' : 'Start check'}
           </button>
           <button className="btn-secondary min-h-11 !px-3 text-[14px]" onClick={() => setTyping(true)}>
-            Type my numbers
+            Enter lifts
           </button>
         </div>
       </div>

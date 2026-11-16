@@ -286,7 +286,11 @@ function graphTarget(args, def, profile) {
     Array.isArray(args.range) && args.range.length === 2
       ? args.range
       : repRange({ goal: args.goal, experience: args.experience, meta, mode: mode === 'bodyweight' ? 'reps' : 'load', fixedReps: args.fixedReps })
-  const rir = isNum(args.rir) ? args.rir : targetRir(args)
+  // A stalled lift gets one lighter session to reset before pushing again:
+  // lighter in effort too, not just a lighter weight for more reps at the
+  // same closeness to failure (which felt just as hard and never reset).
+  const deload = Boolean(pred.seen && pred.info?.stalled && !args.live && !args.graph)
+  const rir = isNum(args.rir) ? args.rir : targetRir({ ...args, easy: Boolean(args.easy || deload) })
   const sets = Math.max(1, args.sets || 3)
   const base = { mode: mode === 'bodyweight' ? 'reps' : mode, range, rir, rule: STRENGTH_VERSION }
   const bw = pred.bodyweight.value
@@ -307,8 +311,6 @@ function graphTarget(args, def, profile) {
   )
   const transferable = close || wide
   const transferCap = wide ? GRAPH.wideTransfer.sdCap : null
-  // A stalled lift gets one lighter session to reset before pushing again.
-  const deload = Boolean(pred.seen && info?.stalled && !args.live && !args.graph)
   const lighterDay = Boolean(args.easy || args.returning || deload)
   const fresh = pred.avail >= 0.97
   // Planning (not mid-workout) on a normal day, after clean repeats of the

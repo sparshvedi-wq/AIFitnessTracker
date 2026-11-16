@@ -37,7 +37,7 @@ import {
 } from './eligibility.js'
 import { exposureFrom, sessionAsRecord } from './exposure.js'
 import { exerciseSignals } from './learning.js'
-import { realHistory, recordOutcome } from './ledger.js'
+import { realHistory, recordOutcome, recordTime } from './ledger.js'
 import { rolloverCandidates } from './rollover.js'
 import { difficultyOf, familiesToLearn, scoreCandidate } from './scoring.js'
 import { selectBeam, selectGreedy, selectionValue } from './select.js'
@@ -92,7 +92,7 @@ export function planningContext(state, options = {}) {
   const unwell = Boolean(r.unwell)
   // Stopping early because of feeling unwell makes the next day and a half lighter.
   const recentUnwell = strength.some(
-    (w) => w.finishReason === 'unwell' && now - (w.endedAt || w.startedAt || 0) <= 36 * 3600000,
+    (w) => w.finishReason === 'unwell' && now - recordTime(w) <= 36 * 3600000,
   )
   const easy =
     unwell ||
@@ -305,7 +305,7 @@ function recentGroupFact(ctx) {
   // The most recent strength session in the last ~36 hours, and its main region.
   const recent = [...ctx.strength]
     .reverse()
-    .find((w) => ctx.now - (w.endedAt || w.startedAt || 0) <= 36 * 3600000)
+    .find((w) => ctx.now - recordTime(w) <= 36 * 3600000)
   if (!recent) return {}
   const items = (recent.exercises || []).filter((e) => (e.sets || []).some((s) => s.kind !== 'warmup'))
   const group = regionGroup(items)

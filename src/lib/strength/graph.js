@@ -324,6 +324,19 @@ function ceilingFor(meta, unit) {
 }
 
 /**
+ * How far a record's clock times sit from its calendar date. A workout logged
+ * later with an earlier date (the summary's date picker) keeps the times it
+ * was entered at; without this its sets would land "today" in the fatigue
+ * model and every later set would stop recovering.
+ */
+function timeShift(record) {
+  const raw = isNum(record.endedAt) ? record.endedAt : record.startedAt
+  if (!record.date || !isNum(raw)) return 0
+  const at = recordTime(record)
+  return isNum(at) ? at - raw : 0
+}
+
+/**
  * Walks a record set by set: fatigue at each set, the observations each
  * tied exercise gives, the training stimulus per muscle, and every set's
  * outcome for the summary. `live` reads only sets marked done.
@@ -343,7 +356,8 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
     entries.push({ e, profile, sets, ignore: skip(e.exId) })
   }
   const total = entries.reduce((n, x) => n + x.sets.length, 0)
-  const times = setTimes(record, Math.max(1, total)) || []
+  const shift = timeShift(record)
+  const times = (setTimes(record, Math.max(1, total)) || []).map((v) => v + shift)
   let t = 0
   const byKey = new Map()
   const stimulus = {}
@@ -373,7 +387,7 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
     }
     for (const s of sets) {
       // The time the set was logged, when saved; otherwise spread over the session.
-      const loggedAt = isNum(s.at) ? s.at : isNum(s.doneAt) ? s.doneAt : null
+      const loggedAt = isNum(s.at) ? s.at + shift : isNum(s.doneAt) ? s.doneAt + shift : null
       const at = loggedAt ?? times[Math.min(t, times.length - 1)] ?? recordTime(record)
       t++
       G.fatigue = decayFatigue(G.fatigue, at)
@@ -414,6 +428,9 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
         } else {
           out.observations.push({ ...base, kind: 'two', rir: table[feel].mean, sd: table[feel].sd, source: feel, explicit: true })
           if (feel === 'easy') out.observations.push({ ...base, kind: 'lower', rir: table.easy.atLeast, sd: 0.5, source: 'easy', explicit: true })
+          // In the workout, "failed" is also a limit for today: not one more
+          // rep was possible at this load, like "too heavy" (held exactly).
+          if (feel === 'failed' && live) out.observations.push({ ...base, kind: 'upper', rir: 0, sd: table.failed.sd, source: 'failed', explicit: true })
         }
       } else if (missed) out.observations.push({ ...base, kind: 'two', rir: IMPLICIT.missed.mean, sd: IMPLICIT.missed.sd, source: 'missed' })
       else if (exceeded) {
@@ -494,7 +511,12 @@ function applyExercise(G, key, evidence, { live = false, firstSession = false } 
       rejected.push({ setIndex: o.setIndex, reason: 'unusual', reps: o.reps, weight: o.logged })
       continue
     }
-    keep.push({ o, soft: contradicts > OUTLIER.softZ ? contradicts / OUTLIER.softZ : 1 })
+    // Robust weighting softens surprising evidence, but in a live workout a
+    // deliberate answer ("failed", "too heavy", "easy") is a fact about
+    // today: softening it would let an old, conflicting estimate outvote
+    // what just happened (and could even raise a weight after a failure).
+    const trusted = live && o.explicit
+    keep.push({ o, soft: !trusted && contradicts > OUTLIER.softZ ? contradicts / OUTLIER.softZ : 1 })
   }
   const mask = live
     ? (name) => name.startsWith('θ:') || name.startsWith('δ:') || name.startsWith('ω:') || name === 'd'
@@ -704,13 +726,15 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
       !last.hard &&
       !evidence.observations.some((o) => o.source === 'very-hard-session')
     const before = prev.last
+    // Heavier is harder, except on assisted machines where less help is.
+    const harder = (a, b) => (evidence.profile.mode === 'assist' ? a < b - 1e-6 : a > b + 1e-6)
     const heldOrMore =
       before &&
       before.steady > 0 &&
       (last.weight === null
         ? before.weight === null && last.minReps >= before.minReps
         : isNum(before.weight) &&
-          (last.weight > before.weight + 1e-6 || (Math.abs(before.weight - last.weight) < 1e-6 && last.minReps >= before.minReps)))
+          (harder(last.weight, before.weight) || (Math.abs(before.weight - last.weight) < 1e-6 && last.minReps >= before.minReps)))
     last.steady = clean ? (heldOrMore ? before.steady + 1 : 1) : 0
   }
   let streak = prev.streak || { sign: 0, count: 0 }
@@ -721,7 +745,10 @@ function summarise(G, exId, evidence, at, record, rejected, innovation, levelAft
   }
   // Stalled: the last two sessions were hard or failed and the estimate has
   // not moved up over them. One lighter session resets it.
-  const recent = [...(prev.recent || []), { tough: Boolean(last?.hard || last?.failed) && accepted.length > 0, level: levelAfter }].slice(-3)
+  // The session after a stall was flagged is the lighter one: it resets the
+  // count, so two more tough sessions are needed before another deload.
+  const entry = { tough: Boolean(last?.hard || last?.failed) && accepted.length > 0, level: levelAfter }
+  const recent = prev.stalled && accepted.length ? [entry] : [...(prev.recent || []), entry].slice(-3)
   const twoTough = recent.length >= 2 && recent.slice(-2).every((r) => r.tough)
   const baseline = recent.length >= 3 ? recent[0].level : prev.levelBefore
   const flat = isNum(levelAfter) && isNum(baseline) && levelAfter <= baseline + 0.01
@@ -753,7 +780,7 @@ function applyRecord(G, record, { live = false, skip } = {}) {
     }
     ensureExercise(G, ev.profile, ev.place)
   }
-  if (!live) advance(G, isNum(record.startedAt) ? Math.min(record.startedAt, at) : at, { trainedKeys: [...byKey.keys()] })
+  if (!live) advance(G, isNum(record.startedAt) ? Math.min(record.startedAt + timeShift(record), at) : at, { trainedKeys: [...byKey.keys()] })
   for (const [exId, ev] of byKey) {
     if (!ev.profile.tie || !ev.observations.length) continue
     const firstSession = !G.exercises.get(exId)?.n

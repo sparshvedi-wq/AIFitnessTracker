@@ -330,6 +330,49 @@ function patchAt(session, c, patch) {
   }
 }
 
+/**
+ * After a failed working set, the sets still to do are never harder than it:
+ * no heavier weight (for assistance, no less help), and at the same weight no
+ * more reps than were just managed. Older history that disagrees with today
+ * can't outvote a set that just failed. Typed sets are left alone.
+ */
+export function holdAfterFailure(session, c, { unit = session.unit, now = null } = {}) {
+  const ex = session.exercises[c?.ex]
+  const failed = ex?.sets[c.set]
+  if (!failed || failed.status !== 'done' || !isWork(failed) || failed.feel !== 'failed') return session
+  const assisted = metaOf(ex.exId)?.load === 'assist'
+  const W = isNum(failed.weight) && (failed.weight > 0 || assisted) ? failed.weight : null
+  const R = isNum(failed.reps) && failed.reps >= 1 ? failed.reps : null
+  const harder = (w) => (assisted ? w < W - 1e-6 : w > W + 1e-6)
+  let changed = false
+  const sets = ex.sets.map((s, j) => {
+    if (j <= c.set || !isWork(s) || s.status !== 'todo' || s.manual) return s
+    let { weight, reps } = s
+    if (ex.weighted && W !== null && isNum(weight) && harder(weight)) weight = W
+    const same = !ex.weighted || W === null || (isNum(weight) && Math.abs(weight - W) < 1e-6)
+    if (same && R !== null && isNum(reps) && reps > R) reps = R
+    if (weight === s.weight && reps === s.reps) return s
+    changed = true
+    return { ...s, weight, reps, ...(weight !== s.weight ? { targetWeight: weight } : {}), ...(reps !== s.reps ? { targetReps: reps } : {}) }
+  })
+  if (!changed) return session
+  const first = sets.find((s, j) => j > c.set && isWork(s) && s.status === 'todo')
+  const meta = metaOf(ex.exId)
+  const adjusted = first
+    ? {
+        ...(ex.adjusted || {}),
+        at: now ?? ex.adjusted?.at ?? null,
+        reason: 'failed',
+        fromSet: sets.indexOf(first),
+        weight: ex.weighted ? first.weight : null,
+        reps: first.reps,
+        assist: assisted,
+        text: describe(ex.weighted ? 'load' : 'reps', first.weight, first.reps, unit, meta?.load),
+      }
+    : ex.adjusted
+  return { ...session, exercises: session.exercises.map((e, i) => (i === c.ex ? { ...e, sets, adjusted } : e)) }
+}
+
 /** Records a one-tap answer on a logged set and re-plans what's left. */
 export function recordFeel(session, c, feel, ctx, reserve = undefined) {
   if (!FEELS.includes(feel) || !session.exercises[c.ex]?.sets[c.set]) return session
@@ -339,7 +382,8 @@ export function recordFeel(session, c, feel, ctx, reserve = undefined) {
   const next = settleTest(answered, c)
   // A test that did not pass goes back to the usual numbers as they were.
   if (next.exercises[c.ex].offer?.status === 'missed') return adaptUpcoming(next, c.ex, ctx)
-  return adaptUpcoming(adaptExercise(next, c.ex, ctx, { force: feel !== 'good', reason: feel }), c.ex, ctx)
+  const adapted = holdAfterFailure(adaptExercise(next, c.ex, ctx, { force: feel !== 'good', reason: feel }), c, { unit: ctx.unit, now: ctx.now })
+  return adaptUpcoming(adapted, c.ex, ctx)
 }
 
 /**
@@ -485,7 +529,7 @@ export function correctLoggedReps(session, c, reps, ctx) {
   if (!set || set.status !== 'done' || !Number.isFinite(n) || n < 1) return session
   const corrected = settleTest(patchAt(session, c, { reps: n, feel: 'failed' }), c)
   if (corrected.exercises[c.ex].offer?.status === 'missed') return adaptUpcoming(corrected, c.ex, ctx)
-  return adaptUpcoming(adaptExercise(corrected, c.ex, ctx, { force: true, reason: 'failed' }), c.ex, ctx)
+  return adaptUpcoming(holdAfterFailure(adaptExercise(corrected, c.ex, ctx, { force: true, reason: 'failed' }), c, { unit: ctx.unit, now: ctx.now }), c.ex, ctx)
 }
 
 /** "I couldn't finish": logs the reps actually done as a failed set, then re-plans. */
@@ -495,7 +539,7 @@ export function logShortSet(session, reps, ctx, now = Date.now()) {
   if (!c || !Number.isFinite(n) || n < 1) return session
   const logged = settleTest(completeSet(updateSet(session, { reps: n, feel: 'failed' }), now), c)
   if (logged.exercises[c.ex].offer?.status === 'missed') return adaptUpcoming(logged, c.ex, ctx)
-  return adaptUpcoming(adaptExercise(logged, c.ex, ctx, { force: true, reason: 'failed' }), c.ex, ctx)
+  return adaptUpcoming(holdAfterFailure(adaptExercise(logged, c.ex, ctx, { force: true, reason: 'failed' }), c, { unit: ctx.unit, now: ctx.now }), c.ex, ctx)
 }
 
 /**
@@ -557,13 +601,27 @@ export function markTooHeavy(session, ctx, now = Date.now(), { soft = false } = 
   const grid = assisted ? null : gridFor(ex, ctx, meta)
   const gentlest = grid ? (grid.between(set.weight * (1 - SOFT_DROP_MAX), set.weight - 1e-6)[0] ?? grid.next(set.weight, -1)) : null
   const unchanged = Math.abs((after.weight ?? set.weight) - set.weight) < 1e-6
+  // "Too heavy" never makes the set harder, whatever older history suggests.
+  const wentHarder = isNum(after.weight) && (assisted ? after.weight < set.weight - 1e-6 : after.weight > set.weight + 1e-6)
+  const stuck = unchanged || wentHarder
   const tooFar = !assisted && isNum(gentlest) && isNum(after.weight) && after.weight < gentlest - 1e-6
-  if (soft && (unchanged || tooFar)) {
+  if ((soft && (stuck || tooFar)) || (!soft && stuck)) {
     const step = ctx.unit === 'kg' ? 2.5 : 5
-    const lower = assisted ? round(set.weight + step) : tooFar ? gentlest : grid.next(set.weight, -1)
+    // Could not lift it at all: a bigger step than the one-tap notch.
+    const bigger = () => {
+      const l = grid.atMost(set.weight * 0.8)
+      return isNum(l) && l < set.weight - 1e-6 ? l : grid.next(set.weight, -1)
+    }
+    const lower = assisted ? round(set.weight + step * (soft ? 1 : 2)) : !soft ? bigger() : tooFar ? gentlest : grid.next(set.weight, -1)
     if (isNum(lower) && (assisted || (lower > 0 && lower < set.weight - 1e-6))) {
       const current = next.exercises[c.ex]
-      const sets = current.sets.map((s) => (isWork(s) && s.status === 'todo' && !s.manual ? { ...s, weight: lower, targetWeight: lower } : s))
+      // A plan that had gone up also drops back to the planned reps.
+      const reps = wentHarder && isNum(set.reps) ? Math.min(after.reps ?? set.reps, set.reps) : after.reps
+      const sets = current.sets.map((s) =>
+        isWork(s) && s.status === 'todo' && !s.manual
+          ? { ...s, weight: lower, targetWeight: lower, ...(wentHarder && isNum(reps) ? { reps: Math.min(s.reps ?? reps, reps), targetReps: Math.min(s.reps ?? reps, reps) } : {}) }
+          : s,
+      )
       next = {
         ...next,
         exercises: next.exercises.map((e, i) =>
@@ -572,7 +630,7 @@ export function markTooHeavy(session, ctx, now = Date.now(), { soft = false } = 
             : {
                 ...current,
                 sets,
-                adjusted: { at: ctx.now, reason: 'too-heavy', fromSet: c.set, weight: lower, reps: after.reps, assist: assisted, text: describe('load', lower, after.reps, ctx.unit, meta?.load) },
+                adjusted: { at: ctx.now, reason: 'too-heavy', fromSet: c.set, weight: lower, reps, assist: assisted, text: describe('load', lower, reps, ctx.unit, meta?.load) },
               },
         ),
       }

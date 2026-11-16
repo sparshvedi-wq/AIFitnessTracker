@@ -177,6 +177,8 @@ export function sessionObservations(record, exId, { unit, mode, experience, meta
         } else {
           observations.push({ ...base, kind: 'two', rir: table[feel].mean, sd: table[feel].sd, source: feel, explicit: true })
           if (feel === 'easy') observations.push({ ...base, kind: 'lower', rir: table.easy.atLeast, sd: 0.5, source: 'easy', explicit: true })
+          // In the workout, "failed" is also a limit for today (see graph.js).
+          if (feel === 'failed' && live) observations.push({ ...base, kind: 'upper', rir: 0, sd: table.failed.sd, source: 'failed', explicit: true })
         }
       } else if (missed) observations.push({ ...base, kind: 'two', rir: IMPLICIT.missed.mean, sd: IMPLICIT.missed.sd, source: 'missed' })
       else if (exceeded) {
@@ -344,7 +346,10 @@ export function applySession(state, observations, { dayVar = DAY_SD ** 2 } = {})
       rejected.push({ setIndex: o.setIndex, reason: 'unusual', weight: o.weight, reps: o.reps })
       continue
     }
-    keep.push({ o, softZ: contradicts > OUTLIER.softZ ? contradicts / OUTLIER.softZ : 1 })
+    // In a live workout (no day-to-day spread) a deliberate answer is a fact
+    // about today and is not softened (see graph.js applyExercise).
+    const trusted = live && o.explicit
+    keep.push({ o, softZ: !trusted && contradicts > OUTLIER.softZ ? contradicts / OUTLIER.softZ : 1 })
   }
 
   // Two-sided answers: one combined, precision-weighted observation per day.

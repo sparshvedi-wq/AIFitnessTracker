@@ -2765,6 +2765,35 @@
   font-weight: 600;
 }
 
+/* When a demo presses a control by itself, a ripple shows where, so the eye
+   goes from the cause to the result. */
+.is-autotap {
+  position: relative;
+}
+.is-autotap::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px 0 0 -23px;
+  border-radius: 50%;
+  background: rgb(var(--accent) / 0.35);
+  pointer-events: none;
+  animation: story-autotap 0.75s ease-out both;
+}
+@keyframes story-autotap {
+  from {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
 /* Night screens use the dark tokens in both themes. */
 .setup-dialog--night.setup-dialog--night {
   background: rgb(var(--bg));
@@ -2795,4 +2824,54 @@
 }
 .tally-reduce-motion .path-area {
   opacity: 1;
+}
+
+/* Without motion, the looping demos show their result, not their start. */
+@media (prefers-reduced-motion: reduce) {
+  .solution-row.is-drop,
+  .solution-min .is-long {
+    display: none;
+  }
+  .solution-min .is-short {
+    opacity: 1;
+  }
+  .solution-trigger span {
+    background: rgb(var(--accent));
+    color: #fff;
+  }
+  .fix-ring-arc {
+    stroke-dashoffset: 150;
+  }
+  .fix-a {
+    opacity: 0;
+  }
+  .fix-b {
+    opacity: 1;
+  }
+  .is-autotap::after {
+    display: none;
+  }
+}
+.tally-reduce-motion .solution-row.is-drop,
+.tally-reduce-motion .solution-min .is-long {
+  display: none;
+}
+.tally-reduce-motion .solution-min .is-short {
+  opacity: 1;
+}
+.tally-reduce-motion .solution-trigger span {
+  background: rgb(var(--accent));
+  color: #fff;
+}
+.tally-reduce-motion .fix-ring-arc {
+  stroke-dashoffset: 150;
+}
+.tally-reduce-motion .fix-a {
+  opacity: 0;
+}
+.tally-reduce-motion .fix-b {
+  opacity: 1;
+}
+.tally-reduce-motion .is-autotap::after {
+  display: none;
 }

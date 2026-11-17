@@ -141,7 +141,14 @@ const PROBLEM_ICONS = {
   no: 'M5 12.5l4.5 4.5L19 7.5',
   new: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6',
 }
-function Problem({ headingRef, profile, set }) {
+// One tap answers it: the choice lights, then the story moves on by itself.
+function Problem({ headingRef, profile, set, onNext }) {
+  const timers = useTimers()
+  const answer = (id) => {
+    set({ onboardingProblem: id })
+    timers.clear()
+    timers.later(onNext, reducedMotion() ? 150 : 420)
+  }
   return (
     <div className="story">
       <Title headingRef={headingRef}>Ever had a plan fall apart?</Title>
@@ -156,7 +163,7 @@ function Problem({ headingRef, profile, set }) {
               aria-checked={on}
               className={`story-tile story-in ${on ? 'is-on' : ''}`}
               style={delay(0.12 + i * 0.07)}
-              onClick={() => set({ onboardingProblem: id })}
+              onClick={() => answer(id)}
             >
               <span className="story-tile-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -435,11 +442,16 @@ function Building({ headingRef, state, profile, today, now, onNext }) {
 function Squeeze({ headingRef, state, profile, today, now }) {
   const plans = useMemo(() => squeezeDemo(state, profile, { today, now }), [state, profile, today, now])
   const [mins, setMins] = useState(45)
+  const [autoTap, setAutoTap] = useState(null)
   const touched = useRef(false)
   const timers = useTimers()
   useEffect(() => {
+    // The demo taps 20 by itself; a ripple shows where, so the eye follows.
     timers.later(() => {
-      if (!touched.current) setMins(20)
+      if (touched.current) return
+      setAutoTap(20)
+      setMins(20)
+      timers.later(() => setAutoTap(null), 800)
     }, 1600)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -454,7 +466,7 @@ function Squeeze({ headingRef, state, profile, today, now }) {
             type="button"
             role="radio"
             aria-checked={m === mins}
-            className={m === mins ? 'is-on' : ''}
+            className={`${m === mins ? 'is-on' : ''} ${autoTap === m ? 'is-autotap' : ''}`}
             onClick={() => {
               touched.current = true
               setMins(m)
@@ -574,7 +586,7 @@ function MidWorkout({ headingRef, state, profile, today, now }) {
               <b>How long’s left?</b>
               <div className="mid-opts">
                 {FIT_CHOICES.map((m) => (
-                  <button key={m} type="button" className={hot === m ? 'is-hot' : ''} onClick={() => pick(m)}>
+                  <button key={m} type="button" className={hot === m ? `is-hot ${touched.current ? '' : 'is-autotap'}` : ''} onClick={() => pick(m)}>
                     {m} min
                   </button>
                 ))}
@@ -726,7 +738,14 @@ function Feel({ headingRef, state, today, now }) {
       </div>
       <div className="feel-picks story-in" style={delay(0.2)} role="radiogroup" aria-label="How did set 1 feel?">
         {FEELS.map(([id, label]) => (
-          <button key={id} type="button" role="radio" aria-checked={feel === id} className={feel === id ? 'is-on' : ''} onClick={() => pick(id)}>
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={feel === id}
+            className={`${feel === id ? 'is-on' : ''} ${feel === id && !touched.current ? 'is-autotap' : ''}`}
+            onClick={() => pick(id)}
+          >
             {label}
           </button>
         ))}

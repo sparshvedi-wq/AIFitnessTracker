@@ -384,6 +384,8 @@ export function recommendStrength(state, options) {
         ? SELECTION.maxItems.from60
         : SELECTION.maxItems.normal
   ctx.maxItems = Math.min(itemCap, Math.max(2, Math.floor(ctx.minutes / 7)))
+  // On a low-energy day, keep the highest-ranked work and leave room to recover.
+  if (ctx.r.energy === 'low') ctx.maxItems = Math.max(2, Math.ceil(ctx.maxItems * 0.65))
   ctx.minItems = Math.min(2, ctx.maxItems)
   ctx.setCap = ctx.shortSession || ctx.easy || ctx.experience === 'Starting out' ? 2 : ctx.highEffort ? 4 : 3
   // In a long session, time still unused at the usual cap may buy one more

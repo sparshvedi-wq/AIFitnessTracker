@@ -11,7 +11,7 @@ import { photoReviewSlides } from '../src/lib/photo-review.js'
 test('physique preference follows goal, survives restore and never changes training prescription', () => {
   const state = defaultState(),
     profile = state.settings.training
-  assert.deepEqual(onboardingSteps(profile).slice(1, 5), ['goal', 'goal-demo', 'physique', 'experience'])
+  assert.deepEqual(onboardingSteps(profile).slice(3, 7), ['goal', 'goal-demo', 'physique', 'experience'])
   assert.equal(nextOnboardingStep('goal', profile, 'goal'), 'physique')
   assert.equal(nextOnboardingStep('physique', profile, 'goal'), 'review')
   const before = buildDailyPlan(state, { today: '2026-11-06', seed: 5 })

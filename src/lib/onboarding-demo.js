@@ -6,12 +6,12 @@ import { exerciseThumb } from './exercise-thumbs.js'
 // Said the way people say it about themselves, so they recognise their own
 // reason on the list.
 export const ONBOARDING_BARRIERS = [
-  ['time', 'I run out of time', 'clock'],
-  ['unsure', 'I’m not sure what to do', 'help'],
-  ['schedule', 'My week never goes to plan', 'repeat'],
-  ['enjoyment', 'I get bored of my workouts', 'repeat'],
-  ['starting', 'I stop, then struggle to restart', 'play'],
-  ['none', 'Nothing, I’m consistent', 'check'],
+  ['time', 'Short on time', 'clock'],
+  ['unsure', 'Unsure what to do', 'help'],
+  ['schedule', 'Changing schedule', 'repeat'],
+  ['enjoyment', 'Repetitive workouts', 'repeat'],
+  ['starting', 'Getting started again', 'play'],
+  ['none', 'None of these', 'check'],
 ]
 // What Tally does about each obstacle. Every line is something the app
 // actually does; they are reused on the plan and the offer so the answer a
@@ -41,16 +41,25 @@ export const DROPOUT_FACT = {
 
 // When the first session will happen. Naming a time makes following through
 // more likely (implementation intentions; Gollwitzer & Sheeran, 2006).
+// No set days: the question is when they are next free, not which weekday.
 export const FIRST_SESSION_OPTIONS = [
-  ['today', 'Today'],
-  ['tomorrow', 'Tomorrow'],
-  ['week', 'Later this week'],
-  ['unsure', 'Not sure yet'],
+  ['now', 'Right now'],
+  ['later', 'Later today'],
+  ['unsure', 'Not sure'],
 ]
 export const firstSessionLabel = (id) =>
-  ({ today: 'today', tomorrow: 'tomorrow', week: 'this week' })[id] || null
+  ({ now: 'right now', later: 'later today', today: 'today', tomorrow: 'tomorrow', week: 'this week' })[id] ||
+  null
 
 export const DEMO_STEPS = [
+  'compress-demo',
+  'barrier-compress-demo',
+  'barrier-form-demo',
+  'photo-use-demo',
+  'warmup-time-demo',
+  'warmup-energy-demo',
+  'photo-purpose-demo',
+  'photo-privacy-demo',
   'goal-demo',
   'why-demo',
   'barrier-demo',
@@ -58,11 +67,25 @@ export const DEMO_STEPS = [
   'equipment-demo',
   'time-demo',
   'consistency-demo',
+  'recent-demo',
+  'rotation-demo',
   'planning-demo',
   'recovery-demo',
   'building-demo',
+  'solution-demo',
+  'year-demo',
+  'fix-demo',
+  'squeeze-demo',
+  'midworkout-demo',
+  'rollover-demo',
+  'feel-demo',
+  'tally-demo',
+  'path-demo',
+  'value-demo',
+  'ready-demo',
 ]
-export const isOnboardingDemo = (step) => DEMO_STEPS.includes(step)
+export const isOnboardingDemo = (step) =>
+  DEMO_STEPS.includes(step) || ONBOARDING_BARRIERS.some(([id]) => step === `barrier-${id}-demo`)
 
 export function toggleOnboardingBarrier(selected = [], value) {
   if (value === 'none') return selected.includes('none') ? [] : ['none']
@@ -77,7 +100,14 @@ export function toggleOnboardingBarrier(selected = [], value) {
 export function onboardingDemoPlan(
   state,
   profile,
-  { today, now = Date.now(), minutes = profile.minutes, location = profile.location, sore = [] } = {},
+  {
+    today,
+    now = Date.now(),
+    minutes = profile.minutes,
+    location = profile.location,
+    sore = [],
+    energy = 'normal',
+  } = {},
 ) {
   const plan = buildDailyPlan(
     { ...state, readiness: null, settings: { ...state.settings, training: profile } },
@@ -86,7 +116,7 @@ export function onboardingDemoPlan(
       now,
       minutes,
       location,
-      readiness: { energy: 'normal', sore, pain: [] },
+      readiness: { energy, sore, pain: [] },
     },
   )
   return {
@@ -200,8 +230,13 @@ export function offerPoints(profile) {
   return [...mine, ...always.filter((line) => !mine.includes(line))].slice(0, 4)
 }
 
-// Preview prices only: nothing here charges anyone (see PlaceholderPaywall).
-export const OFFER_PRICES = { year: 59.99, month: 12.99 }
+// Preview prices only: nothing here charges anyone (lib/billing.js has no
+// store connected). `yearNow` is the yearly price when the free trial is
+// switched off; `saveOffer` is the one-time discount after a cancelled
+// purchase sheet. All of these are business decisions to confirm before release.
+export const OFFER_PRICES = { year: 59.99, month: 12.99, yearNow: 49.99 }
+export const TRIAL_DAYS = 7
+export const SAVE_OFFER_PERCENT = 40
 /** Per-week prices and the yearly saving, worked out from the two prices. */
 export function offerPricing({ year, month } = OFFER_PRICES) {
   const money = (n) => `$${n.toFixed(2)}`
@@ -211,4 +246,10 @@ export function offerPricing({ year, month } = OFFER_PRICES) {
     // Rounded down, so the saving is never overstated.
     saving: Math.floor((1 - year / (month * 12)) * 100),
   }
+}
+/** The one-time yearly price after the discount, ending in .99 and never above the discount. */
+export function saveOfferPrice(year = OFFER_PRICES.year, percent = SAVE_OFFER_PERCENT) {
+  const target = year * (1 - percent / 100)
+  const price = Math.floor(target) + 0.99 > target ? Math.floor(target) - 0.01 : Math.floor(target) + 0.99
+  return Math.round(price * 100) / 100
 }

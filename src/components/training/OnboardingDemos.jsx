@@ -1,383 +1,409 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { recoveryTimeline } from '../../lib/recovery-view.js'
+import PlanReveal from './PlanReveal.jsx'
+import { buildSession } from '../../lib/workout.js'
+import { shortenSession, adaptRoutineItems, replacementOptions } from '../../lib/workout-adjustments.js'
+import { formGuide } from '../../lib/form.js'
+import { useEffect, useRef, useState } from 'react'
 import Icon from '../Icon.jsx'
 import { SetupIllustration } from './SetupVisuals.jsx'
-import { onboardingScene } from '../../lib/onboarding-art.js'
+import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
+import MannequinRegions from './MannequinRegions.jsx'
 import {
   onboardingDemoPlan,
   consistencyExample,
-  planningTimeExample,
-  planIngredients,
-  firstWeeks,
   offerPoints,
   offerPricing,
-  pickedBarriers,
-  barrierLabel,
-  BARRIER_ANSWERS,
-  DROPOUT_FACT,
 } from '../../lib/onboarding-demo.js'
 import { buildSportWarmup, SPORTS } from '../../lib/sports.js'
 import { findExercise } from '../../lib/exercises.js'
 import { exerciseThumb } from '../../lib/exercise-thumbs.js'
-import { placesOf, resolvePlace, quietAt } from '../../lib/places.js'
+import { resolvePlace, quietAt } from '../../lib/places.js'
 import { movementPreferences } from '../../lib/movement-preferences.js'
 
-// The eyebrow ties each demonstration to the answer that earned it.
-function DemoHeading({ title, eyebrow = 'Your plan in action', children }) {
+export function ProductWelcome({ headingRef }) {
   return (
-    <div className="funnel-heading">
-      <span className="funnel-eyebrow">{eyebrow}</span>
-      <h3 tabIndex={-1}>{title}</h3>
-      {children && <p>{children}</p>}
+    <div className="funnel-welcome opening-scene">
+      <div className="funnel-welcome-art">
+        <SetupIllustration scene="welcome" />
+      </div>
+      <h3 ref={headingRef} tabIndex={-1}>
+        A workout that fits
+        <br />
+        the day you have.
+      </h3>
     </div>
   )
 }
-function Switches({ label, options, value, onChange }) {
+
+const goalCopy = {
+  'Build muscle': [
+    'Build muscle in balance.',
+    'Tally counts the sets you log across muscle groups to decide what to train next.',
+  ],
+  'Get stronger': ['Know what to lift next.', 'Logged weights and reps guide your next targets.'],
+  'Lose weight': ['Make movement fit your week.', 'Keep strength work in the mix, even on shorter days.'],
+  'General fitness': ['Give your whole body a turn.', 'Your sessions draw from different muscle groups.'],
+}
+function DemoHeading({ title }) {
   return (
-    <div className="demo-switches" role="group" aria-label={label}>
+    <div className="funnel-heading">
+      <h3 tabIndex={-1}>{title}</h3>
+    </div>
+  )
+}
+function MoveSpot({ move, label }) {
+  return (
+    <figure className="proof-move">
+      <img
+        src={move?.image || ONBOARDING_ART.neutral}
+        className={move?.image ? undefined : 'proof-placeholder'}
+        alt=""
+      />
+      <figcaption>
+        <small>{label}</small>
+        <strong>{move?.name || 'No matching exercise'}</strong>
+      </figcaption>
+    </figure>
+  )
+}
+function Picks({ options, value, onChange, label }) {
+  return (
+    <div className="story-picks" role="group" aria-label={label}>
       {options.map(([id, text]) => (
-        <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)}>
+        <button type="button" key={id} aria-pressed={value === id} onClick={() => onChange(id)}>
           {text}
         </button>
       ))}
     </div>
   )
 }
-function MoveList({ moves, limit = 3 }) {
-  return (
-    <ul className="demo-moves">
-      {moves.slice(0, limit).map((m, i) => (
-        <li key={`${m.exId}:${i}`}>
-          <span className="demo-move-art" aria-hidden="true">
-            {m.image ? <img src={m.image} alt="" decoding="async" /> : <Icon name="train" size={23} />}
-          </span>
-          <span className="demo-move-name">
-            {m.name}
-            <small>{m.muscle}</small>
-          </span>
-          <span className="demo-dose">
-            {m.sets} × {m.sec ? `${m.sec}s` : m.reps}
-          </span>
-        </li>
-      ))}
-    </ul>
+function TimeDemo({ state, profile, today, now, kind }) {
+  const remaining = 5
+  const plan = onboardingDemoPlan(state, profile, {today,now,minutes:30})
+  if(kind==='time') return <><DemoHeading title="Plans change mid-workout."/>
+    <div className="five-minute"><SetupIllustration scene="time"/><div className="clock-face"><b>5</b><span>minutes left</span></div></div>
+    <p className="moment-line">Say you need to leave early. Here’s what Tally keeps.</p></>
+  const session = shortenSession(
+    buildSession(plan, { now, customExercises: state.customExercises }),
+    remaining,
+    now,
   )
-}
-function SessionPreview({ plan, title, shownMoves = plan.moves, limit = 3 }) {
-  return (
-    <div
-      className="demo-session"
-      key={`${plan.location}:${plan.requestedMinutes}:${plan.moves.map((m) => m.exId).join(',')}`}
-    >
-      <div className="demo-session-top">
-        <span>{title || 'Your training'}</span>
-        <span>{plan.requestedMinutes} min</span>
-      </div>
-      {plan.moves.length ? (
-        <>
-          <MoveList moves={shownMoves} limit={limit} />
-          <div className="demo-session-foot">
-            <span>{plan.moves.length} moves</span>
-            <span>{plan.items.reduce((n, it) => n + it.sets, 0)} sets</span>
-            <Icon name="check" size={16} />
-          </div>
-        </>
-      ) : (
-        <p className="demo-empty">No exercises fit these choices. Adjust your equipment or areas to avoid.</p>
-      )}
-    </div>
-  )
-}
-
-export function ProductWelcome({ state, profile, today, now, headingRef }) {
-  const [minutes, setMinutes] = useState(30)
-  const plan = useMemo(
-    () => onboardingDemoPlan(state, profile, { today, now, minutes }),
-    [state, profile, today, now, minutes],
-  )
-  return (
-    <div className="funnel-welcome">
-      <div className="funnel-welcome-art">
-        <SetupIllustration scene="welcome" />
-      </div>
-      <h3 ref={headingRef} tabIndex={-1}>
-        The plan you’ll
-        <br />
-        actually stick to.
-      </h3>
-      <p className="funnel-welcome-copy">It fits your time, your place and how you feel. Try it.</p>
-      <Switches
-        label="Try a workout length"
-        value={minutes}
-        onChange={setMinutes}
-        options={[
-          [15, '15 min'],
-          [30, '30 min'],
-          [45, '45 min'],
-        ]}
-      />
-      <SessionPreview plan={plan} title="Tap a time. Watch it adapt." />
-      <p className="funnel-welcome-note">About 3 minutes · No sign-up</p>
-    </div>
-  )
-}
-
-function TimeDemo({ state, profile, today, now, eyebrow, title = 'Busy day? 15 minutes still counts.' }) {
-  const [minutes, setMinutes] = useState(profile.flexibleTime ? 15 : profile.minutes)
-  const options = [...new Set([15, 30, profile.minutes])].sort((a, b) => a - b).map((m) => [m, `${m} min`])
-  const plan = useMemo(
-    () => onboardingDemoPlan(state, profile, { today, now, minutes }),
-    [state, profile, today, now, minutes],
-  )
+  const kept = session.exercises.filter((ex) => ex.sets.some((s) => s.status === 'todo'))
+  const deferred = session.exercises.some((ex) => ex.sets.some((s) => s.status === 'skipped'))
   return (
     <>
-      <DemoHeading title={title} eyebrow={eyebrow}>
-        Tap a shorter time. Same goal, nothing wasted.
-      </DemoHeading>
-      <SetupIllustration scene="time" variant="compact" />
-      <Switches label="Preview workout length" options={options} value={minutes} onChange={setMinutes} />
-      <SessionPreview plan={plan} />
-    </>
-  )
-}
-function EquipmentDemo({ state, profile, today, now }) {
-  const [place, setPlace] = useState(profile.location)
-  const locations = placesOf(profile).filter((p) =>
-    ['gym', 'home', 'on-the-go', profile.location].includes(p.id),
-  )
-  const plan = useMemo(
-    () => onboardingDemoPlan(state, profile, { today, now, location: place }),
-    [state, profile, today, now, place],
-  )
-  return (
-    <>
-      <DemoHeading title="Travelling? Gym packed? Still on plan.">
-        Switch place and the session rebuilds around what’s there.
-      </DemoHeading>
-      <SetupIllustration
-        scene={onboardingScene('location', { ...profile, location: place })}
-        variant="compact"
-      />
-      <Switches
-        label="Preview training location"
-        options={locations.map((p) => [p.id, p.name])}
-        value={place}
-        onChange={setPlace}
-      />
-      <SessionPreview plan={plan} title={resolvePlace(profile, place).name} />
-    </>
-  )
-}
-function GuideDemo({ state, profile, today, now, eyebrow }) {
-  const [show, setShow] = useState(false)
-  const plan = useMemo(() => onboardingDemoPlan(state, profile, { today, now }), [state, profile, today, now])
-  const move = plan.moves.find((m) => m.image) || plan.moves[0]
-  const ex = move && findExercise(move.exId, state.customExercises)
-  return (
-    <>
-      <DemoHeading title="Never wonder what to do next." eyebrow={eyebrow}>
-        Every move comes with how to do it.
-      </DemoHeading>
-      {move ? (
-        <div className="demo-guide">
-          {move.image && <img src={move.image} alt={`Start and finish positions for ${move.name}`} />}
-          <h4>{move.name}</h4>
-          <span className="demo-guide-dose">
-            {move.sets} sets · {move.sec ? `${move.sec} sec` : `${move.reps} reps`}
-          </span>
-          <button className="btn-secondary w-full mt-4" onClick={() => setShow(!show)} aria-expanded={show}>
-            <Icon name="play" size={16} />
-            {show ? 'Hide technique' : 'Show me how'}
-          </button>
-          {show && (
-            <ol className="demo-cues">
-              {(ex?.cues || []).slice(0, 3).map((cue, i) => (
-                <li key={cue}>
-                  <span>{i + 1}</span>
-                  {cue}
-                </li>
-              ))}
-            </ol>
+      <DemoHeading title={`What fits in ${remaining} minutes.`} />
+      <PlanReveal>
+        <div className="story-module drill-menu">
+          <small>Keep today</small>
+          {kept.length ? (
+            kept.map((ex) => (
+              <strong key={ex.exId}>{findExercise(ex.exId, state.customExercises)?.name}</strong>
+            ))
+          ) : (
+            <strong>Finish here</strong>
           )}
         </div>
-      ) : (
-        <SessionPreview plan={plan} />
-      )}
+      </PlanReveal>
+      <p className="proof-note">
+        {deferred
+          ? 'Logged sets stay saved. Unfinished work gets another look next session.'
+          : 'The remaining sets already fit. Keep your workout as planned.'}
+      </p>
     </>
   )
 }
-function SwapDemo({ state, profile, today, now, eyebrow }) {
-  const [changed, setChanged] = useState(false)
-  const original = useMemo(
-    () => onboardingDemoPlan(state, profile, { today, now }),
-    [state, profile, today, now],
-  )
-  const plan = useMemo(
-    () =>
-      changed && original.moves.length
-        ? onboardingDemoPlan(
-            state,
-            {
-              ...profile,
-              excludedExercises: [...(profile.excludedExercises || []), original.moves[0].exId],
-            },
-            { today, now },
-          )
-        : original,
-    [state, profile, today, now, changed, original],
-  )
-  // Put the replacement in view even when it lands later in the real plan.
-  const originalIds = new Set(original.moves.map((m) => m.exId))
-  const shownMoves = changed
-    ? [...plan.moves].sort((a, b) => Number(originalIds.has(a.exId)) - Number(originalIds.has(b.exId)))
-    : plan.moves
+function FormChart() {
   return (
     <>
-      <DemoHeading title="Don’t like a move? Swap it." eyebrow={eyebrow}>
-        Same muscles, an exercise you’d rather do.
-      </DemoHeading>
-      <SessionPreview
-        plan={plan}
-        shownMoves={shownMoves}
-        title={changed ? 'Alternative workout' : 'Your training'}
-      />
-      <button
-        className="btn-secondary mt-4 w-full"
-        disabled={!original.moves.length}
-        onClick={() => setChanged(!changed)}
-      >
-        <Icon name="repeat" size={18} />
-        {changed ? 'Show original workout' : 'Try a different exercise'}
-      </button>
-    </>
-  )
-}
-function RolloverDemo({ state, profile, today, now, eyebrow }) {
-  const [short, setShort] = useState(false)
-  const plan = useMemo(() => onboardingDemoPlan(state, profile, { today, now }), [state, profile, today, now])
-  const shown = plan.moves.slice(0, 3)
-  return (
-    <>
-      <DemoHeading title="A bad week doesn’t break the plan." eyebrow={eyebrow}>
-        Leave early and what you did still counts.
-      </DemoHeading>
-      <div className="rollover-demo">
-        <span className="demo-example">Example session</span>
-        {shown.map((m, i) => (
-          <div className={`rollover-move ${i === 0 ? 'is-done' : short ? 'is-later' : ''}`} key={m.exId}>
-            <Icon name={i === 0 ? 'check' : short ? 'repeat' : 'train'} size={19} />
-            <span>{m.name}</span>
-            <small>{i === 0 ? 'Done' : short ? 'Reconsider next time' : 'Up next'}</small>
+      <DemoHeading title="Did the last rep go as deep?" />
+      <div className="story-module rep-chart">
+        <p>Squat depth across eight reps</p>
+        {['Same depth each rep', 'Shallower with each rep'].map((label, row) => (
+          <div key={label}>
+            <strong>{label}</strong>
+            <div
+              className="rep-bars"
+              role="img"
+              aria-label={
+                row ? 'Eight repetitions at inconsistent depths' : 'Eight repetitions at the same depth'
+              }
+            >
+              {(row ? [90, 87, 78, 72, 65, 63, 54, 48] : [90, 90, 90, 90, 90, 90, 90, 90]).map((v, i) => (
+                <i key={i} style={{ height: v + '%', animationDelay: i * 45 + 'ms' }} />
+              ))}
+            </div>
           </div>
         ))}
-        <button className="btn-secondary mt-4 w-full" onClick={() => setShort(!short)}>
-          {short ? 'Replay example' : 'Try ending early'}
-          <Icon name="arrowRight" size={16} />
-        </button>
       </div>
-      {short && (
-        <div className="demo-takeaway">
-          <Icon name="check" size={18} />
-          <span>Nothing is owed. Your next session is planned from where you are.</span>
-        </div>
-      )}
+      <p className="proof-note">
+        Use the same depth to track strength from week to week.
+      </p>
     </>
   )
 }
-function GoalDemo({ state, profile, today, now }) {
-  const plan = useMemo(() => onboardingDemoPlan(state, profile, { today, now }), [state, profile, today, now])
-  const muscles = [...new Set(plan.moves.map((m) => m.muscle))].filter(Boolean).map((muscle) => ({
-    muscle,
-    sets: plan.moves.filter((m) => m.muscle === muscle).reduce((n, m) => n + m.sets, 0),
-  }))
-  const max = Math.max(1, ...muscles.map((m) => m.sets))
+function Comparison({ state, profile, today, now, kind }) {
+  const [energy, setEnergy] = useState('low')
+  const [sore, setSore] = useState('Legs')
+  const [swapped, setSwapped] = useState(false)
+  const base = onboardingDemoPlan(state, profile, { today, now })
+  if (kind === 'recovery') {
+    const adjusted = onboardingDemoPlan(state, profile, { today, now, energy, sore: sore ? [sore] : [] })
+    return (
+      <>
+        <DemoHeading title="Tell Tally how you feel." />
+        <div className="story-module">
+          <p>Energy today</p>
+          <Picks
+            label="Energy today"
+            options={[
+              ['normal', 'Usual'],
+              ['low', 'Low'],
+            ]}
+            value={energy}
+            onChange={setEnergy}
+          />
+          <p>Sore today</p>
+          <Picks
+            label="Sore area"
+            options={[
+              [null, 'None'],
+              ['Legs', 'Legs'],
+              ['Shoulders', 'Shoulders'],
+            ]}
+            value={sore}
+            onChange={setSore}
+          />
+        </div>
+        <PlanReveal key={energy + ':' + sore}>
+          <div className="story-module drill-menu readiness-menu">
+            <small>
+              {energy === 'low' ? 'Lighter effort' : 'Usual effort'}
+              {sore ? ' · ' + sore.toLowerCase() + ' feel sore' : ''}
+            </small>
+            {adjusted.moves.length ? (
+              adjusted.moves.map((m) => <div className="readiness-move" key={m.exId}><span className="move-thumbnail" aria-hidden="true">{m.image ? <img src={m.image} alt=""/> : <Icon name="train" size={22}/>}</span><strong>{m.name}</strong></div>)
+            ) : (
+              <strong>Take a recovery day</strong>
+            )}
+          </div>
+        </PlanReveal>
+      </>
+    )
+  }
+  const other =
+    kind === 'equipment' ? (profile.location === 'on-the-go' ? 'gym' : 'on-the-go') : profile.location
+  const ctx = { ...state, settings: { ...state.settings, training: profile } }
+  const readiness = { energy: 'normal', pain: [], sore: [] }
+  let pair = null
+  for (const m of base.moves) {
+    const item = { ...m }
+    const alt =
+      kind === 'equipment'
+        ? adaptRoutineItems(ctx, [item], other, readiness, { today, now }).items[0]?.exId
+        : replacementOptions(ctx, buildSession({ ...base, items: [item] }, { now }), { today, now }).find(
+            (d) => d.muscle === m.muscle,
+          )?.id
+    const def = alt && findExercise(alt, state.customExercises)
+    if (!def || def.muscle !== m.muscle) continue
+    if (!pair || alt !== m.exId) pair = [m, { ...def, exId: alt, image: exerciseThumb(alt) }]
+    if (alt !== m.exId) break
+  }
+  const equipment = kind === 'equipment'
+  if (!equipment && pair)
+    return (
+      <>
+        <DemoHeading title="Swap a move in one tap." />
+        <PlanReveal key={String(swapped)}>
+          <MoveSpot move={pair[swapped ? 1 : 0]} label={pair[0].muscle} />
+        </PlanReveal>
+        <button className="btn-secondary" onClick={() => setSwapped((v) => !v)}>
+          {swapped ? 'Restore original' : 'Swap exercise'}
+        </button>
+      </>
+    )
   return (
     <>
       <DemoHeading
-        eyebrow="Your plan is taking shape"
-        title={
-          {
-            'Build muscle': 'Every muscle gets its share.',
-            'Get stronger': 'Built around the lifts that make you stronger.',
-            'Lose weight': 'Strength work you can keep coming back to.',
-          }[profile.goal] || 'A bit of everything, every session.'
-        }
+        title={equipment ? 'New place. Same muscles.' : 'Change the move. Keep the focus.'}
       />
-      <SetupIllustration scene={onboardingScene('goal', profile)} variant="compact" />
-      <div className="demo-goal-card">
-        <span className="demo-example">
-          {profile.goal === 'General fitness' ? 'Feel fitter' : profile.goal}
+      {pair ? (
+        <div className="swap-stack">
+          <MoveSpot
+            move={pair[0]}
+            label={equipment ? resolvePlace(profile, profile.location).name : 'Original move'}
+          />
+          <div className="match-link">
+            <Icon name="repeat" size={18} />
+            {pair[0].muscle} · {pair[0].exId === pair[1].exId ? 'same move' : 'same focus'}
+          </div>
+          <MoveSpot move={pair[1]} label={equipment ? resolvePlace(profile, other).name : 'Alternative'} />
+        </div>
+      ) : (
+        <p>No matching swap fits these settings. Tally leaves the move out.</p>
+      )}
+    </>
+  )
+}
+function GoalDemo({ profile, ...context }) {
+  const plan = onboardingDemoPlan(context.state, profile, context)
+  const muscles = [...new Set(plan.moves.map((m) => m.muscle).filter(Boolean))]
+  const [title, caption] = goalCopy[profile.goal] || goalCopy['General fitness']
+  return (
+    <>
+      <DemoHeading title={title} />
+      <div className="proof-anatomy">
+        {['front', 'back'].map((view) => (
+          <div className="body-mannequin" key={view}>
+            <MannequinRegions view={view} selected={muscles} />
+          </div>
+        ))}
+      </div>
+      <div className="proof-caption">
+        <strong>{muscles.join(' · ') || 'Your training focus'}</strong>
+        <p>{caption}</p>
+      </div>
+    </>
+  )
+}
+function SportDemo({ profile, kind, onPreviewChange }) {
+  const sport = profile.sports[0]
+  const minutes = profile.previewWarmupMinutes || 5
+  const energy = profile.previewWarmupEnergy || 'normal'
+  const options = {
+    avoidMuscles: profile.avoidMuscles,
+    movement: movementPreferences(profile, profile.location),
+  }
+  const quiet = quietAt(profile, profile.location)
+  const sportName = SPORTS.find((s) => s.id === sport)?.name || 'Sport'
+  const warmup = buildSportWarmup(sport, minutes, { ...options, lowImpact: energy === 'low' || quiet })
+  if (kind === 'warmup-time')
+    return (
+      <>
+        <DemoHeading title={`Warm up for ${sportName.toLowerCase()}.`} />
+        <SetupIllustration scene={sport === 'tennis' ? 'priority' : 'sports'} />
+        <div className="story-module drill-menu">
+          <small>Sport-specific rehearsal</small>
+          <strong>{findExercise(warmup.items.at(-1)?.exId)?.name || 'No compatible drill'}</strong>
+        </div>
+      </>
+    )
+  if (kind === 'warmup-energy') {
+    const usual = buildSportWarmup(sport,minutes,{...options,lowImpact:quiet})
+    const gentle = buildSportWarmup(sport,minutes,{...options,lowImpact:true})
+    const changed = gentle.items.findIndex((m,i)=>usual.items[i]?.exId !== m.exId)
+    const drill = warmup.items[Math.max(0,changed)]
+    return (
+      <>
+        <DemoHeading title="Low energy? Ease into practice." />
+        <PlanReveal key={energy}>
+          <MoveSpot
+            move={drill && { name: findExercise(drill.exId)?.name, image: exerciseThumb(drill.exId) }}
+            label={energy==='low' ? 'Low-impact drill' : 'Usual drill'}
+          />
+        </PlanReveal>
+        <Picks
+          label="Preview effort"
+          value={energy}
+          options={[
+            ['normal', 'Usual warm-up'],
+            ['low', 'Use low impact'],
+          ]}
+          onChange={(previewWarmupEnergy) => onPreviewChange({ previewWarmupEnergy })}
+        />
+      </>
+    )
+  }
+  return (
+    <>
+      <DemoHeading
+        title={`Your ${(SPORTS.find((s) => s.id === sport)?.name || 'sport').toLowerCase()} warm-up.`}
+      />
+      <label className="warmup-dial">
+        <span>
+          Warm-up length <strong>{minutes} min</strong>
         </span>
-        <h4>Your first-session mix</h4>
-        <div
-          className="demo-muscle-bars"
-          role="img"
-          aria-label={muscles.map((m) => `${m.muscle}: ${m.sets} planned sets`).join(', ')}
-        >
-          {muscles.slice(0, 5).map((m) => (
-            <div key={m.muscle}>
-              <span>{m.muscle}</span>
-              <i>
-                <b style={{ width: `${(m.sets / max) * 100}%` }} />
-              </i>
-              <strong>{m.sets}</strong>
+        <input
+          type="range"
+          min="5"
+          max="20"
+          step="1"
+          value={minutes}
+          aria-label="Warm-up minutes"
+          onChange={(e) => onPreviewChange({ previewWarmupMinutes: Number(e.target.value) })}
+        />
+      </label>
+      <PlanReveal key={minutes + energy}>
+        <div className="story-module drill-menu">
+          {warmup.items.map((m, i) => (
+            <div key={i}>
+              <strong>{findExercise(m.exId)?.name || m.exId}</strong>
+              <small>{m.sec}s</small>
+            </div>
+          ))}
+          {!warmup.items.length && <strong>No drills fit these settings.</strong>}
+        </div>
+      </PlanReveal>
+    </>
+  )
+}
+function BarrierStory({ kind, profile, ...context }) {
+  const plan = onboardingDemoPlan(context.state, profile, context)
+  if (kind === 'schedule')
+    return (
+      <>
+        <DemoHeading title="Leave early. Keep your progress." />
+        <div className="proof-list">
+          {plan.moves.slice(0, 3).map((m, i) => (
+            <div key={m.exId}>
+              <Icon name={i ? 'repeat' : 'check'} size={20} />
+              <strong>{m.name}</strong>
+              <small>{i ? 'Reconsider later' : 'Set logged'}</small>
             </div>
           ))}
         </div>
-      </div>
-      <p className="demo-caption">Built from one answer. It gets sharper with every one you give.</p>
+        <p className="proof-note">Example interrupted session. Finished sets still count.</p>
+      </>
+    )
+  const restart = kind === 'starting'
+  const move = plan.moves.find((m) => m.image) || plan.moves[0]
+  return (
+    <>
+      <DemoHeading title={restart ? 'Pick up after a break.' : 'Your form guide is right here.'} />
+      <MoveSpot move={move} label={restart ? 'A fresh starting point' : 'Exercise guide'} />
+      {!restart && move && (
+        <div className="story-module">
+          <small>Common mistake</small>
+          <strong>{formGuide(move.exId, move.muscle).mistakes[0]}</strong>
+          <small>Form cue</small>
+          <strong>{findExercise(move.exId)?.cues?.[0] || 'Keep the movement controlled.'}</strong>
+        </div>
+      )}
+      {restart && (
+        <p className="proof-note">
+          {restart ? 'Tally uses your recent training to plan your return.' : null}
+        </p>
+      )}
     </>
   )
 }
-function SportDemo({ profile }) {
-  const [sport, setSport] = useState(profile.sports[0] || 'tennis')
-  const [minutes, setMinutes] = useState(10)
-  const warmup = useMemo(
-    () =>
-      buildSportWarmup(sport, minutes, {
-        avoidMuscles: profile.avoidMuscles,
-        movement: movementPreferences(profile, profile.location),
-        lowImpact: quietAt(profile, profile.location),
-      }),
-    [sport, minutes, profile],
-  )
-  const moves = warmup.items.map((m) => ({
-    ...m,
-    name: findExercise(m.exId)?.name,
-    muscle: m.phaseLabel,
-    image: exerciseThumb(m.exId),
-  }))
-  const phases = moves.filter((m, i) => moves.findIndex((other) => other.muscle === m.muscle) === i)
-  return (
-    <>
-      <DemoHeading
-        title={`A warm-up built for ${(SPORTS.find((s) => s.id === sport)?.name || 'your sport').toLowerCase()}.`}
-      />
-      {profile.sports.length > 1 && (
-        <Switches
-          label="Preview sport"
-          options={profile.sports.map((id) => [id, SPORTS.find((s) => s.id === id)?.name || id])}
-          value={sport}
-          onChange={setSport}
-        />
-      )}
-      <Switches
-        label="Preview warm-up length"
-        options={[
-          [5, '5 min'],
-          [10, '10 min'],
-          [15, '15 min'],
-        ]}
-        value={minutes}
-        onChange={setMinutes}
-      />
-      <SessionPreview
-        plan={{ ...warmup, requestedMinutes: minutes, moves }}
-        shownMoves={phases}
-        limit={4}
-        title={SPORTS.find((s) => s.id === sport)?.name}
-      />
-    </>
-  )
+function RecentTraining({state,profile,today,now,kind}) {
+  // A local example, never written to workout history.
+  const at = now - 12*3600000
+  const date = new Date(at)
+  const day = [date.getFullYear(),String(date.getMonth()+1).padStart(2,'0'),String(date.getDate()).padStart(2,'0')].join('-')
+  const example = {...state,settings:{...state.settings,training:profile},workouts:[{id:'demo-press',date:day,startedAt:at-1800000,endedAt:at,unit:'lb',kind:'adaptive',
+    exercises:[{exId:'bench-press',type:'reps',weighted:true,sets:Array.from({length:4},()=>({weight:100,reps:8,feel:'hard',status:'done'}))}]}]}
+  const chest=recoveryTimeline(example,today,now).find(r=>r.muscle==='chest')
+  if(kind==='recent') return <><DemoHeading title="Your last workout still counts."/>
+    <div className="story-module forecast"><small>Example · after bench press</small><strong>Estimated chest readiness</strong>
+    <div className="forecast-bars">{chest?.values.map((v,i)=><div key={i}><i style={{height:v+'%'}}/><span>{['Now','Tomorrow','In two days'][i]}</span></div>)}</div></div>
+    <p className="moment-line">Even when you feel fine, Tally remembers yesterday’s sets.</p></>
+  const next=onboardingDemoPlan(example,profile,{today,now})
+  const other=next.moves.find(m=>!['Chest','Triceps','Shoulders'].includes(m.muscle)) || next.moves[0]
+  return <><DemoHeading title="Give another muscle a turn."/><div className="rotation-strip"><span>Last session<strong>Chest</strong></span><Icon name="arrowRight" size={22}/><span>Next session<strong>{other?.muscle || 'Rest'}</strong></span></div>
+    {other && <PlanReveal><MoveSpot move={other} label="From the example plan"/></PlanReveal>}
+    <p className="moment-line">Recent work helps decide what comes next.</p></>
 }
 function ConsistencyDemo() {
   const { steady, occasional, steadyMinutes, occasionalMinutes } = consistencyExample()
@@ -385,9 +411,7 @@ function ConsistencyDemo() {
     [0, ...values].map((v, i) => `${i ? 'L' : 'M'}${24 + i * 36} ${225 - (v / 240) * 180}`).join(' ')
   return (
     <>
-      <DemoHeading title="Showing up beats going hard.">
-        Two short sessions a week add up to more than the occasional big one.
-      </DemoHeading>
+      <DemoHeading title="Short sessions add up." />
       <div className="consistency-chart">
         <span className="demo-example">8-week example · training time</span>
         <svg
@@ -399,7 +423,7 @@ function ConsistencyDemo() {
             <path className="chart-grid" key={y} d={`M24 ${y}H312`} />
           ))}
           <path className="chart-occasional" d={path(occasional)} />
-          <path className="chart-steady" d={path(steady)} />
+          <path className="chart-steady" pathLength="1" d={path(steady)} />
           <circle cx="312" cy="45" r="5" className="chart-dot" />
           <text x="24" y="251">
             Start
@@ -419,278 +443,94 @@ function ConsistencyDemo() {
           </span>
         </div>
       </div>
-      <div className="demo-takeaway">
-        <Icon name="check" size={18} />
-        <span>That’s why Tally never asks for a perfect week. Just the next session.</span>
-      </div>
-      <p className="demo-caption">Training-time arithmetic, not a prediction of results.</p>
     </>
   )
 }
-function PlanningDemo({ profile }) {
-  const [minutes, setMinutes] = useState(5)
-  const saving = planningTimeExample(minutes, 3, 12, profile.flexibleTime ? 30 : profile.minutes)
-  return (
-    <>
-      <DemoHeading title="Stop spending workouts deciding." />
-      <div className="planning-example">
-        <span className="demo-example">If choosing a workout takes…</span>
-        <Switches
-          label="Example planning minutes"
-          value={minutes}
-          onChange={setMinutes}
-          options={[
-            [2, '2 min'],
-            [5, '5 min'],
-            [10, '10 min'],
-          ]}
-        />
-        <div className="planning-total">
-          <strong>{saving.hours}</strong>
-          <span>
-            {saving.hours === 1 ? 'hour' : 'hours'} of deciding
-            <br />
-            over 12 weeks
-          </span>
-        </div>
-        {saving.workouts >= 1 && (
-          <p className="planning-equivalent">
-            That’s {saving.workouts} of your {saving.workoutMinutes}-minute{' '}
-            {saving.workouts === 1 ? 'session' : 'sessions'}, spent choosing what to do.
-          </p>
-        )}
-        <div className="planning-blocks" aria-hidden="true">
-          {Array.from({ length: 12 }, (_, i) => (
-            <span key={i} style={{ height: `${26 + minutes * 3}px` }} />
+function PhotoIntro({ kind }) {
+  const privacy = kind === 'photo-privacy'
+  if (kind === 'photo-use')
+    return (
+      <>
+        <DemoHeading title="From photos to training." />
+        <div className="photo-path">
+          {[
+            ['camera', 'Compare your views'],
+            ['train', 'Choose a training focus'],
+            ['repeat', 'Revisit at your next check-in'],
+          ].map(([icon, label]) => (
+            <div key={icon}>
+              <Icon name={icon} size={28} />
+              <strong>{label}</strong>
+            </div>
           ))}
         </div>
-        <p>Example: 3 workouts a week × {minutes} minutes of planning.</p>
-      </div>
-      <p className="demo-caption">Tally picks the exercises, sets and weights. You just start.</p>
-    </>
-  )
-}
-function RecoveryDemo({ state, profile, today, now }) {
-  const [easy, setEasy] = useState(false)
-  const plan = useMemo(
-    () => onboardingDemoPlan(state, profile, { today, now, sore: easy ? ['Legs', 'Glutes'] : [] }),
-    [state, profile, today, now, easy],
-  )
-  return (
-    <>
-      <DemoHeading title="Sore? The plan works around it.">Say how you feel before any session.</DemoHeading>
-      <Switches
-        label="Preview soreness adjustment"
-        value={easy}
-        onChange={setEasy}
-        options={[
-          [false, 'Feeling good'],
-          [true, 'Legs feel sore'],
-        ]}
-      />
-      <div className="recovery-demo-signal">
-        <Icon name={easy ? 'sliders' : 'check'} size={22} />
-        <span>{easy ? 'Leg work gets a lighter touch.' : 'Your usual training.'}</span>
-      </div>
-      <SessionPreview plan={plan} />
-    </>
-  )
-}
+      </>
+    )
 
-// Why plans fail, and why this one is different: the obstacle the person
-// just named is put down to the plan, not to them, and answered line by line.
-function WhyDemo({ profile }) {
-  const barriers = pickedBarriers(profile)
   return (
     <>
       <DemoHeading
-        eyebrow="Why most plans don’t last"
-        title={barriers.length ? 'It was never your willpower.' : 'Staying consistent is the whole game.'}
+        title={privacy ? 'You choose who sees your photos.' : 'Give your plan a starting point.'}
       />
-      <div className="why-stat">
-        <strong>{DROPOUT_FACT.figure}</strong>
-        <span>
-          {DROPOUT_FACT.text}
-          <small>{DROPOUT_FACT.source}</small>
-        </span>
-      </div>
-      <p className="why-copy">
-        A fixed plan assumes a perfect week. The first time life gets in the way, it breaks, and it feels like
-        you did.
-      </p>
-      {barriers.length > 0 ? (
-        <ul className="why-answers" aria-label="What Tally does about it">
-          {barriers.map((id) => (
-            <li key={id}>
-              <span className="why-said">“{barrierLabel(id)}”</span>
-              <span className="why-answer">
-                <Icon name="check" size={16} strokeWidth={3} />
-                {BARRIER_ANSWERS[id]}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="demo-takeaway">
-          <Icon name="check" size={18} />
-          <span>Tally keeps it that way: the plan bends before a bad week turns into a missed month.</span>
+      {privacy ? (
+        <div className="privacy-route">
+          <Icon name="you" size={40} />
+          <i />
+          <Icon name="camera" size={42} />
+          <i />
+          <Icon name="check" size={40} />
         </div>
+      ) : (
+        <div className="angle-sequence">
+          {['front', 'side', 'back'].map((a) => (
+            <figure key={a}>
+              <img alt="" src={a === 'front' ? ONBOARDING_ART.neutral : `/onboarding/m1-photo-${a}.webp`} />
+              <figcaption>{a}</figcaption>
+            </figure>
+          ))}
+        </div>
+      )}
+      {privacy && (
+        <p className="proof-note">
+          {privacy
+            ? 'Photos stay off your public profile. With your permission, our server sends them to OpenAI for review. You can use measurements instead.'
+            : null}
+        </p>
       )}
     </>
   )
 }
-
-// The plan being put together, one true line at a time.
-function BuildingDemo({ state, profile, today, now, name = '' }) {
-  const plan = useMemo(() => onboardingDemoPlan(state, profile, { today, now }), [state, profile, today, now])
-  const lines = planIngredients(profile, plan, resolvePlace(profile, profile.location).name)
-  const first = name.trim().split(' ')[0]
-  return (
-    <>
-      <DemoHeading
-        eyebrow="Putting it together"
-        title={first ? `Building ${first}’s plan` : 'Building your plan'}
-      >
-        From everything you told me.
-      </DemoHeading>
-      <ul className="building-list">
-        {lines.map((line, i) => (
-          <li key={line} style={{ animationDelay: `${180 + i * 260}ms` }}>
-            <span aria-hidden="true">
-              <Icon name="check" size={14} strokeWidth={3.2} />
-            </span>
-            {line}
-          </li>
-        ))}
-      </ul>
-    </>
-  )
-}
-
 export default function OnboardingDemo({ step, ...props }) {
-  const barriers = pickedBarriers(props.profile)
-  const [barrier, setBarrier] = useState(barriers[0])
-  // The person's own words head the demonstration that answers them.
-  const said = step === 'barrier-demo' && barrier ? `You said: “${barrierLabel(barrier)}”` : undefined
-  const kind =
-    step === 'barrier-demo'
-      ? {
-          time: 'time-demo',
-          unsure: 'guide',
-          schedule: 'rollover',
-          enjoyment: 'swap',
-          starting: 'guide',
-        }[barrier] || 'guide'
-      : step
   const content = useRef(null)
   useEffect(() => {
     content.current?.querySelector('h3')?.focus({ preventScroll: true })
   }, [step])
+  const kind = step.replace(/^barrier-/, '').replace(/-demo$/, '')
   return (
-    <div className="onboarding-demo" ref={content}>
-      {step === 'barrier-demo' && barriers.length > 1 && (
-        <label className="demo-obstacle-switch">
-          <span>See how Tally handles</span>
-          <select
-            className="input"
-            aria-label="See how Tally handles"
-            value={barrier}
-            onChange={(e) => setBarrier(e.target.value)}
-          >
-            {barriers.map((id) => (
-              <option key={id} value={id}>
-                {barrierLabel(id)}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {kind === 'goal-demo' && <GoalDemo {...props} />}
-      {kind === 'why-demo' && <WhyDemo {...props} />}
-      {kind === 'building-demo' && <BuildingDemo {...props} />}
-      {kind === 'time-demo' && (
-        <TimeDemo
-          {...props}
-          eyebrow={said}
-          {...(step === 'time-demo' ? { title: 'Short on time? The plan shrinks. It doesn’t vanish.' } : {})}
-        />
-      )}
-      {kind === 'equipment-demo' && <EquipmentDemo {...props} />}
-      {kind === 'sport-demo' && <SportDemo {...props} />}
-      {kind === 'guide' && <GuideDemo {...props} eyebrow={said} />}
-      {kind === 'swap' && <SwapDemo {...props} eyebrow={said} />}
-      {kind === 'rollover' && <RolloverDemo {...props} eyebrow={said} />}
-      {kind === 'consistency-demo' && <ConsistencyDemo />}
-      {kind === 'planning-demo' && <PlanningDemo {...props} />}
-      {kind === 'recovery-demo' && <RecoveryDemo {...props} />}
+    <div className="onboarding-demo proof-story" ref={content}>
+      {kind === 'goal' && <GoalDemo {...props} />}
+      {['sport', 'warmup-time', 'warmup-energy'].includes(kind) && <SportDemo {...props} kind={kind} />}
+      {['time', 'compress'].includes(kind) && <TimeDemo {...props} kind={kind} />}
+      {kind === 'form' && <FormChart />}
+      {kind.startsWith('photo-') && <PhotoIntro kind={kind} />}
+      {['recent','rotation'].includes(kind) && <RecentTraining {...props} kind={kind}/>}
+      {kind === 'consistency' && <ConsistencyDemo />}
+      {['equipment', 'recovery', 'enjoyment'].includes(kind) && <Comparison {...props} kind={kind} />}
+      {['schedule', 'unsure', 'starting'].includes(kind) && <BarrierStory {...props} kind={kind} />}
     </div>
   )
 }
 
-export function OnboardingPlanPreview({
-  plan,
-  profile,
-  name,
-  customExercises = [],
-  title = 'Your first workout',
-  startingPoint = false,
-  headingRef,
-}) {
-  const reasons = pickedBarriers(profile)
-    .slice(0, 2)
-    .map((id) => BARRIER_ANSWERS[id])
-  const moves = plan.items.map((m) => ({
-    ...m,
-    name: findExercise(m.exId, customExercises)?.name,
-    muscle: findExercise(m.exId, customExercises)?.muscle,
-    image: exerciseThumb(m.exId),
-  }))
+export function OnboardingPlanPreview({ profile, name, headingRef }) {
   return (
-    <div className="funnel-plan-preview">
-      <span className="funnel-plan-check">
-        <Icon name="check" size={30} />
-      </span>
+    <div className="funnel-plan-preview reveal-finale">
+      <PlanReveal>
+        <SetupIllustration scene="review" />
+      </PlanReveal>
+      <div className="ready-seal"><Icon name="check" size={17}/>{name.trim() ? 'Ready for '+name.trim().split(' ')[0] : 'Your plan is ready'}</div>
       <h3 ref={headingRef} tabIndex={-1}>
-        {name.trim() ? `${name.trim().split(' ')[0]}, your plan is ready.` : 'Your plan is ready.'}
+        {(goalCopy[profile.goal] || goalCopy['General fitness'])[0]}
       </h3>
-      <div className="funnel-plan-tags">
-        <span>{profile.goal === 'General fitness' ? 'Feel fitter' : profile.goal}</span>
-        <span>{resolvePlace(profile, profile.location).name}</span>
-        <span>
-          {profile.variety === 'familiar'
-            ? 'Familiar moves'
-            : profile.variety === 'more'
-              ? 'More variety'
-              : 'A balanced mix'}
-        </span>
-      </div>
-      {reasons.length > 0 && (
-        <ul className="funnel-plan-reasons" aria-label="Built around what you told me">
-          {reasons.map((line) => (
-            <li key={line}>
-              <Icon name="check" size={16} strokeWidth={3} />
-              {line}
-            </li>
-          ))}
-        </ul>
-      )}
-      <SessionPreview plan={{ ...plan, moves }} title={title} />
-      <details className="funnel-all-moves">
-        <summary>All {moves.length} exercises</summary>
-        <MoveList moves={moves} limit={moves.length} />
-      </details>
-      <section className="funnel-weeks" aria-label="Your first weeks">
-        <h4>Your first weeks</h4>
-        <ol>
-          {firstWeeks(profile, { startingPoint }).map(([when, what]) => (
-            <li key={when}>
-              <span aria-hidden="true" />
-              <strong>{when}</strong>
-              <p>{what}</p>
-            </li>
-          ))}
-        </ol>
-      </section>
     </div>
   )
 }
@@ -699,11 +539,6 @@ export function OnboardingPlanPreview({
 // plan does not change access, call a billing SDK, start a trial or collect
 // payment details, and the screen says so. Everything it claims is either
 // arithmetic on the two prices or something the app already does.
-const OFFER_QUESTIONS = [
-  ['What if I miss a week?', 'Nothing piles up. Your next session is planned from where you are.'],
-  ['What if I’m new to this?', 'Every exercise has a guide, and your first weeks start light.'],
-  ['What if my week changes?', 'Pick the time and place before each workout. The plan rebuilds around it.'],
-]
 export function PlaceholderPaywall({ headingRef, profile = {}, name = '' }) {
   const [plan, setPlan] = useState('year')
   const pricing = offerPricing()
@@ -713,14 +548,16 @@ export function PlaceholderPaywall({ headingRef, profile = {}, name = '' }) {
       <h3 ref={headingRef} tabIndex={-1}>
         {first ? `${first}, keep this plan going.` : 'Keep this plan going.'}
       </h3>
-      <p className="offer-copy">Everything you just built, adapting every time you train.</p>
+      <p className="offer-copy">{(goalCopy[profile.goal] || goalCopy['General fitness'])[1]}</p>
       <ul className="offer-points">
-        {offerPoints(profile).map((line) => (
-          <li key={line}>
-            <Icon name="check" size={16} strokeWidth={3} />
-            {line}
-          </li>
-        ))}
+        {offerPoints(profile)
+          .slice(0, 2)
+          .map((line) => (
+            <li key={line}>
+              <Icon name="check" size={16} strokeWidth={3} />
+              {line}
+            </li>
+          ))}
       </ul>
       <div className="offer-plans" role="radiogroup" aria-label="Subscription preview">
         {[
@@ -750,21 +587,7 @@ export function PlaceholderPaywall({ headingRef, profile = {}, name = '' }) {
           </button>
         ))}
       </div>
-      <p className="offer-anchor">
-        A year of Tally costs about what one session with a personal trainer does.
-      </p>
-      <div className="offer-questions">
-        {OFFER_QUESTIONS.map(([question, answer]) => (
-          <details key={question}>
-            <summary>{question}</summary>
-            <p>{answer}</p>
-          </details>
-        ))}
-      </div>
-      <p className="offer-note">
-        Preview: subscriptions aren’t switched on yet, so nothing is charged and no trial starts. Continue
-        opens your plan.
-      </p>
+      <p className="offer-note">Pricing preview. Continue for free.</p>
     </div>
   )
 }

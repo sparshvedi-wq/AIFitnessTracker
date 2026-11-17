@@ -16,7 +16,11 @@ import {
   chapterFills,
   chapterRecap,
   restoredOnboardingResponse,
+  editableStep,
+  PAYWALL_STEPS,
 } from '../../lib/onboarding.js'
+import { isStoryStep, NIGHT_STEPS, OWN_CTA_STEPS } from '../../lib/onboarding-story.js'
+import OnboardingStory from './OnboardingStory.jsx'
 import { BASELINE_MINUTES, baselineMoves } from '../../lib/baseline.js'
 import {
   hasStartingProfile,
@@ -33,17 +37,8 @@ import {
   SetupIllustration,
   SetupRecap,
 } from './SetupVisuals.jsx'
-import OnboardingDemo, {
-  ProductWelcome,
-  OnboardingPlanPreview,
-  PlaceholderPaywall,
-} from './OnboardingDemos.jsx'
-import {
-  isOnboardingDemo,
-  ONBOARDING_BARRIERS,
-  FIRST_SESSION_OPTIONS,
-  toggleOnboardingBarrier,
-} from '../../lib/onboarding-demo.js'
+import OnboardingDemo, { OnboardingPlanPreview } from './OnboardingDemos.jsx'
+import { isOnboardingDemo, ONBOARDING_BARRIERS, toggleOnboardingBarrier } from '../../lib/onboarding-demo.js'
 import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
@@ -62,8 +57,8 @@ const TITLES = {
   goal: 'What’s your main goal?',
   physique: 'What would you like to build toward?',
   experience: 'How familiar is training?',
-  barriers: 'What’s stopped you before?',
-  commit: 'When will you do your first session?',
+  barriers: 'What gets in the way?',
+  'photo-choice': 'How would you like to start?',
   variety: 'What keeps training interesting?',
   about: 'What should we call you?',
   gender: 'How do you describe yourself?',
@@ -77,7 +72,23 @@ const TITLES = {
   'home-loads': 'Which dumbbells are at home?',
   movement: 'What works in your space?',
   time: 'How much time usually works?',
-  rhythm: 'How much structure feels right?',
+  rhythm: 'How often can you train?',
+  problem: 'Ever had a plan fall apart?',
+  'solution-demo': 'Tally re-plans around real life',
+  'year-demo': 'Your year in sessions',
+  'fix-demo': 'Here’s the fix',
+  'squeeze-demo': 'Squeeze a session',
+  'midworkout-demo': 'Less time mid-workout',
+  'rollover-demo': 'Where cut moves go',
+  'feel-demo': 'Weights from a tap',
+  'tally-demo': 'Your first tally',
+  'path-demo': 'Your first month',
+  pledge: 'How committed are you?',
+  'value-demo': 'What Tally costs',
+  'ready-demo': 'Your plan is ready',
+  paywall: 'Start your plan free',
+  'paywall-reminder': 'Trial reminder',
+  'paywall-plans': 'Choose a plan',
   comfort: 'Any areas to avoid?',
   photos: 'Your starting photos',
   manual: 'Your details',
@@ -96,26 +107,36 @@ const TITLES = {
 }
 const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
-  barriers: 'Pick all that apply. Your plan is built around them.',
-  time: 'Be honest: the plan that fits is the one you keep.',
-  commit: 'Picking a time makes it far more likely to happen.',
 }
 // What the main button says where "Continue" would undersell the moment.
 const NEXT_LABEL = {
   'why-demo': 'Show me',
   'barrier-demo': 'That works for me',
   'building-demo': 'See my plan',
-  commit: 'I’m in',
+  commit: 'Continue',
+  welcome: 'Build my plan',
+  'solution-demo': 'Let’s build yours',
+  'year-demo': 'Make them count',
+  'fix-demo': 'That works for me',
+  'squeeze-demo': 'Looks good',
+  'midworkout-demo': 'Where do cuts go?',
+  'rollover-demo': 'Smart. Continue',
+  'tally-demo': 'Keep going',
+  'path-demo': 'This is my plan',
+  'value-demo': 'Sounds fair',
+  'ready-demo': 'Unlock my plan',
 }
+// The main button's motion on a few story screens.
+const CTA_MOTION = { welcome: 'story-cta--glow', 'ready-demo': 'story-cta--shine' }
 // What M1 says on each question. Shorter than the plain title, same meaning.
 const GUIDE = {
   goal: 'What do you want most?',
   physique: 'Which build are you working toward?',
   experience: 'Where are you starting from?',
-  barriers: 'What’s stopped you before?',
-  commit: 'When will you do your first session?',
-  variety: 'What keeps you coming back?',
-  about: 'What should I call you?',
+  barriers: 'What gets in the way?',
+  'photo-choice': 'How would you like to start?',
+  variety: 'Familiar moves or more variety?',
+  about: 'What should we call you?',
   gender: 'How do you describe yourself?',
   age: 'Which age group?',
   sports: 'Play any sports?',
@@ -126,9 +147,9 @@ const GUIDE = {
   equipment: 'What’s at home?',
   'home-loads': 'Which dumbbells are there?',
   movement: 'What works in your space?',
-  time: 'How long can you realistically train?',
-  rhythm: 'How much structure helps you?',
-  comfort: 'Anything sore or injured to work around?',
+  time: 'How long works for you?',
+  rhythm: 'Want a weekly target?',
+  comfort: 'Any areas to leave out?',
   manual: 'A few details instead',
   review: 'Here’s your plan',
 }
@@ -166,14 +187,27 @@ export default function TrainingProfile({ onClose }) {
   const [editingGroup, setEditingGroup] = useState(draft?.editingGroup || null)
   const [environmentValid, setEnvironmentValid] = useState(true)
   const [demoNow] = useState(Date.now)
-  const steps = onboardingSteps(p).filter((s) => !editingGroup || (!isOnboardingDemo(s) && s !== 'offer'))
-  const step = steps.includes(current) ? current : 'welcome'
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s))
+  // Saved drafts from earlier versions of the flow resume at the nearest step.
+  const migratedStep =
+    {
+      commit: 'photo-purpose-demo',
+      'why-demo': 'barriers',
+      'barrier-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      'planning-demo': 'comfort',
+      'time-demo': 'consistency-demo',
+      'compress-demo': 'consistency-demo',
+      'barrier-time-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      'barrier-compress-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      offer: 'ready-demo',
+    }[current] || current
+  const step = steps.includes(migratedStep) ? migratedStep : 'welcome'
   const index = steps.indexOf(step)
   const heading = useRef(null)
   const recap = responseFor ? chapterRecap(responseFor, { ...p, goalMode, weeklyGoal, name }) : null
   const nextStep = nextOnboardingStep(step, p, editingGroup)
   // Welcome carries the brand; every question after it shows the five chapters.
-  const fills = ['welcome', 'goal'].includes(step)
+  const fills = ['welcome', 'goal', ...PAYWALL_STEPS].includes(step)
     ? null
     : editingGroup
       ? [1, 1, 1, 1, 1]
@@ -252,18 +286,58 @@ export default function TrainingProfile({ onClose }) {
     persist()
     onClose()
   }
-  const move = (next, profile = p) => {
+  // Without a new profile, keep the latest one: a story screen may have just
+  // saved an answer in the same tick (the pledge's hold).
+  const move = (next, profile = null) => {
     setResponseFor(null)
-    setP(profile)
+    if (profile) setP(profile)
     setCurrent(next)
-    persist(next, profile, next === 'review' ? null : editingGroup, null)
+    persist(next, profile || p, next === 'review' ? null : editingGroup, null)
     if (next === 'review') setEditingGroup(null)
   }
+  // The first time through, the plan is built on screen before it is shown.
+  const afterBaseline = returning || editingGroup ? 'review' : 'building-demo'
   const manualEntry = p.manualEntry || manualEntryOf(p.manualBaseline, state.settings.weightUnit)
-  // First time through, the plan is shown being put together before it is revealed.
-  const planEntry = returning || editingGroup ? 'review' : 'building-demo'
   const skipStart = p.baseline?.status === 'skipped'
   const baselineReady = hasStartingProfile(p, state.checkins, DEV)
+  // Saves the answers and closes setup: after the paywall, or "Save changes".
+  const finish = (choice = null) => {
+    if (!baselineReady) {
+      move(p.baselineMode === 'manual' ? 'manual' : 'photos')
+      return
+    }
+    committing.current = true
+    const { onboardingDraft, manualEntry: unused, ...profile } = p
+    // The plan they chose on the preview paywall, for when a store is connected.
+    if (choice)
+      profile.offerChoice = {
+        plan: choice.plan,
+        trial: Boolean(choice.trial),
+        offer: Boolean(choice.offer),
+        at: Date.now(),
+      }
+    dispatch({
+      type: 'UPDATE_SETTINGS',
+      patch: {
+        name: name.trim().slice(0, 60),
+        training: {
+          ...profile,
+          completed: true,
+          eventMode: 'one-off',
+          onboardingVersion: ONBOARDING_VERSION,
+          onboardingDraft: undefined,
+          ...(p.ageGroup === '13-17'
+            ? { weakerSide: '', sideTestConfirmed: false, confirmedFocus: [] }
+            : {}),
+        },
+        workout: { ...state.settings.workout, weeklyGoal, goalMode },
+      },
+    })
+    const baselineMetric = initialBaselineMetric(state, p, today)
+    if (baselineMetric) dispatch({ type: 'SET_METRIC', date: today, patch: baselineMetric })
+    if (returning) toast('Preferences saved')
+    onClose()
+  }
   const advance = () => {
     if (responseFor) {
       move(nextStep)
@@ -274,45 +348,15 @@ export default function TrainingProfile({ onClose }) {
         move(p.baselineMode === 'manual' ? 'manual' : 'photos')
         return
       }
-      if (!returning) {
-        move('offer')
+      if (returning) {
+        finish()
         return
       }
-    }
-    if (step === 'offer' || (step === 'review' && returning)) {
-      if (!baselineReady) {
-        move(p.baselineMode === 'manual' ? 'manual' : 'photos')
-        return
-      }
-      committing.current = true
-      const { onboardingDraft, manualEntry: unused, ...profile } = p
-      dispatch({
-        type: 'UPDATE_SETTINGS',
-        patch: {
-          name: name.trim().slice(0, 60),
-          training: {
-            ...profile,
-            completed: true,
-            eventMode: 'one-off',
-            onboardingVersion: ONBOARDING_VERSION,
-            onboardingDraft: undefined,
-            ...(p.ageGroup === '13-17'
-              ? { weakerSide: '', sideTestConfirmed: false, confirmedFocus: [] }
-              : {}),
-          },
-          workout: { ...state.settings.workout, weeklyGoal, goalMode },
-        },
-      })
-      const baselineMetric = initialBaselineMetric(state, p, today)
-      if (baselineMetric) dispatch({ type: 'SET_METRIC', date: today, patch: baselineMetric })
-      if (returning) toast('Preferences saved')
-      onClose()
-      return
     }
     if (step === 'manual') {
       const result = readManualBaseline(manualEntry)
       if (!result.valid) return
-      move(planEntry, { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
+      move(afterBaseline, { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
       return
     }
     move(nextStep)
@@ -329,12 +373,12 @@ export default function TrainingProfile({ onClose }) {
       return
     }
     if (step === 'manual') {
-      move('photos', { ...p, baselineMode: 'photos' })
+      move('photo-choice')
       return
     }
     // Back from the plan returns to the last question, not to the screen that built it.
     const previous = steps[Math.max(0, index - 1)]
-    move(previous === 'building-demo' && step === 'review' ? steps[Math.max(0, index - 2)] : previous)
+    move(previous)
   }
   const testExit =
     !returning && DEV ? (
@@ -362,16 +406,36 @@ export default function TrainingProfile({ onClose }) {
           { today, now: demoNow },
         )
       : null
+  const story = isStoryStep(step) && !recap
+  const paywall = PAYWALL_STEPS.includes(step)
+  const ownCta = story && OWN_CTA_STEPS.includes(step)
+  const storyProps = {
+    step,
+    headingRef: heading,
+    state,
+    profile: p,
+    set,
+    name,
+    today,
+    now: demoNow,
+    goalMode,
+    weeklyGoal,
+    setGoalMode,
+    setWeeklyGoal,
+    onNext: () => move(nextStep),
+    onBack: back,
+    onSubscribe: finish,
+  }
   if (step === 'photos')
     return (
       <PhotoCheckins
         onboarding
         profile={p}
         onClose={close}
-        onBack={() => move(editingGroup === 'photos' ? 'review' : 'commit')}
+        onBack={() => move(editingGroup === 'photos' ? 'review' : 'photo-choice')}
         onManual={() => move('manual', { ...p, baselineMode: 'manual', manualEntry })}
         onComplete={(checkin, focusPatch) =>
-          move(planEntry, {
+          move(afterBaseline, {
             ...p,
             ...focusPatch,
             baselineMode: checkin.synthetic ? 'test' : 'photos',
@@ -385,9 +449,13 @@ export default function TrainingProfile({ onClose }) {
       open
       fullScreen
       dismissible={returning}
+      // First run opens straight into setup; only an edit slides in over the app.
+      animate={returning}
       headerAction={testExit}
       header={
-        !returning ? (
+        paywall ? (
+          <span aria-hidden="true" />
+        ) : !returning ? (
           <SetupHeader
             fills={fills}
             label={step === 'review' ? 'Your plan' : onboardingStage(step).label}
@@ -397,14 +465,21 @@ export default function TrainingProfile({ onClose }) {
         ) : null
       }
       hideHandle={!returning}
-      className={!returning ? 'setup-dialog' : ''}
-      bodyClassName={!returning ? 'setup-body' : ''}
+      className={`${!returning ? 'setup-dialog' : ''} ${NIGHT_STEPS.includes(step) ? 'dark setup-dialog--night' : ''} ${paywall ? 'setup-dialog--pay' : ''}`}
+      bodyClassName={`${!returning ? 'setup-body' : ''} ${paywall ? 'setup-body--pay' : ''}`}
       footerClassName={!returning ? 'setup-footer' : ''}
       onClose={close}
-      title={recap ? recap.title : returning && step === 'review' ? 'Your training setup' : TITLES[step]}
+      title={
+        recap
+          ? recap.title
+          : returning && step === 'review'
+            ? 'Your training setup'
+            : TITLES[step] || 'Your training, adapted'
+      }
       subtitle={returning ? 'Changes save when you finish' : null}
       bodyKey={`${step}:${responseFor || 'question'}`}
       footer={
+        ownCta ? null : (
         <div className="flex gap-3">
           {returning && index > 0 && step !== 'review' && (
             <button className="btn-secondary min-h-12 px-5" onClick={back}>
@@ -412,31 +487,30 @@ export default function TrainingProfile({ onClose }) {
             </button>
           )}
           <button
-            className="btn-primary min-h-12 flex-1"
+            className={`btn-primary min-h-12 flex-1 ${!responseFor && CTA_MOTION[step] ? CTA_MOTION[step] : ''}`}
             disabled={
               (['equipment', 'home-loads'].includes(step) && !environmentValid) ||
               (step === 'sport-choice' && !p.sports.length) ||
               (step === 'barriers' && !p.onboardingBarriers?.length) ||
-              (step === 'commit' && !p.firstSession) ||
+              (step === 'problem' && !p.onboardingProblem) ||
               (step === 'manual' && !readManualBaseline(manualEntry).valid)
             }
             onClick={advance}
           >
             {responseFor
               ? 'Continue'
-              : step === 'welcome'
-                ? 'Build my plan'
-                : step === 'review'
-                  ? !baselineReady
-                    ? 'Add photos or details'
-                    : returning
-                      ? 'Save changes'
-                      : 'Continue'
-                  : step === 'offer'
-                    ? 'Continue to Tally'
-                    : NEXT_LABEL[step] || 'Continue'}
+              : step === 'review'
+                ? !baselineReady
+                  ? 'Add photos or details'
+                  : returning
+                    ? 'Save changes'
+                    : 'Try it out'
+                : step === 'barriers' && p.onboardingBarriers?.filter((id) => id !== 'none').length
+                  ? `Fix ${p.onboardingBarriers.filter((id) => id !== 'none').length === 1 ? 'this' : `these ${p.onboardingBarriers.filter((id) => id !== 'none').length}`}`
+                  : NEXT_LABEL[step] || 'Continue'}
           </button>
         </div>
+        )
       }
     >
       <div
@@ -449,10 +523,13 @@ export default function TrainingProfile({ onClose }) {
             title={recap.title}
             headingRef={heading}
           />
+        ) : story ? (
+          <OnboardingStory key={step} {...storyProps} />
         ) : isOnboardingDemo(step) ? (
           <OnboardingDemo
             key={step}
             step={step}
+            onPreviewChange={set}
             state={state}
             profile={p}
             name={name}
@@ -461,7 +538,7 @@ export default function TrainingProfile({ onClose }) {
           />
         ) : (
           <>
-            {!returning && !['welcome', 'offer', 'review'].includes(step) && (
+            {!returning && step !== 'review' && (
               <GuideBubble headingRef={heading}>{GUIDE[step] || TITLES[step]}</GuideBubble>
             )}
             {!returning && STAGED.includes(step) && (
@@ -472,16 +549,18 @@ export default function TrainingProfile({ onClose }) {
             )}
             {!returning && step === 'sport-choice' && <SetupIllustration scene="sports" variant="sports" />}
             {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
-            {step === 'welcome' && (
-              <ProductWelcome state={state} profile={p} today={today} now={demoNow} headingRef={heading} />
-            )}
-            {step === 'offer' && <PlaceholderPaywall headingRef={heading} profile={p} name={name} />}
-            {step === 'commit' && (
-              <Cards
-                values={FIRST_SESSION_OPTIONS}
-                value={p.firstSession || null}
-                onChange={(firstSession) => set({ firstSession })}
-              />
+            {step === 'photo-choice' && (
+              <div className="photo-route">
+                <SetupIllustration scene={p.baselineMode === 'manual' ? 'manual' : 'photos'} />
+                <Cards
+                  values={[
+                    ['photos', 'Use my photos'],
+                    ['manual', 'Opt out of photos'],
+                  ]}
+                  value={p.baselineMode === 'manual' ? 'manual' : 'photos'}
+                  onChange={(baselineMode) => set({ baselineMode })}
+                />
+              </div>
             )}
             {step === 'goal' && (
               <ImageChoices
@@ -542,7 +621,7 @@ export default function TrainingProfile({ onClose }) {
               </Field>
             )}
             {step === 'gender' && (
-              <Field label="Gender">
+              <Field label="Gender" hideLabel={!returning}>
                 <div className="grid grid-cols-2 gap-2">
                   {['Man', 'Woman', 'Non-binary', 'Prefer not to say'].map((v) => (
                     <Choice
@@ -556,7 +635,7 @@ export default function TrainingProfile({ onClose }) {
               </Field>
             )}
             {step === 'age' && (
-              <Field label="Age group">
+              <Field label="Age group" hideLabel={!returning}>
                 <div className="grid grid-cols-2 gap-2">
                   {['13-17', '18+'].map((v) => (
                     <Choice
@@ -740,30 +819,6 @@ export default function TrainingProfile({ onClose }) {
                 }
               />
             )}
-            {step === 'rhythm' && (
-              <>
-                <Cards
-                  kind="rhythm"
-                  values={[
-                    ['flexible', 'Take it as it comes'],
-                    ['target', 'A rough weekly target'],
-                  ]}
-                  value={goalMode}
-                  onChange={setGoalMode}
-                />
-                {goalMode === 'target' && (
-                  <Field label="Training days in any seven days">
-                    <div className="flex flex-wrap gap-2">
-                      {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                        <Choice key={n} value={n} selected={weeklyGoal === n} onClick={setWeeklyGoal}>
-                          {count(n, 'day')}
-                        </Choice>
-                      ))}
-                    </div>
-                  </Field>
-                )}
-              </>
-            )}
             {step === 'comfort' && (
               <BodyAreaPicker
                 value={p.avoidMuscles}
@@ -791,7 +846,7 @@ export default function TrainingProfile({ onClose }) {
                     name={name}
                     customExercises={state.customExercises}
                     headingRef={heading}
-                    title={startingMoves > 0 && !skipStart ? 'A typical session' : 'Your first workout'}
+                    title={startingMoves > 0 && !skipStart ? 'Preview a training day' : 'Your first workout'}
                     startingPoint={startingMoves > 0 && !skipStart}
                   />
                 )}
@@ -805,7 +860,7 @@ export default function TrainingProfile({ onClose }) {
                       }
                     />
                     <span>
-                      Find my starting weights first<small>{BASELINE_MINUTES} min · Optional</small>
+                      Find my starting weights first<small>{BASELINE_MINUTES} min</small>
                     </span>
                   </label>
                 )}
@@ -857,10 +912,8 @@ export default function TrainingProfile({ onClose }) {
                           more: 'Try new exercises',
                         }[p.variety],
                       ],
-                      [
-                        'time',
-                        `${p.flexibleTime ? 'Time varies' : `${p.minutes} min`} · ${goalMode === 'flexible' ? 'no weekly target' : `${weeklyGoal} days in any 7`}`,
-                      ],
+                      ['time', p.flexibleTime ? 'Time varies' : `${p.minutes} min`],
+                      ['rhythm', goalMode === 'flexible' ? 'Whenever I’m free' : `${weeklyGoal} in any 7 days`],
                       ['location', p.location === 'home' ? 'Home setup' : resolvePlace(p, p.location).name],
                       [
                         'sports',
@@ -947,6 +1000,7 @@ const CHECK_LABEL = {
   barriers: 'Obstacles',
   variety: 'Variety',
   time: 'Time',
+  rhythm: 'How often',
   location: 'Place',
   sports: 'Sports',
   photos: 'Body',

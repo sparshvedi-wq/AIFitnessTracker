@@ -25,7 +25,8 @@ test('onboarding chapters stay ordered across optional branches', () => {
           for (const baselineMode of ['photos', 'manual']) {
             const p = { ...base, location, hasHomeSetup, sports, equipment, baselineMode }
             const steps = onboardingSteps(p)
-            assert.equal(steps[1], 'goal')
+            // The problem and its answer come before the first question.
+            assert.deepEqual(steps.slice(0, 4), ['welcome', 'problem', 'solution-demo', 'goal'])
             // Chapters only ever move forward, whatever branches an answer adds.
             assert.ok(
               steps.every((s, i) => !i || onboardingStage(s).index >= onboardingStage(steps[i - 1]).index),
@@ -120,7 +121,7 @@ test('each chapter ends with one recap built from the person’s own answers', (
   }
 })
 
-test('the five chapter segments fill in order and never run backwards', () => {
+test('the six chapter segments fill in order and never run backwards', () => {
   for (const p of [
     defaultState().settings.training,
     {
@@ -137,7 +138,7 @@ test('the five chapter segments fill in order and never run backwards', () => {
     let before = -1
     for (const step of steps) {
       const fills = chapterFills(step, p)
-      assert.equal(fills.length, 5)
+      assert.equal(fills.length, 6)
       const here = onboardingStage(step).index
       assert.ok(
         fills.slice(0, here).every((f) => f === 1) && fills.slice(here + 1).every((f) => f === 0),
@@ -145,12 +146,16 @@ test('the five chapter segments fill in order and never run backwards', () => {
       )
       assert.ok(fills[here] > 0 && fills[here] <= 1, step)
       const total = fills.reduce((n, f) => n + f, 0)
-      assert.ok(step === 'offer' ? total === before : total > before, `${step}: ${total} after ${before}`)
+      // The plan-ready screen completes the bar; the paywall keeps it full.
+      assert.ok(
+        step.startsWith('paywall') ? total === before : total > before,
+        `${step}: ${total} after ${before}`,
+      )
       before = total
       // The recap completes the chapter.
       if (shouldShowOnboardingResponse(step, p)) assert.equal(chapterFills(step, p, true)[here], 1)
     }
-    assert.deepEqual(chapterFills('review', p), [1, 1, 1, 1, 1])
+    assert.deepEqual(chapterFills('ready-demo', p), [1, 1, 1, 1, 1, 1])
   }
 })
 

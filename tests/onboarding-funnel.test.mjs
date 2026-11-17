@@ -1,7 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState, normalizeState } from '../src/lib/storage.js'
-import { onboardingSteps, nextOnboardingStep, ONBOARDING_VERSION } from '../src/lib/onboarding.js'
+import {
+  onboardingSteps,
+  nextOnboardingStep,
+  ONBOARDING_VERSION,
+  PAYWALL_STEPS,
+  editableStep,
+} from '../src/lib/onboarding.js'
 import {
   onboardingDemoPlan,
   toggleOnboardingBarrier,
@@ -26,7 +32,7 @@ import { planSeconds } from '../src/lib/engine/session-time.js'
 
 const clock = { today: '2026-11-13', now: new Date('2026-11-13T12:00:00').getTime() }
 
-test('the longer flow demonstrates answers before the personalized plan and ends with the offer', () => {
+test('the longer flow demonstrates answers, builds the plan, lets them use it, then ends on the paywall', () => {
   const p = defaultState().settings.training
   for (const profile of [
     p,
@@ -41,13 +47,11 @@ test('the longer flow demonstrates answers before the personalized plan and ends
     },
   ]) {
     const steps = onboardingSteps(profile)
-    assert.deepEqual(steps.slice(-2), ['review', 'offer'])
+    assert.deepEqual(steps.slice(-3), PAYWALL_STEPS)
     for (const [question, demo] of [
       ['goal', 'goal-demo'],
-      // The obstacle is put down to the plan first, then answered with a demonstration.
-      ['barriers', 'why-demo'],
-      ['why-demo', 'barrier-demo'],
-      ['time', 'time-demo'],
+      ['rhythm', 'year-demo'],
+      ['time', 'consistency-demo'],
       ['comfort', 'recovery-demo'],
     ]) {
       assert.equal(nextOnboardingStep(question, profile), demo)
@@ -56,14 +60,42 @@ test('the longer flow demonstrates answers before the personalized plan and ends
     assert.equal(steps.includes('sport-demo'), Boolean(profile.sports.length))
     assert.ok(steps.indexOf('review') > steps.indexOf('photos'))
     assert.ok(steps.indexOf('gender') > steps.indexOf('about'))
-    assert.equal(nextOnboardingStep('review', profile), 'offer')
-    assert.equal(nextOnboardingStep('offer', profile), undefined)
+    // Act 2 and 3 follow the plan, in order, and the paywall is last.
+    assert.deepEqual(steps.slice(steps.indexOf('building-demo'), steps.indexOf('paywall')), [
+      'building-demo',
+      'review',
+      'squeeze-demo',
+      'midworkout-demo',
+      'rollover-demo',
+      'feel-demo',
+      'tally-demo',
+      'path-demo',
+      'pledge',
+      'value-demo',
+      'ready-demo',
+    ])
+    assert.equal(nextOnboardingStep('paywall-plans', profile), undefined)
+    assert.ok(!steps.includes('offer') && !steps.includes('time-demo') && !steps.includes('compress-demo'))
     // A first-session commitment comes before the plan; the plan is built, then shown.
-    assert.equal(nextOnboardingStep('recovery-demo', profile), 'commit')
-    assert.equal(nextOnboardingStep('commit', profile), 'photos')
-    assert.deepEqual(steps.slice(-3), ['building-demo', 'review', 'offer'])
+    assert.equal(nextOnboardingStep('recovery-demo', profile), 'photo-purpose-demo')
+    assert.equal(
+      nextOnboardingStep('photo-choice', profile),
+      profile.baselineMode === 'manual' ? 'manual' : 'photos',
+    )
+    assert.ok(steps.indexOf('building-demo') > steps.indexOf(profile.baselineMode === 'manual' ? 'manual' : 'photos'))
     assert.ok(isOnboardingDemo('building-demo') && isOnboardingDemo('why-demo'))
   }
+})
+
+test('obstacles get their fix, and time is demonstrated live once, after the plan', () => {
+  const profile = { ...defaultState().settings.training, onboardingBarriers: ['time', 'schedule'] }
+  assert.equal(nextOnboardingStep('barriers', profile), 'fix-demo')
+  assert.equal(nextOnboardingStep('fix-demo', profile), 'barrier-schedule-demo')
+  assert.equal(nextOnboardingStep('barrier-schedule-demo', profile), 'variety')
+  const steps = onboardingSteps(profile)
+  for (const gone of ['time-demo', 'barrier-time-demo', 'barrier-compress-demo']) assert.ok(!steps.includes(gone))
+  assert.equal(steps.filter((s) => s === 'midworkout-demo').length, 1)
+  assert.equal(nextOnboardingStep('barriers', { ...profile, onboardingBarriers: ['none'] }), 'variety')
 })
 
 test('every persuasive line is either the person’s own answer, real arithmetic or something the app does', () => {
@@ -125,9 +157,11 @@ test('editing answers bypasses demonstrations and the subscription placeholder',
   const p = defaultState().settings.training
   assert.equal(nextOnboardingStep('goal', p, 'goal'), 'physique')
   assert.equal(nextOnboardingStep('physique', p, 'goal'), 'review')
-  assert.equal(nextOnboardingStep('time', p, 'time'), 'rhythm')
-  assert.equal(nextOnboardingStep('rhythm', p, 'time'), 'review')
+  assert.equal(nextOnboardingStep('time', p, 'time'), 'review')
+  assert.equal(nextOnboardingStep('rhythm', p, 'rhythm'), 'review')
   assert.equal(nextOnboardingStep('barriers', p, 'barriers'), 'review')
+  // Stories, the pledge and the paywall are never part of an edit.
+  for (const step of ['problem', 'pledge', 'squeeze-demo', ...PAYWALL_STEPS]) assert.equal(editableStep(step), false)
   assert.equal(nextOnboardingStep('variety', p, 'variety'), 'review')
 })
 

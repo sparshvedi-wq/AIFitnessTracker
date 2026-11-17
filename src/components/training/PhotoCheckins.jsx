@@ -257,6 +257,7 @@ export default function PhotoCheckins({
       setError('Use three different photos: front, side and back.')
       return
     }
+    const reviewStarted = performance.now()
     setReviewing(true)
     controller.current = new AbortController()
     if (import.meta.env.DEV && simulate) {
@@ -265,7 +266,7 @@ export default function PhotoCheckins({
         const { demoReview } = await import('../../lib/photo-demo.js')
         const signal = controller.current.signal
         await new Promise((resolve, reject) => {
-          const t = setTimeout(resolve, 2000)
+          const t = setTimeout(resolve, 4200)
           signal.addEventListener(
             'abort',
             () => {
@@ -327,6 +328,9 @@ export default function PhotoCheckins({
         if (bad) setAngle(bad)
         throw new Error(bad ? `${bad}: ${review.views[bad].feedback}` : 'Replace the flagged photos.')
       }
+      // Allow a quick success to complete the contact-sheet reveal. Longer real reviews add no wait.
+      const remaining = 1800 - (performance.now() - reviewStarted)
+      if (remaining > 0 && !signal.aborted) await new Promise(resolve => setTimeout(resolve, remaining))
       if (!signal.aborted) await save(review)
     } catch (e) {
       if (e.name !== 'AbortError') setError(e.message)
@@ -458,7 +462,7 @@ export default function PhotoCheckins({
                   </button>
                 </div>
               )}
-              {onboarding && (
+              {onboarding && !reviewing && (
                 <button
                   disabled={Boolean(busy)}
                   className="mx-auto mt-2 block min-h-11 px-3 text-[14px] font-semibold text-ink2"

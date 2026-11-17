@@ -1,3 +1,4 @@
+import PlanReveal from './PlanReveal.jsx'
 import { useEffect, useState } from 'react'
 import Icon from '../Icon.jsx'
 import MannequinRegions from './MannequinRegions.jsx'
@@ -8,7 +9,7 @@ const viewName = (angle) => `${angle.charAt(0).toUpperCase()}${angle.slice(1)} v
 // Only the real request state is shown; no invented stages or percentages.
 export function PhotoReviewLoading({ status, previews }) {
   const [angle, setAngle] = useState(0)
-  const photos = ['front', 'side', 'back'].map((a) => previews?.[a]?.preview || previews?.[a]).filter(Boolean)
+  const photos = ['front', 'side', 'back'].map((a) => previews?.[a]?.preview || previews?.[a])
   useEffect(() => {
     if (
       window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
@@ -20,18 +21,22 @@ export function PhotoReviewLoading({ status, previews }) {
   }, [])
   return (
     <section className="review-loading" role="status" aria-live="polite">
-      <div className="review-scan">
-        <span className="floor-glow review-scan-floor" />
-        <img
-          key={angle}
-          src={photos[angle % Math.max(1, photos.length)] || ONBOARDING_ART.neutral}
-          alt=""
-          className="review-loading-photo"
-        />
-        <span className="review-scan-line" />
+      <div className="photo-review-stage loading-contact-sheet" aria-hidden="true">
+        {['front','side','back'].map((view,i)=><div key={view} className={'review-portrait '+(angle===i?'is-current':'')}>
+          {angle===i ? <PlanReveal ongoing><img src={photos[i] || ONBOARDING_ART.neutral} alt=""/></PlanReveal> : <img src={photos[i] || ONBOARDING_ART.neutral} alt=""/>}
+        </div>)}
+        <span className="angle-stamp">{['Front','Side','Back'][angle]}</span>
       </div>
-      <h3 className="font-display text-[30px]">A closer look</h3>
-      <p className="mt-3 text-[16px] text-ink2">{status}</p>
+      <h3 className="font-display text-[30px]">{status}</h3>
+      <p className="loading-insight">
+        {
+          [
+            'Three views give your review more context.',
+            'Your training goal helps frame the review.',
+            'Future check-ins give you a point of comparison.',
+          ][angle]
+        }
+      </p>
     </section>
   )
 }
@@ -163,54 +168,47 @@ export default function PhotoReviewStory({
         {slide.kind === 'plan' && (
           <>
             <img className="review-plan-art" src={ONBOARDING_ART.review} alt="" />
-            {/* Only claim "built in" when continuing really applies the choices. */}
-            <h3 className="review-title">
-              {canApply && appliesOnContinue ? slide.title : 'Suggested priorities'}
-            </h3>
-            {slide.focus.length && !canApply ? (
-              <ul className="review-focus-list">
-                {slide.focus.map((f) => (
-                  <li key={f.area} className="tile review-focus is-static">
-                    <span className="review-focus-heading">
-                      <span>{focusAction(f.area)}</span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : slide.focus.length ? (
-              <div className="review-focus-list">
-                {slide.focus.map((f) => (
-                  <button
-                    key={f.area}
-                    type="button"
-                    aria-pressed={selectedFocus.includes(f.area)}
-                    onClick={() =>
-                      onFocusChange(
-                        selectedFocus.includes(f.area)
-                          ? selectedFocus.filter((a) => a !== f.area)
-                          : [...selectedFocus, f.area],
-                      )
-                    }
-                    className="tile review-focus"
-                  >
-                    <span className="review-focus-heading">
-                      <span>{focusAction(f.area)}</span>
-                      <Icon name={selectedFocus.includes(f.area) ? 'check' : 'plus'} size={18} />
-                    </span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="review-copy">
-                Keep a balanced starting plan. Your logged sets and feedback guide the next changes.
-              </p>
+            <h3 className="review-title">Your training goes beyond this photo.</h3>
+            <p className="review-copy">
+              {review.observations?.length
+                ? `${review.observations.length} photo observation${review.observations.length === 1 ? '' : 's'}. `
+                : ''}
+              Your logged sets, recovery and feedback also guide your workouts.
+            </p>
+            {canApply && slide.focus.length > 0 && (
+              <>
+                <p className="review-copy">
+                  {appliesOnContinue ? 'Choose an emphasis for your plan.' : 'Choose a training emphasis.'}
+                </p>
+                <div className="review-focus-list">
+                  {slide.focus.map((f) => (
+                    <button
+                      key={f.area}
+                      type="button"
+                      aria-pressed={selectedFocus.includes(f.area)}
+                      onClick={() =>
+                        onFocusChange(
+                          selectedFocus.includes(f.area)
+                            ? selectedFocus.filter((a) => a !== f.area)
+                            : [...selectedFocus, f.area],
+                        )
+                      }
+                      className="tile review-focus"
+                    >
+                      <span className="review-focus-heading">
+                        <span>{focusAction(f.area)}</span>
+                        <Icon name={selectedFocus.includes(f.area) ? 'check' : 'plus'} size={18} />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
-            {canApply && <p className="review-copy">These priorities fit into your whole-body plan.</p>}
           </>
         )}
         {slide.kind === 'checkins' && (
           <>
-            <div className="checkin-story-art">
+            <div className="checkin-story-art checkin-reveal">
               <FocusModel area="overall" />
               <div className="checkin-story-photos">
                 {['front', 'back'].map(

@@ -51,7 +51,7 @@ npx.cmd eas-cli login
 npx.cmd eas-cli init
 ```
 
-The EAS **preview** and **production** profiles set `EXPO_PUBLIC_INK_URL` to your Railway domain. If changing hosts, replace it in both profiles (or consistently configure the EAS environments). `app.config.js` rejects EAS builds without HTTPS. The default bundle ID is `com.sparshvedi.tally`; set `TALLY_APP_IDENTIFIER` to your chosen unique ID before registering the app, and keep it fixed afterward. EAS initialization supplies the real project ID; this repository does not invent one.
+The EAS **preview** and **production** profiles set `EXPO_PUBLIC_INK_URL` to your Railway domain. If changing hosts, replace it in both profiles (or consistently configure the EAS environments). `app.config.js` rejects EAS builds without HTTPS. The default bundle ID is `com.tallyfitness.app`; set `TALLY_APP_IDENTIFIER` to your chosen unique ID before registering the app, and keep it fixed afterward. EAS initialization supplies the real project ID; this repository does not invent one.
 
 ```powershell
 npx.cmd eas-cli build --platform ios --profile preview

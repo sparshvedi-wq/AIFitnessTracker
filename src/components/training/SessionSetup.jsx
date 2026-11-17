@@ -142,7 +142,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     if (kind === 'sport')
       return {
         ...buildSportWarmup(sport, minutes, {
-          lowImpact,
+          lowImpact: lowImpact || readiness.energy === 'low',
           movement,
           avoidMuscles: [...(p.avoidMuscles || []), ...readiness.pain, ...readiness.sore],
         }),

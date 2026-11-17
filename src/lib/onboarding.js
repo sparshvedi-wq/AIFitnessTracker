@@ -1,21 +1,31 @@
+import { pickedBarriers } from './onboarding-demo.js'
 export const ONBOARDING_VERSION = 2
 export function onboardingSteps(p) {
+  const barriers = pickedBarriers(p)
   return [
+    // Act 1: frame the problem, show the answer, then make it personal.
     'welcome',
+    'problem',
+    'solution-demo',
     'goal',
     'goal-demo',
     'physique',
     'experience',
+    'rhythm',
+    'year-demo',
     'barriers',
-    'why-demo',
-    'barrier-demo',
+    ...(barriers.length ? ['fix-demo'] : []),
+    // Time is shown live in act 2 (squeeze, mid-workout and rollover demos).
+    ...barriers
+      .filter((id) => id !== 'time')
+      .flatMap((id) => [`barrier-${id}-demo`, ...(id === 'unsure' ? ['barrier-form-demo'] : [])]),
     'variety',
     'about',
     'gender',
     'age',
     'sports',
     ...(p.wantsSport || p.sports.length ? ['sport-choice', 'priority'] : []),
-    ...(p.sports.length ? ['sport-demo'] : []),
+    ...(p.sports.length ? ['warmup-time-demo', 'warmup-energy-demo', 'sport-demo'] : []),
     'location',
     ...(p.location === 'home' ? [] : ['home']),
     ...(p.hasHomeSetup || p.location === 'home' ? ['equipment'] : []),
@@ -25,30 +35,49 @@ export function onboardingSteps(p) {
     ...(p.location === 'on-the-go' ? ['movement'] : []),
     'equipment-demo',
     'time',
-    'time-demo',
-    'rhythm',
     'consistency-demo',
-    'planning-demo',
+    'recent-demo',
+    'rotation-demo',
     'comfort',
     'recovery-demo',
-    'commit',
-    'photos',
+    'photo-purpose-demo',
+    'photo-use-demo',
+    'photo-privacy-demo',
+    'photo-choice',
+    ...(p.baselineMode === 'manual' ? [] : ['photos']),
     ...(p.baselineMode === 'manual' ? ['manual'] : []),
+    // Act 2: the plan is built, then they use the real product.
     'building-demo',
     'review',
-    'offer',
+    'squeeze-demo',
+    'midworkout-demo',
+    'rollover-demo',
+    'feel-demo',
+    'tally-demo',
+    // Act 3: the path, a commitment, the value, then everything they own.
+    'path-demo',
+    'pledge',
+    'value-demo',
+    'ready-demo',
+    ...PAYWALL_STEPS,
   ]
 }
-// Five internal chapters keep progress stable across conditional branches.
-// Interactive demonstrations follow decisions; the plan precedes the offer.
+/** The three paywall screens. The store sheet and the one-time offer open over the last. */
+export const PAYWALL_STEPS = ['paywall', 'paywall-reminder', 'paywall-plans']
+// Six internal chapters keep progress stable across conditional branches.
 const CHAPTERS = [
   [
     'welcome',
+    'problem',
+    'solution-demo',
     'goal',
     'goal-demo',
     'physique',
     'experience',
+    'rhythm',
+    'year-demo',
     'barriers',
+    'fix-demo',
     'why-demo',
     'barrier-demo',
     'variety',
@@ -56,13 +85,39 @@ const CHAPTERS = [
     'gender',
     'age',
   ],
-  ['sports', 'sport-choice', 'priority', 'sport-demo'],
+  ['sports', 'sport-choice', 'priority', 'warmup-time-demo', 'warmup-energy-demo', 'sport-demo'],
   ['location', 'home', 'equipment', 'home-loads', 'movement', 'equipment-demo'],
-  ['time', 'time-demo', 'rhythm', 'consistency-demo', 'planning-demo', 'comfort', 'recovery-demo', 'commit'],
-  ['photos', 'manual', 'building-demo', 'review', 'offer'],
+  [
+    'time',
+    'time-demo',
+    'compress-demo',
+    'consistency-demo',
+    'recent-demo',
+    'rotation-demo',
+    'planning-demo',
+    'comfort',
+    'recovery-demo',
+    'commit',
+  ],
+  ['photo-purpose-demo', 'photo-use-demo', 'photo-privacy-demo', 'photo-choice', 'photos', 'manual'],
+  [
+    'building-demo',
+    'review',
+    'squeeze-demo',
+    'midworkout-demo',
+    'rollover-demo',
+    'feel-demo',
+    'tally-demo',
+    'path-demo',
+    'pledge',
+    'value-demo',
+    'ready-demo',
+    ...PAYWALL_STEPS,
+  ],
 ]
-const CHAPTER_LABELS = ['About you', 'Sport', 'Your setup', 'Your day', 'Your body']
+const CHAPTER_LABELS = ['About you', 'Sport', 'Your setup', 'Your day', 'Your body', 'Your plan']
 export function onboardingStage(step) {
+  if (step.startsWith('barrier-')) step = 'barrier-demo'
   const index = Math.max(
     0,
     CHAPTERS.findIndex((group) => group.includes(step)),
@@ -80,20 +135,25 @@ export function chapterFills(step, p, done = false) {
   return CHAPTERS.map((_, i) => {
     if (i < here) return 1
     if (i > here) return 0
-    if (done || ['review', 'offer'].includes(step)) return 1
+    if (done || ['ready-demo', ...PAYWALL_STEPS].includes(step)) return 1
     const mine = steps.filter((s) => onboardingStage(s).index === i)
     return (Math.max(0, mine.indexOf(step)) + 1) / (mine.length + 1)
   })
 }
+/** Steps that edit an answer. Stories, the pledge and the paywall are first-run only. */
+export function editableStep(step) {
+  return !step.endsWith('-demo') && !['problem', 'pledge', ...PAYWALL_STEPS].includes(step)
+}
 export function nextOnboardingStep(step, p, editingGroup = null) {
-  const steps = onboardingSteps(p).filter((s) => !editingGroup || (!s.endsWith('-demo') && s !== 'offer')),
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s)),
     next = steps[steps.indexOf(step) + 1]
   const finished =
     (editingGroup === 'goal' && step === 'physique') ||
     (editingGroup === 'experience' && step === 'experience') ||
     (editingGroup === 'barriers' && step === 'barriers') ||
     (editingGroup === 'variety' && step === 'variety') ||
-    (editingGroup === 'time' && step === 'rhythm') ||
+    (editingGroup === 'time' && step === 'time') ||
+    (editingGroup === 'rhythm' && step === 'rhythm') ||
     (editingGroup === 'sports' &&
       ((step === 'sports' && !p.wantsSport && !p.sports.length) || step === 'priority')) ||
     (editingGroup === 'location' && !['home', 'equipment', 'home-loads', 'movement'].includes(next))
@@ -115,7 +175,7 @@ export function chapterRecap(step, p) {
   // Legacy saved chapter recaps can still resume; the new flow uses live demos.
   const mine = onboardingSteps(p).filter(
     (s) =>
-      !['welcome', 'gender', 'age', 'barriers', 'variety', 'commit'].includes(s) &&
+      !['welcome', 'problem', 'rhythm', 'gender', 'age', 'barriers', 'variety', 'commit', 'pledge'].includes(s) &&
       !s.endsWith('-demo') &&
       onboardingStage(s).index === stage.index,
   )

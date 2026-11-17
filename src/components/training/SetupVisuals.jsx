@@ -72,7 +72,7 @@ export function ChoiceArt({ kind, value }) {
     return (
       <span className="setup-art" aria-hidden="true">
         {value === 'flexible' ? (
-          <TallyStrokes count={3} />
+          <TallyStrokes count={5} highlightFrom={4} />
         ) : (
           <span className="setup-week">
             {[0, 1, 2, 3, 4, 5, 6].map((n) => (

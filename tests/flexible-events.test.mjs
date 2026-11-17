@@ -225,8 +225,9 @@ test('long onboarding branches sensibly and no-sport feedback does not invent a 
   assert.equal(nextOnboardingStep('sports', p, 'sports'), 'review')
   assert.equal(nextOnboardingStep('sports', { ...p, sports: ['tennis'] }, 'sports'), 'sport-choice')
   assert.equal(nextOnboardingStep('priority', { ...p, sports: ['tennis'] }, 'sports'), 'review')
-  assert.equal(nextOnboardingStep('time', p, 'time'), 'rhythm')
-  assert.equal(nextOnboardingStep('rhythm', p, 'time'), 'review')
+  // How often is its own answer now, asked early; time edits on their own.
+  assert.equal(nextOnboardingStep('time', p, 'time'), 'review')
+  assert.equal(nextOnboardingStep('rhythm', p, 'rhythm'), 'review')
   assert.equal(nextOnboardingStep('home', { ...p, hasHomeSetup: true }, 'location'), 'equipment')
   assert.equal(nextOnboardingStep('equipment', { ...p, hasHomeSetup: true }, 'location'), 'review')
 })

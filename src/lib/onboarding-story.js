@@ -2,7 +2,12 @@
 // planner, workout and strength code. Nothing here writes to the person's
 // history; every demo runs on temporary data.
 import { buildSession } from './workout.js'
-import { shortenSession } from './workout-adjustments.js'
+import { replacementOptions, shortenSession } from './workout-adjustments.js'
+import { formGuide } from './form.js'
+import { recoveryTimeline } from './recovery-view.js'
+import { buildSportWarmup, SPORTS } from './sports.js'
+import { movementPreferences } from './movement-preferences.js'
+import { quietAt, resolvePlace } from './places.js'
 import { liveContext, markTooHeavy, recordFeel } from './strength/session.js'
 import { findExercise } from './exercises.js'
 import { exerciseThumb } from './exercise-thumbs.js'
@@ -13,7 +18,17 @@ import { PAYWALL_STEPS } from './onboarding.js'
 export const STORY_STEPS = [
   'welcome',
   'problem',
+  'fallout',
+  'loop-demo',
   'solution-demo',
+  'goal-demo',
+  'barrier-unsure-demo',
+  'barrier-enjoyment-demo',
+  'sport-demo',
+  'equipment-demo',
+  'recent-demo',
+  'recovery-demo',
+  'photo-demo',
   'rhythm',
   'year-demo',
   'fix-demo',
@@ -25,6 +40,7 @@ export const STORY_STEPS = [
   'tally-demo',
   'path-demo',
   'pledge',
+  'proof-demo',
   'value-demo',
   'ready-demo',
   ...PAYWALL_STEPS,
@@ -235,4 +251,135 @@ export function planChips(profile, { goalMode, weeklyGoal, placeName = '' } = {}
 /** The fixes they asked for, in their own words first. */
 export function fixCards(profile) {
   return pickedBarriers(profile).slice(0, 2)
+}
+
+/* ── Act 1 demos, all on the real planner ──────────────────────────── */
+
+const dayKey = (t) => {
+  const d = new Date(t)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const withProfile = (state, profile) => ({ ...state, settings: { ...state.settings, training: profile } })
+const detailOf = (m) => (m.reps ? `${m.sets} × ${m.reps}` : `${m.sets} ${m.sets === 1 ? 'set' : 'sets'}`)
+const planMoves = (state, plan) =>
+  plan.moves.map((m) => ({ ...moveOf(m.exId, state.customExercises), muscle: m.muscle, detail: detailOf(m) }))
+
+/** The muscle groups a first session trains, in plan order. */
+export function goalMuscles(state, profile, { today, now }) {
+  const plan = onboardingDemoPlan(state, profile, { today, now })
+  return [...new Set(plan.moves.map((m) => m.muscle).filter(Boolean))]
+}
+
+/** A move from their plan, and the swap Tally offers for the same muscle. */
+export function swapDemo(state, profile, { today, now }) {
+  const plan = onboardingDemoPlan(state, profile, { today, now })
+  const ctx = withProfile(state, profile)
+  for (const m of plan.moves) {
+    const session = buildSession({ ...plan, items: [m] }, { now })
+    const alt = replacementOptions(ctx, session, { today, now }).find(
+      (d) => d.muscle === m.muscle && d.id !== m.exId,
+    )
+    if (alt)
+      return {
+        from: { ...moveOf(m.exId, state.customExercises), muscle: m.muscle },
+        to: { ...moveOf(alt.id, state.customExercises), muscle: m.muscle },
+      }
+  }
+  return null
+}
+
+/** The guide for the first move in their plan that has a picture. */
+export function guideDemo(state, profile, { today, now }) {
+  const plan = onboardingDemoPlan(state, profile, { today, now })
+  const m = plan.moves.find((x) => x.image) || plan.moves[0]
+  if (!m) return null
+  const guide = formGuide(m.exId, m.muscle)
+  return {
+    ...moveOf(m.exId, state.customExercises),
+    muscle: m.muscle,
+    cue: findExercise(m.exId, state.customExercises)?.cues?.[0] || 'Keep the movement slow and controlled.',
+    mistake: guide.mistakes?.[0] || null,
+    works: guide.muscles?.primary || m.muscle,
+  }
+}
+
+/** Their usual place and up to two others: the same day planned for each. */
+export function placesDemo(state, profile, { today, now }) {
+  const ids = [profile.location]
+  if (profile.hasHomeSetup && profile.location !== 'home') ids.push('home')
+  for (const id of ['on-the-go', 'gym', 'home']) if (ids.length < 3 && !ids.includes(id)) ids.push(id)
+  return ids.map((id) => {
+    const plan = onboardingDemoPlan(state, profile, { today, now, location: id, minutes: 30 })
+    return {
+      id,
+      name:
+        id === 'on-the-go'
+          ? 'On the go'
+          : id === 'home' && !profile.hasHomeSetup && profile.location !== 'home'
+            ? 'Home, no kit'
+            : resolvePlace(profile, id)?.name || id,
+      moves: planMoves(state, plan).slice(0, 4),
+    }
+  })
+}
+
+/**
+ * Yesterday's chest session (an example, never saved), the chest's recovery
+ * over the next days, and what today's plan trains instead.
+ */
+export function recentDemo(state, profile, { today, now }) {
+  const at = now - 18 * 3600000
+  const example = {
+    ...withProfile(state, profile),
+    workouts: [
+      {
+        id: 'demo-press',
+        date: dayKey(at),
+        startedAt: at - 1800000,
+        endedAt: at,
+        unit: 'lb',
+        kind: 'adaptive',
+        exercises: [
+          {
+            exId: 'bench-press',
+            type: 'reps',
+            weighted: true,
+            sets: Array.from({ length: 4 }, () => ({ weight: 100, reps: 8, feel: 'hard', status: 'done' })),
+          },
+        ],
+      },
+    ],
+  }
+  const chest = recoveryTimeline(example, today, now).find((r) => r.muscle === 'chest')
+  const plan = onboardingDemoPlan(example, profile, { today, now })
+  return {
+    chest: chest?.values || [],
+    moves: planMoves(state, plan).slice(0, 4),
+    chestToday: plan.moves.some((m) => m.muscle === 'Chest'),
+  }
+}
+
+/** Their first sport's warm-up at a few lengths, from the real warm-up builder. */
+export function warmupDemo(profile) {
+  const sport = profile.sports?.[0]
+  const options = {
+    avoidMuscles: profile.avoidMuscles,
+    movement: movementPreferences(profile, profile.location),
+    lowImpact: quietAt(profile, profile.location),
+  }
+  const out = { name: SPORTS.find((s) => s.id === sport)?.name || 'Your sport' }
+  for (const minutes of [5, 10, 15])
+    out[minutes] = buildSportWarmup(sport, minutes, options).items.map((m) => ({ ...moveOf(m.exId), sec: m.sec }))
+  return out
+}
+
+/** Today's plan after an energy and soreness check-in, never saved. */
+export function energyDemo(state, profile, { today, now, energy = 'normal', sore = null }) {
+  return planMoves(state, onboardingDemoPlan(state, profile, { today, now, energy, sore: sore ? [sore] : [] }))
+}
+
+/** Session 1, as the person will see it. */
+export function firstSession(state, profile, { today, now }) {
+  const plan = onboardingDemoPlan(state, profile, { today, now })
+  return { name: plan.name, minutes: plan.estimatedMinutes, moves: planMoves(state, plan) }
 }

@@ -28,17 +28,11 @@ import {
   manualEntryOf,
   readManualBaseline,
 } from '../../lib/starting-profile.js'
-import {
-  ChoiceArt,
-  GuideBubble,
-  ImageChoices,
-  PlanRibbon,
-  SetupHeader,
-  SetupIllustration,
-  SetupRecap,
-} from './SetupVisuals.jsx'
-import OnboardingDemo, { OnboardingPlanPreview } from './OnboardingDemos.jsx'
-import { isOnboardingDemo, ONBOARDING_BARRIERS, toggleOnboardingBarrier } from '../../lib/onboarding-demo.js'
+import { PlanRibbon, SetupHeader, SetupRecap } from './SetupVisuals.jsx'
+import { ArtOptions, QuestionHead, StoryOptions } from './OnboardingQuestions.jsx'
+import { FirstSession } from './OnboardingStoryMore.jsx'
+import { ONBOARDING_BARRIERS, toggleOnboardingBarrier } from '../../lib/onboarding-demo.js'
+import { EXPERIENCE_OPTIONS, TIME_OPTIONS, VARIETY_OPTIONS } from '../../lib/onboarding-questions.js'
 import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
 import BodyAreaPicker from './BodyAreaPicker.jsx'
@@ -83,6 +77,13 @@ const TITLES = {
   'feel-demo': 'Weights from a tap',
   'tally-demo': 'Your first tally',
   'path-demo': 'Your first month',
+  fallout: 'What happens next?',
+  'loop-demo': 'The restart loop',
+  'barrier-unsure-demo': 'Exercise guides',
+  'barrier-enjoyment-demo': 'Swap a move',
+  'recent-demo': 'Recovery between sessions',
+  'photo-demo': 'Starting photos',
+  'proof-demo': 'Why a time helps',
   pledge: 'How committed are you?',
   'value-demo': 'What Tally costs',
   'ready-demo': 'Your plan is ready',
@@ -123,41 +124,25 @@ const NEXT_LABEL = {
   'rollover-demo': 'Smart. Continue',
   'tally-demo': 'Keep going',
   'path-demo': 'This is my plan',
+  'loop-demo': 'Break the loop',
+  'goal-demo': 'That’s what I want',
+  'barrier-unsure-demo': 'That helps',
+  'barrier-enjoyment-demo': 'Nice',
+  'equipment-demo': 'Handy',
+  'sport-demo': 'Ready to play',
+  'recent-demo': 'Makes sense',
+  'recovery-demo': 'I like that',
+  'photo-demo': 'Continue',
+  'proof-demo': 'Let’s do it',
   'value-demo': 'Sounds fair',
   'ready-demo': 'Unlock my plan',
 }
 // The main button's motion on a few story screens.
 const CTA_MOTION = { welcome: 'story-cta--glow', 'ready-demo': 'story-cta--shine' }
-// What M1 says on each question. Shorter than the plain title, same meaning.
-const GUIDE = {
-  goal: 'What do you want most?',
-  physique: 'Which build are you working toward?',
-  experience: 'Where are you starting from?',
-  barriers: 'What gets in the way?',
-  'photo-choice': 'How would you like to start?',
-  variety: 'Familiar moves or more variety?',
-  about: 'What should we call you?',
-  gender: 'How do you describe yourself?',
-  age: 'Which age group?',
-  sports: 'Play any sports?',
-  'sport-choice': 'Which ones?',
-  priority: 'What comes first?',
-  location: 'Where do you usually train?',
-  home: 'Do you also train at home?',
-  equipment: 'What’s at home?',
-  'home-loads': 'Which dumbbells are there?',
-  movement: 'What works in your space?',
-  time: 'How long works for you?',
-  rhythm: 'Want a weekly target?',
-  comfort: 'Any areas to leave out?',
-  manual: 'A few details instead',
-  review: 'Here’s your plan',
-}
-// Questions without their own artwork show one lit scene; it never repeats on the recap.
-// Where the options need the room, the scene is a smaller one.
-const STAGED = ['experience', 'priority', 'home', 'movement', 'time', 'rhythm']
-const COMPACT_SCENE = ['time']
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
+const PLACE_DETAIL = { gym: 'Any equipment', home: 'What you have at home', 'on-the-go': 'No equipment at all' }
+const timePatch = (minutes) => (minutes === 'flexible' ? { flexibleTime: true } : { minutes, flexibleTime: false })
+const placePatch = (location) => ({ location, ...(location === 'home' ? { hasHomeSetup: true } : {}) })
 const DEV = import.meta.env.DEV
 export default function TrainingProfile({ onClose }) {
   const { state, dispatch, toast, today } = useApp()
@@ -191,14 +176,24 @@ export default function TrainingProfile({ onClose }) {
   // Saved drafts from earlier versions of the flow resume at the nearest step.
   const migratedStep =
     {
-      commit: 'photo-purpose-demo',
+      commit: 'photo-demo',
       'why-demo': 'barriers',
       'barrier-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
       'planning-demo': 'comfort',
-      'time-demo': 'consistency-demo',
-      'compress-demo': 'consistency-demo',
+      'time-demo': 'recent-demo',
+      'compress-demo': 'recent-demo',
+      'consistency-demo': 'recent-demo',
+      'rotation-demo': 'comfort',
+      'warmup-time-demo': 'sport-demo',
+      'warmup-energy-demo': 'sport-demo',
+      'photo-purpose-demo': 'photo-demo',
+      'photo-use-demo': 'photo-demo',
+      'photo-privacy-demo': 'photo-demo',
       'barrier-time-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
       'barrier-compress-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      'barrier-schedule-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      'barrier-starting-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
+      'barrier-form-demo': 'variety',
       offer: 'ready-demo',
     }[current] || current
   const step = steps.includes(migratedStep) ? migratedStep : 'welcome'
@@ -262,6 +257,15 @@ export default function TrainingProfile({ onClose }) {
     }
   }, [p, current, name, weeklyGoal, goalMode, editingGroup, responseFor, dispatch])
   const set = (patch) => setP((prev) => ({ ...prev, ...patch }))
+  // A one-tap answer: save it and move on, with the steps that answer brings.
+  const choose = (patch) => {
+    const next = { ...p, ...patch }
+    move(nextOnboardingStep(step, next, editingGroup), next)
+  }
+  const ageFix = (ageGroup) => ({
+    ageGroup,
+    ...(ageGroup === '13-17' && p.goal === 'Lose weight' ? { goal: 'General fitness' } : {}),
+  })
   const toggle = (key, value) =>
     set({ [key]: p[key].includes(value) ? p[key].filter((v) => v !== value) : [...p[key], value] })
   const persist = (next = step, profile = p, group = editingGroup, responseStep = responseFor) =>
@@ -423,6 +427,7 @@ export default function TrainingProfile({ onClose }) {
     setGoalMode,
     setWeeklyGoal,
     onNext: () => move(nextStep),
+    onChoose: choose,
     onBack: back,
     onSubscribe: finish,
   }
@@ -493,6 +498,7 @@ export default function TrainingProfile({ onClose }) {
               (step === 'sport-choice' && !p.sports.length) ||
               (step === 'barriers' && !p.onboardingBarriers?.length) ||
               (step === 'problem' && !p.onboardingProblem) ||
+              (step === 'fallout' && !p.onboardingFallout) ||
               (step === 'manual' && !readManualBaseline(manualEntry).valid)
             }
             onClick={advance}
@@ -504,7 +510,7 @@ export default function TrainingProfile({ onClose }) {
                   ? 'Add photos or details'
                   : returning
                     ? 'Save changes'
-                    : 'Try it out'
+                    : 'See how it adapts'
                 : step === 'barriers' && p.onboardingBarriers?.filter((id) => id !== 'none').length
                   ? `Fix ${p.onboardingBarriers.filter((id) => id !== 'none').length === 1 ? 'this' : `these ${p.onboardingBarriers.filter((id) => id !== 'none').length}`}`
                   : NEXT_LABEL[step] || 'Continue'}
@@ -525,93 +531,67 @@ export default function TrainingProfile({ onClose }) {
           />
         ) : story ? (
           <OnboardingStory key={step} {...storyProps} />
-        ) : isOnboardingDemo(step) ? (
-          <OnboardingDemo
-            key={step}
-            step={step}
-            onPreviewChange={set}
-            state={state}
-            profile={p}
-            name={name}
-            today={today}
-            now={demoNow}
-          />
         ) : (
           <>
             {!returning && step !== 'review' && (
-              <GuideBubble headingRef={heading}>{GUIDE[step] || TITLES[step]}</GuideBubble>
+              <QuestionHead step={step} headingRef={heading} title={TITLES[step]} />
             )}
-            {!returning && STAGED.includes(step) && (
-              <SetupIllustration
-                scene={onboardingScene(step, p)}
-                variant={COMPACT_SCENE.includes(step) ? 'compact' : 'question'}
-              />
-            )}
-            {!returning && step === 'sport-choice' && <SetupIllustration scene="sports" variant="sports" />}
             {HINTS[step] && <p className="setup-hint">{HINTS[step]}</p>}
             {step === 'photo-choice' && (
-              <div className="photo-route">
-                <SetupIllustration scene={p.baselineMode === 'manual' ? 'manual' : 'photos'} />
-                <Cards
-                  values={[
-                    ['photos', 'Use my photos'],
-                    ['manual', 'Opt out of photos'],
-                  ]}
-                  value={p.baselineMode === 'manual' ? 'manual' : 'photos'}
-                  onChange={(baselineMode) => set({ baselineMode })}
-                />
-              </div>
+              <StoryOptions
+                label="Starting point"
+                options={[
+                  { id: 'photos', title: 'Use my photos', detail: 'Front, side and back', icon: 'camera' },
+                  { id: 'manual', title: 'Skip photos', detail: 'Height and weight instead', icon: 'note' },
+                ]}
+                value={p.baselineMode === 'manual' ? 'manual' : 'photos'}
+                onSelect={(baselineMode) => set({ baselineMode })}
+                onDone={(baselineMode) => choose({ baselineMode })}
+              />
             )}
             {step === 'goal' && (
-              <ImageChoices
+              <ArtOptions
                 label="Main goal"
                 options={[
-                  ['Build muscle', 'Build muscle', 'muscle'],
-                  ['Get stronger', 'Get stronger', 'strength'],
-                  ...(p.ageGroup !== '13-17' ? [['Lose weight', 'Lose weight', 'weight']] : []),
-                  ['General fitness', 'Feel fitter', 'rhythm'],
+                  { id: 'Build muscle', title: 'Build muscle', art: 'muscle' },
+                  { id: 'Get stronger', title: 'Get stronger', art: 'strength' },
+                  ...(p.ageGroup !== '13-17' ? [{ id: 'Lose weight', title: 'Lose weight', art: 'weight' }] : []),
+                  { id: 'General fitness', title: 'Feel fitter', art: 'rhythm' },
                 ]}
                 value={p.goal}
-                onChange={(goal) => set({ goal })}
+                onSelect={(goal) => set({ goal })}
+                onDone={(goal) => choose({ goal })}
               />
             )}
             {step === 'physique' && (
               <>
-                <ImageChoices
+                <ArtOptions
                   label="Build preference"
-                  layout="physiques"
-                  options={physiqueOptions(p.goal, p.ageGroup).map((o) => [o.id, o.label, o.scene])}
+                  layout="row"
+                  options={physiqueOptions(p.goal, p.ageGroup).map((o) => ({ id: o.id, title: o.label, art: o.scene }))}
                   value={physiqueChoice(p)}
-                  onChange={(id) => set({ idealPhysique: { goal: p.goal, id } })}
+                  onSelect={(id) => set({ idealPhysique: { goal: p.goal, id } })}
+                  onDone={(id) => choose({ idealPhysique: { goal: p.goal, id } })}
                 />
-                <button
-                  type="button"
-                  className="btn-ghost mt-3 w-full"
-                  onClick={() => {
-                    set({ idealPhysique: null })
-                    move(nextStep, { ...p, idealPhysique: null })
-                  }}
-                >
+                <button type="button" className="q-skip" onClick={() => choose({ idealPhysique: null })}>
                   Not sure yet
                 </button>
               </>
             )}
             {step === 'experience' && (
-              <Cards
-                kind="experience"
-                values={[
-                  ['Starting out', 'New or returning'],
-                  ['Some experience', 'I know the basics'],
-                  ['Experienced', 'I train regularly'],
-                ]}
+              <StoryOptions
+                label="Experience"
+                options={EXPERIENCE_OPTIONS.map(([id, title, detail], i) => ({ id, title, detail, icon: i + 1 }))}
                 value={p.experience}
-                onChange={(experience) => set({ experience })}
+                onSelect={(experience) => set({ experience })}
+                onDone={(experience) => choose({ experience })}
               />
             )}
             {step === 'about' && (
-              <Field label="Name (optional)">
+              <Field label="Name (optional)" hideLabel={!returning}>
                 <input
-                  className="input"
+                  className={`input ${!returning ? 'q-input' : ''}`}
+                  autoComplete="given-name"
                   aria-label="Your name"
                   value={name}
                   maxLength={60}
@@ -621,87 +601,62 @@ export default function TrainingProfile({ onClose }) {
               </Field>
             )}
             {step === 'gender' && (
-              <Field label="Gender" hideLabel={!returning}>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Man', 'Woman', 'Non-binary', 'Prefer not to say'].map((v) => (
-                    <Choice
-                      key={v}
-                      value={v}
-                      selected={p.gender === v}
-                      onClick={(gender) => set({ gender })}
-                    />
-                  ))}
-                </div>
-              </Field>
+              <StoryOptions
+                label="Gender"
+                layout="grid"
+                options={['Man', 'Woman', 'Non-binary', 'Prefer not to say'].map((v) => ({ id: v, title: v }))}
+                value={p.gender}
+                onSelect={(gender) => set({ gender })}
+                onDone={(gender) => choose({ gender })}
+              />
             )}
             {step === 'age' && (
-              <Field label="Age group" hideLabel={!returning}>
-                <div className="grid grid-cols-2 gap-2">
-                  {['13-17', '18+'].map((v) => (
-                    <Choice
-                      key={v}
-                      value={v}
-                      selected={p.ageGroup === v}
-                      onClick={(ageGroup) =>
-                        set({
-                          ageGroup,
-                          ...(ageGroup === '13-17' && p.goal === 'Lose weight'
-                            ? { goal: 'General fitness' }
-                            : {}),
-                        })
-                      }
-                    />
-                  ))}
-                </div>
-              </Field>
+              <StoryOptions
+                label="Age group"
+                layout="grid"
+                options={[
+                  { id: '13-17', title: '13 to 17' },
+                  { id: '18+', title: '18 or over' },
+                ]}
+                value={p.ageGroup}
+                onSelect={(ageGroup) => set(ageFix(ageGroup))}
+                onDone={(ageGroup) => choose(ageFix(ageGroup))}
+              />
             )}
             {step === 'barriers' && (
-              <div className="setup-options barrier-options" role="group" aria-label="Training obstacles">
-                {ONBOARDING_BARRIERS.map(([id, label, icon]) => (
-                  <button
-                    type="button"
-                    key={id}
-                    className="tile onboarding-choice"
-                    aria-pressed={p.onboardingBarriers?.includes(id) || false}
-                    onClick={() =>
-                      set({ onboardingBarriers: toggleOnboardingBarrier(p.onboardingBarriers, id) })
-                    }
-                  >
-                    <span className="barrier-icon">
-                      <Icon name={icon} size={21} />
-                    </span>
-                    <span className="onboarding-choice-title">{label}</span>
-                    <span
-                      className={`choice-ring ${p.onboardingBarriers?.includes(id) ? 'is-on' : ''}`}
-                      aria-hidden="true"
-                    >
-                      {p.onboardingBarriers?.includes(id) && <Icon name="check" size={14} />}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              <StoryOptions
+                multi
+                label="Training obstacles"
+                options={ONBOARDING_BARRIERS.map(([id, title, icon]) => ({ id, title, icon }))}
+                value={p.onboardingBarriers}
+                onSelect={(id) => set({ onboardingBarriers: toggleOnboardingBarrier(p.onboardingBarriers, id) })}
+              />
             )}
             {step === 'variety' && (
-              <Cards
-                values={[
-                  ['familiar', 'Keep it familiar'],
-                  ['balanced', 'A mix of both'],
-                  ['more', 'Try new exercises'],
-                ]}
+              <StoryOptions
+                label="Variety"
+                options={VARIETY_OPTIONS.map(([id, title, detail], i) => ({
+                  id,
+                  title,
+                  detail,
+                  icon: ['target', 'repeat', 'sparkle'][i],
+                }))}
                 value={p.variety}
-                onChange={(variety) => set({ variety })}
+                onSelect={(variety) => set({ variety })}
+                onDone={(variety) => choose({ variety })}
               />
             )}
             {step === 'sports' && (
-              <ImageChoices
+              <ArtOptions
                 label="Sport"
-                layout="rows"
+                layout="row"
                 options={[
-                  [true, 'Yes, I play', 'sports'],
-                  [false, 'No sport right now', 'neutral'],
+                  { id: true, title: 'Yes, I play', art: 'sports' },
+                  { id: false, title: 'Not right now', art: 'neutral' },
                 ]}
                 value={Boolean(p.wantsSport || p.sports.length)}
-                onChange={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
+                onSelect={(yes) => set({ wantsSport: yes, sports: yes ? p.sports : [] })}
+                onDone={(yes) => choose({ wantsSport: yes, sports: yes ? p.sports : [] })}
               />
             )}
             {step === 'sport-choice' && (
@@ -746,44 +701,54 @@ export default function TrainingProfile({ onClose }) {
               </>
             )}
             {step === 'priority' && (
-              <Cards
-                values={[
-                  ['goal', p.goal === 'General fitness' ? 'Feeling fitter' : p.goal],
-                  ['balanced', 'A balance of both'],
-                  [
-                    'sport',
-                    p.sports.length === 1
-                      ? SPORTS.find((s) => s.id === p.sports[0])?.name || 'My sport'
-                      : 'My sports',
-                  ],
+              <StoryOptions
+                label="Priority"
+                options={[
+                  {
+                    id: 'goal',
+                    title: p.goal === 'General fitness' ? 'Feeling fitter' : p.goal,
+                    detail: 'Sport fits around it',
+                    icon: 'target',
+                  },
+                  { id: 'balanced', title: 'A balance of both', detail: 'Lighter near games', icon: 'pair' },
+                  {
+                    id: 'sport',
+                    title:
+                      p.sports.length === 1 ? SPORTS.find((x) => x.id === p.sports[0])?.name || 'My sport' : 'My sports',
+                    detail: 'Training supports your game',
+                    icon: 'sport',
+                  },
                 ]}
                 value={p.sportPriority}
-                onChange={(sportPriority) => set({ sportPriority })}
+                onSelect={(sportPriority) => set({ sportPriority })}
+                onDone={(sportPriority) => choose({ sportPriority })}
               />
             )}
             {step === 'location' && (
-              <ImageChoices
+              <ArtOptions
                 label="Usual place"
                 layout="rows"
-                options={placesOf(p).map((place) => [
-                  place.id,
-                  place.name,
-                  LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
-                ])}
+                options={placesOf(p).map((place) => ({
+                  id: place.id,
+                  title: place.name,
+                  detail: PLACE_DETAIL[place.id] || PLACE_DETAIL[place.base],
+                  art: LOCATION_SCENE[place.id] || LOCATION_SCENE[place.base] || 'location',
+                }))}
                 value={p.location}
-                onChange={(location) =>
-                  set({ location, ...(location === 'home' ? { hasHomeSetup: true } : {}) })
-                }
+                onSelect={(location) => set(placePatch(location))}
+                onDone={(location) => choose(placePatch(location))}
               />
             )}
             {step === 'home' && (
-              <Cards
-                values={[
-                  [true, 'Yes, sometimes'],
-                  [false, 'Not for now'],
+              <StoryOptions
+                label="Home training"
+                options={[
+                  { id: true, title: 'Yes, sometimes', detail: 'Next, tell Tally what’s there', icon: 'home' },
+                  { id: false, title: 'Not for now', detail: 'You can add it later', icon: 'x' },
                 ]}
                 value={Boolean(p.hasHomeSetup)}
-                onChange={(hasHomeSetup) => set({ hasHomeSetup })}
+                onSelect={(hasHomeSetup) => set({ hasHomeSetup })}
+                onDone={(hasHomeSetup) => choose({ hasHomeSetup })}
               />
             )}
             {['equipment', 'home-loads'].includes(step) && (
@@ -801,22 +766,18 @@ export default function TrainingProfile({ onClose }) {
               <MovementFields value={p.onTheGo} onChange={(onTheGo) => set({ onTheGo })} />
             )}
             {step === 'time' && (
-              <Cards
-                kind="time"
-                values={[
-                  [15, '15 min'],
-                  [30, '30 min'],
-                  [45, '45 min'],
-                  [60, '60 min'],
-                  ...(![15, 30, 45, 60].includes(p.minutes) && !p.flexibleTime
-                    ? [[p.minutes, `${p.minutes} min`]]
-                    : []),
-                  ['flexible', 'It varies'],
+              <StoryOptions
+                label="Session length"
+                layout="grid"
+                options={[
+                  ...[...TIME_OPTIONS, ...(!TIME_OPTIONS.includes(p.minutes) && !p.flexibleTime ? [p.minutes] : [])].map(
+                    (m) => ({ id: m, num: m, unit: 'min' }),
+                  ),
+                  { id: 'flexible', title: 'It varies', detail: 'Choose the time before each session', icon: 'clock', wide: true },
                 ]}
                 value={p.flexibleTime ? 'flexible' : p.minutes}
-                onChange={(minutes) =>
-                  set(minutes === 'flexible' ? { flexibleTime: true } : { minutes, flexibleTime: false })
-                }
+                onSelect={(minutes) => set(timePatch(minutes))}
+                onDone={(minutes) => choose(timePatch(minutes))}
               />
             )}
             {step === 'comfort' && (
@@ -840,15 +801,7 @@ export default function TrainingProfile({ onClose }) {
             {step === 'review' && (
               <>
                 {!returning && (
-                  <OnboardingPlanPreview
-                    plan={plan}
-                    profile={p}
-                    name={name}
-                    customExercises={state.customExercises}
-                    headingRef={heading}
-                    title={startingMoves > 0 && !skipStart ? 'Preview a training day' : 'Your first workout'}
-                    startingPoint={startingMoves > 0 && !skipStart}
-                  />
+                  <FirstSession {...storyProps} startingPoint={startingMoves > 0 && !skipStart} />
                 )}
                 {startingMoves > 0 && !returning && (
                   <label className="baseline-preview-option">
@@ -1005,43 +958,4 @@ const CHECK_LABEL = {
   sports: 'Sports',
   photos: 'Body',
   manual: 'Body',
-}
-function Cards({ values, value, onChange, kind }) {
-  return (
-    <div className={`setup-options ${kind === 'time' ? 'setup-options--grid setup-options--time' : ''}`}>
-      {values.map(([id, title, detail]) => {
-        const on = value === id
-        const numericTime = kind === 'time' && typeof id === 'number'
-        const art = kind && !numericTime ? <ChoiceArt kind={kind} value={id} /> : null
-        return (
-          <button
-            key={String(id)}
-            type="button"
-            aria-label={numericTime ? `${id} minutes` : undefined}
-            aria-pressed={on}
-            onClick={() => onChange(id)}
-            className={`tile onboarding-choice ${kind === 'time' ? (numericTime ? 'time-duration' : 'time-flexible') : ''}`}
-          >
-            {art}
-            <span className="onboarding-choice-text">
-              <span className="onboarding-choice-title">
-                {numericTime ? (
-                  <>
-                    <span className="time-choice-number">{id}</span>
-                    <span className="time-choice-unit">min</span>
-                  </>
-                ) : (
-                  title
-                )}
-              </span>
-              {detail && <span className="onboarding-choice-detail">{detail}</span>}
-            </span>
-            <span className={`choice-ring ${on ? 'is-on' : ''}`} aria-hidden="true">
-              {on && <Icon name="check" size={14} strokeWidth={3} />}
-            </span>
-          </button>
-        )
-      })}
-    </div>
-  )
 }

@@ -2188,28 +2188,6 @@
   padding: 0.6rem;
 }
 
-/* Put brief questions within reach on tall phones while keeping the header fixed. */
-.setup-page:is(
-  .setup-page--about,
-  .setup-page--age,
-  .setup-page--gender,
-  .setup-page--variety,
-  .setup-page--commit
-) {
-  padding-top: clamp(1rem, 12dvh, 6rem);
-}
-@media (max-height: 600px) {
-  .setup-page:is(
-    .setup-page--about,
-    .setup-page--age,
-    .setup-page--gender,
-    .setup-page--variety,
-    .setup-page--commit
-  ) {
-    padding-top: 0.5rem;
-  }
-}
-
 .story-module,
 .recipe-card {
   border: 1px solid rgb(var(--line));

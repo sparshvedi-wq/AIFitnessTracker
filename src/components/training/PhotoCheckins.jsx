@@ -11,7 +11,7 @@ import { isNativeApp } from '../../lib/native.js'
 import { photoDraft } from '../../lib/photo-draft.js'
 import { uid } from '../../lib/id.js'
 import { Choice, Field } from './Fields.jsx'
-import { GuideBubble, SetupHeader } from './SetupVisuals.jsx'
+import { SetupHeader } from './SetupVisuals.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import PhotoReviewStory, { PhotoReviewLoading } from './PhotoReviewStory.jsx'
 import { photoReviewSlides } from '../../lib/photo-review.js'
@@ -527,7 +527,17 @@ export default function PhotoCheckins({
           )
         }
       >
-        {onboarding && adding && !reviewing && <GuideBubble>Your starting photos</GuideBubble>}
+        {onboarding && adding && !reviewing && (
+          <div className="q-head">
+            <h3 tabIndex={-1} className="story-title story-in">
+              Your starting photos
+            </h3>
+            <p className="q-why story-in">
+              <span aria-hidden="true" className="q-why-dot" />
+              Front, side and back, in good light. Fitted clothes help.
+            </p>
+          </div>
+        )}
         {reviewing ? (
           <PhotoReviewLoading status={busy} previews={photos} />
         ) : adding ? (

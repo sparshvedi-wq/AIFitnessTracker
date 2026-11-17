@@ -30,7 +30,13 @@ const keyOf = (t) => {
 const clock = { today: '2026-11-16', now: new Date('2026-11-16T12:00:00').getTime() }
 
 test('every story screen is part of the flow', () => {
-  const steps = onboardingSteps({ ...defaultState().settings.training, onboardingBarriers: ['time'] })
+  const steps = onboardingSteps({
+    ...defaultState().settings.training,
+    onboardingProblem: 'often',
+    onboardingBarriers: ['time', 'unsure', 'enjoyment'],
+    sports: ['tennis'],
+    wantsSport: true,
+  })
   for (const step of STORY_STEPS) assert.ok(steps.includes(step), step)
 })
 

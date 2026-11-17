@@ -3,6 +3,21 @@
 // one headline and one visual; the work is shown, not described.
 import './onboarding-story.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Check,
+  Lede,
+  Lock,
+  TallyMark,
+  Thumb,
+  Title,
+  delay,
+  money,
+  reducedMotion,
+  roundMoney,
+  useCountUp,
+  useTimers,
+} from './story-kit.jsx'
+import { STORY_SCREENS } from './OnboardingStoryMore.jsx'
 import Icon from '../Icon.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import {
@@ -34,78 +49,6 @@ import {
 } from '../../lib/onboarding-story.js'
 import { resolvePlace } from '../../lib/places.js'
 
-const money = (n) => `$${n.toFixed(2)}`
-// Whole amounts read better without cents: $5/mo, not $5.00/mo.
-const roundMoney = (n) => (Number.isInteger(n) ? `$${n}` : money(n))
-const delay = (s) => ({ animationDelay: `${s}s` })
-
-// Timers that stop when the screen goes away.
-function useTimers() {
-  const timers = useRef([])
-  useEffect(() => () => timers.current.forEach((t) => clearTimeout(t) || clearInterval(t)), [])
-  return {
-    later: (fn, ms) => timers.current.push(setTimeout(fn, ms)),
-    every: (fn, ms) => timers.current.push(setInterval(fn, ms)),
-    clear: () => {
-      timers.current.forEach((t) => clearTimeout(t) || clearInterval(t))
-      timers.current = []
-    },
-  }
-}
-const reducedMotion = () =>
-  typeof window !== 'undefined' &&
-  (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ||
-    document.documentElement.classList.contains('tally-reduce-motion'))
-
-// A number that counts up once, easing out. Reduced motion shows the total.
-function useCountUp(to, ms = 1500, start = true) {
-  const [value, setValue] = useState(() => (reducedMotion() ? to : 0))
-  useEffect(() => {
-    if (!start) return undefined
-    if (reducedMotion()) {
-      setValue(to)
-      return undefined
-    }
-    let frame
-    const t0 = performance.now()
-    const step = (t) => {
-      const k = Math.min(1, (t - t0) / ms)
-      setValue(Math.round(to * (1 - Math.pow(1 - k, 3))))
-      if (k < 1) frame = requestAnimationFrame(step)
-    }
-    frame = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(frame)
-  }, [to, ms, start])
-  return value
-}
-
-function Title({ headingRef, children, className = '' }) {
-  return (
-    <h3 ref={headingRef} tabIndex={-1} className={`story-title story-in ${className}`}>
-      {children}
-    </h3>
-  )
-}
-function Thumb({ src, className = '' }) {
-  return (
-    <span className={`story-thumb ${className}`} aria-hidden="true">
-      {src ? <img src={src} alt="" loading="lazy" decoding="async" /> : <Icon name="dumbbell" size={20} />}
-    </span>
-  )
-}
-const Check = ({ size = 14 }) => <Icon name="check" size={size} strokeWidth={3.2} />
-const Lock = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <rect x="5" y="11" width="14" height="9" rx="2" />
-    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-  </svg>
-)
-const TallyMark = () => (
-  <svg viewBox="0 0 30 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-    <path d="M4 3v18M10 3v18M16 3v18M22 3v18M1 17L27 6" />
-  </svg>
-)
-
 /* ── Act 1 ─────────────────────────────────────────────────────────── */
 
 function Welcome({ headingRef }) {
@@ -127,9 +70,9 @@ function Welcome({ headingRef }) {
       </div>
       <div className="welcome-copy story-in" style={delay(0.2)}>
         <h3 ref={headingRef} tabIndex={-1} className="story-title story-title--hero">
-          Training that fits your week.
+          Workouts that bend to your week.
         </h3>
-        <p>Planned around your time, gear and energy.</p>
+        <p>Tally plans every session around your time, place and energy, then sets your weights as you go.</p>
       </div>
     </div>
   )
@@ -142,12 +85,13 @@ const PROBLEM_ICONS = {
   new: 'M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M6 18l2.5-2.5M15.5 8.5L18 6',
 }
 // One tap answers it: the choice lights, then the story moves on by itself.
-function Problem({ headingRef, profile, set, onNext }) {
+function Problem({ headingRef, profile, set, onChoose }) {
   const timers = useTimers()
+  // The next screen depends on the answer, so it moves on with the answer.
   const answer = (id) => {
     set({ onboardingProblem: id })
     timers.clear()
-    timers.later(onNext, reducedMotion() ? 150 : 420)
+    timers.later(() => onChoose({ onboardingProblem: id }), reducedMotion() ? 150 : 420)
   }
   return (
     <div className="story">
@@ -182,7 +126,8 @@ function Problem({ headingRef, profile, set, onNext }) {
 function Solution({ headingRef }) {
   return (
     <div className="story">
-      <Title headingRef={headingRef}>Tally re-plans around real life.</Title>
+      <Title headingRef={headingRef}>Only 20 minutes? Tally rebuilds the workout.</Title>
+      <Lede>Fewer moves, the important ones first. No guilt, no starting over.</Lede>
       <div className="solution-trigger story-in" style={delay(0.15)}>
         <span>
           <Icon name="clock" size={18} strokeWidth={2.4} />
@@ -458,7 +403,8 @@ function Squeeze({ headingRef, state, profile, today, now }) {
   const moves = plans[mins] || []
   return (
     <div className="story">
-      <Title headingRef={headingRef}>Short on time? Squeeze it.</Title>
+      <Title headingRef={headingRef}>Pick your time. The workout fits it.</Title>
+      <Lede>This is your real plan. Tap a length and watch it rebuild.</Lede>
       <div className="story-seg story-in" style={delay(0.1)} role="radiogroup" aria-label="Session length">
         {[20, 30, 45].map((m) => (
           <button
@@ -531,7 +477,8 @@ function MidWorkout({ headingRef, state, profile, today, now }) {
   }
   return (
     <div className="story">
-      <Title headingRef={headingRef}>Mid-workout and out of time?</Title>
+      <Title headingRef={headingRef}>Out of time mid-workout?</Title>
+      <Lede>Tap “Less time left”. Tally trims what’s left and keeps every set you’ve done.</Lede>
       <div className="mid-phone story-in" style={delay(0.15)}>
         <div className="mid-top">
           <div>
@@ -625,7 +572,8 @@ function Rollover({ headingRef }) {
   const tray = step < 2 ? ROLLOVER_STORY.cut : []
   return (
     <div className="story">
-      <Title headingRef={headingRef}>Cut moves wait for the right day.</Title>
+      <Title headingRef={headingRef}>Skipped moves come back later.</Title>
+      <Lede>Not next time if those muscles are still tired. When they’re ready.</Lede>
       <div className="roll-tray story-in" style={delay(0.1)}>
         <span className="roll-label">Cut today</span>
         {tray.map((m) => (
@@ -725,7 +673,8 @@ function Feel({ headingRef, state, today, now }) {
   const change = next ? feelChange(demo.start, next, unit) : ''
   return (
     <div className="story">
-      <Title headingRef={headingRef}>Tap how it felt. Tally sets the next one.</Title>
+      <Title headingRef={headingRef}>Rate the set. Tally picks your next weight.</Title>
+      <Lede>No maths, no guessing. One tap after each set.</Lede>
       <div className="feel-done story-in" style={delay(0.1)}>
         <Thumb src={ROLLOVER_STORY.cut[0].image} className="is-lg" />
         <div>
@@ -1009,7 +958,7 @@ function Ready({ headingRef, profile, name, goalMode, weeklyGoal }) {
   const first = name.trim().split(' ')[0]
   const { count } = yearSessions({ goalMode, weeklyGoal })
   const chips = planChips(profile, { goalMode, weeklyGoal, placeName: resolvePlace(profile, profile.location)?.name })
-  const used = ['Session squeezed to fit', 'Cut moves waiting smartly', 'Weights set from a tap', 'First tally marked']
+  const used = ['Session rebuilt to fit your time', 'Skipped moves saved for later', 'Next weight picked from a tap', 'First tally marked']
   return (
     <div className="story">
       <Title headingRef={headingRef}>{first ? `${first}, your plan is ready.` : 'Your plan is ready.'}</Title>
@@ -1082,8 +1031,8 @@ function TryFree({ headingRef, name, onNext }) {
         <div className="pay-points">
           {[
             ['clock', 'Plans around your time'],
-            ['trendUp', 'Weights set from a tap'],
-            ['repeat', 'Cut moves never lost'],
+            ['trendUp', 'Your next weight, picked for you'],
+            ['repeat', 'Skipped moves come back later'],
           ].map(([icon, label], i) => (
             <div key={label} className="pay-point story-in" style={delay(0.35 + i * 0.1)}>
               <span><Icon name={icon} size={22} strokeWidth={2.2} /></span>
@@ -1352,6 +1301,7 @@ function SaveOffer({ price, onClaim, onDecline }) {
 /* ── Router ────────────────────────────────────────────────────────── */
 
 const SCREENS = {
+  ...STORY_SCREENS,
   welcome: Welcome,
   problem: Problem,
   'solution-demo': Solution,

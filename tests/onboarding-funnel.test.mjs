@@ -51,7 +51,7 @@ test('the longer flow demonstrates answers, builds the plan, lets them use it, t
     for (const [question, demo] of [
       ['goal', 'goal-demo'],
       ['rhythm', 'year-demo'],
-      ['time', 'consistency-demo'],
+      ['time', 'recent-demo'],
       ['comfort', 'recovery-demo'],
     ]) {
       assert.equal(nextOnboardingStep(question, profile), demo)
@@ -71,13 +71,15 @@ test('the longer flow demonstrates answers, builds the plan, lets them use it, t
       'tally-demo',
       'path-demo',
       'pledge',
+      'proof-demo',
       'value-demo',
       'ready-demo',
     ])
     assert.equal(nextOnboardingStep('paywall-plans', profile), undefined)
     assert.ok(!steps.includes('offer') && !steps.includes('time-demo') && !steps.includes('compress-demo'))
     // A first-session commitment comes before the plan; the plan is built, then shown.
-    assert.equal(nextOnboardingStep('recovery-demo', profile), 'photo-purpose-demo')
+    assert.equal(nextOnboardingStep('recovery-demo', profile), 'photo-demo')
+    assert.equal(nextOnboardingStep('photo-demo', profile), 'photo-choice')
     assert.equal(
       nextOnboardingStep('photo-choice', profile),
       profile.baselineMode === 'manual' ? 'manual' : 'photos',
@@ -90,8 +92,13 @@ test('the longer flow demonstrates answers, builds the plan, lets them use it, t
 test('obstacles get their fix, and time is demonstrated live once, after the plan', () => {
   const profile = { ...defaultState().settings.training, onboardingBarriers: ['time', 'schedule'] }
   assert.equal(nextOnboardingStep('barriers', profile), 'fix-demo')
-  assert.equal(nextOnboardingStep('fix-demo', profile), 'barrier-schedule-demo')
-  assert.equal(nextOnboardingStep('barrier-schedule-demo', profile), 'variety')
+  // Time and schedule are shown live in act 2, so they need no screen here.
+  assert.equal(nextOnboardingStep('fix-demo', profile), 'variety')
+  const both = { ...profile, onboardingBarriers: ['enjoyment', 'unsure'] }
+  // Answered in the order they were picked.
+  assert.equal(nextOnboardingStep('fix-demo', both), 'barrier-enjoyment-demo')
+  assert.equal(nextOnboardingStep('barrier-enjoyment-demo', both), 'barrier-unsure-demo')
+  assert.equal(nextOnboardingStep('barrier-unsure-demo', both), 'variety')
   const steps = onboardingSteps(profile)
   for (const gone of ['time-demo', 'barrier-time-demo', 'barrier-compress-demo']) assert.ok(!steps.includes(gone))
   assert.equal(steps.filter((s) => s === 'midworkout-demo').length, 1)
@@ -161,7 +168,8 @@ test('editing answers bypasses demonstrations and the subscription placeholder',
   assert.equal(nextOnboardingStep('rhythm', p, 'rhythm'), 'review')
   assert.equal(nextOnboardingStep('barriers', p, 'barriers'), 'review')
   // Stories, the pledge and the paywall are never part of an edit.
-  for (const step of ['problem', 'pledge', 'squeeze-demo', ...PAYWALL_STEPS]) assert.equal(editableStep(step), false)
+  for (const step of ['problem', 'fallout', 'pledge', 'squeeze-demo', ...PAYWALL_STEPS])
+    assert.equal(editableStep(step), false)
   assert.equal(nextOnboardingStep('variety', p, 'variety'), 'review')
 })
 

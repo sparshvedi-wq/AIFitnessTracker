@@ -11,8 +11,11 @@ export default function EventShortcut({ state, today, now, nav, hideEmpty = fals
         <span className="icon-tile">
           <Icon name={next ? 'sport' : 'plus'} size={20} />
         </span>
-        <span className="min-w-0 flex-1 truncate text-[16px] font-semibold">
-          {next ? next.title : 'Add an event'}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[16px] font-semibold">{next ? next.title : 'Add an event'}</span>
+          {!next && (
+            <span className="mt-0.5 block truncate text-[13px] text-muted">A game, practice or occasion</span>
+          )}
         </span>
         {next && (
           <span className="event-when">

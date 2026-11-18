@@ -532,10 +532,7 @@ export default function PhotoCheckins({
             <h3 tabIndex={-1} className="story-title story-in">
               Your starting photos
             </h3>
-            <p className="q-why story-in">
-              <span aria-hidden="true" className="q-why-dot" />
-              Front, side and back, in good light. Fitted clothes help.
-            </p>
+            <p className="q-why story-in">Front, side and back, in good light</p>
           </div>
         )}
         {reviewing ? (

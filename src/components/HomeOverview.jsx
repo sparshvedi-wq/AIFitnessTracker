@@ -156,7 +156,7 @@ export function LiftedCard({ workouts, today, unit, onOpen }) {
       aria-label={`${fmtNum(value)} ${unit === 'kg' ? 'kilograms' : 'pounds'} lifted. View history`}
     >
       <span className="flex items-center justify-between gap-2">
-        <span className="stat-card-label">{unit === 'kg' ? 'kg' : 'lbs'} lifted</span>
+        <span className="stat-card-label">Total lifted ({unit === 'kg' ? 'kg' : 'lb'})</span>
         <Icon name="chevronRight" size={16} className="text-muted" />
       </span>
       <span className="lifted-number num" title={fmtNum(value)}>
@@ -188,7 +188,7 @@ export function TallyCard({ workouts, today, fresh = 0 }) {
       className={`stat-card tally-card ${fresh ? 'is-celebrating' : ''}`}
       aria-label={`Your tally: ${total} ${total === 1 ? 'session' : 'sessions'}, ${thisWeek} this week`}
     >
-      <span className="stat-card-label w-full text-center">Your tally</span>
+      <span className="stat-card-label w-full">Your tally</span>
       <div
         ref={marks}
         className="tally-mark-window"

@@ -15,7 +15,6 @@ export function QuestionHead({ step, headingRef, title }) {
       </h3>
       {why && (
         <p className="q-why story-in" style={delay(0.06)}>
-          <span aria-hidden="true" className="q-why-dot" />
           {why}
         </p>
       )}

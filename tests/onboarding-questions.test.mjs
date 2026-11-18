@@ -1,6 +1,6 @@
-// Every question says what Tally does with the answer, the restart loop only
-// shows for people who said plans fall apart, and each act 1 demo runs the
-// real planner without touching saved data.
+// Every question is short, with at most a few words of help, the restart
+// loop only shows for people who said plans fall apart, and each act 1 demo
+// runs the real planner without touching saved data.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState } from '../src/lib/storage.js'
@@ -23,7 +23,7 @@ import { resolvePlace } from '../src/lib/places.js'
 
 const clock = { today: '2026-11-16', now: new Date('2026-11-16T12:00:00').getTime() }
 
-test('every question in the flow is either a story or says why it is asked', () => {
+test('every question in the flow is short, with at most a few words of help', () => {
   const p = {
     ...defaultState().settings.training,
     onboardingProblem: 'often',
@@ -41,7 +41,8 @@ test('every question in the flow is either a story or says why it is asked', () 
       assert.ok(copy, step)
       const [question, why] = copy
       assert.ok(question.endsWith('?') || step === 'manual', step)
-      assert.ok(why && why.length <= 70, `${step}: ${why}`)
+      assert.ok(question.length <= 32, `${step}: ${question}`)
+      assert.ok(why == null || why.length <= 28, `${step}: ${why}`)
     }
   }
 })

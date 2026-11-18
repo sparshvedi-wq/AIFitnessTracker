@@ -43,7 +43,7 @@ function Fallout({ headingRef, profile, set, onChoose }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>{question}</Title>
-      <Lede>{why}</Lede>
+      {why && <Lede>{why}</Lede>}
       <StoryOptions
         label={question}
         options={FALLOUT_OPTIONS.map(([id, title]) => ({ id, title }))}
@@ -76,7 +76,7 @@ function Loop({ headingRef, profile }) {
         <YouSaid>{FALLOUT_OPTIONS.find(([id]) => id === profile.onboardingFallout)?.[1]}</YouSaid>
       )}
       <Title headingRef={headingRef}>That’s the restart loop.</Title>
-      <Lede>It’s not willpower. A fixed plan breaks in the first busy week, so you start again.</Lede>
+      <Lede>It’s not willpower. Fixed plans break.</Lede>
       <div
         className={`loop story-in ${broken ? 'is-broken' : ''}`}
         style={delay(0.15)}
@@ -106,7 +106,7 @@ function Loop({ headingRef, profile }) {
       {broken && (
         <span className="story-chip story-chip--accent pop-in">
           <Check size={15} />
-          A busy week gets a shorter plan, not a restart.
+          Busy week? Shorter plan, no restart.
         </span>
       )}
     </div>
@@ -116,10 +116,10 @@ function Loop({ headingRef, profile }) {
 /* ── Answers, demonstrated ────────────────────────────────────────── */
 
 const GOAL_ECHO = {
-  'Build muscle': ['Muscle, built in balance.', 'Tally counts the sets each muscle gets and trains what’s behind next.'],
-  'Get stronger': ['Stronger, one set at a time.', 'Every set you log decides what you lift next.'],
-  'Lose weight': ['Keep your muscle. Keep moving.', 'Strength work stays in, even on your shortest days.'],
-  'General fitness': ['Fitter, head to toe.', 'Sessions rotate through your whole body.'],
+  'Build muscle': ['Muscle, built in balance.', 'Every muscle gets its share.'],
+  'Get stronger': ['Stronger, one set at a time.', 'Each set picks your next weight.'],
+  'Lose weight': ['Keep your muscle. Keep moving.', 'Strength stays in, even on short days.'],
+  'General fitness': ['Fitter, head to toe.', 'Your whole body, in rotation.'],
 }
 function GoalEcho({ headingRef, state, profile, today, now }) {
   const muscles = useMemo(() => goalMuscles(state, profile, { today, now }), [state, profile, today, now])
@@ -154,7 +154,7 @@ function Guide({ headingRef, state, profile, today, now }) {
     <div className="story">
       <YouSaid>{barrierLabel('unsure')}</YouSaid>
       <Title headingRef={headingRef}>Never guess a move again.</Title>
-      <Lede>Every exercise shows how it’s done, what it works and what to watch for.</Lede>
+      <Lede>Every move comes with a how-to.</Lede>
       {g && (
         <div className="gcard story-in" style={delay(0.2)}>
           <div className="gcard-pic">
@@ -198,7 +198,6 @@ function Swap({ headingRef, state, profile, today, now }) {
     <div className="story">
       <YouSaid>{barrierLabel('enjoyment')}</YouSaid>
       <Title headingRef={headingRef}>Don’t like a move? Swap it.</Title>
-      <Lede>One tap finds another exercise for the same muscle.</Lede>
       {move && (
         <div className="swap-card story-in" style={delay(0.2)}>
           <div key={move.exId} className="swap-pic">
@@ -225,7 +224,7 @@ function Swap({ headingRef, state, profile, today, now }) {
       {swapped && (
         <span className="story-chip pop-in">
           <Check size={15} />
-          Same muscle. Your plan stays balanced.
+          Same muscle, new move.
         </span>
       )}
     </div>
@@ -240,7 +239,7 @@ function Warmup({ headingRef, profile }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>A warm-up made for {demo.name.toLowerCase()}.</Title>
-      <Lede>Drills that move the way your sport moves, sized to the time before you play.</Lede>
+      <Lede>Sized to the time before you play.</Lede>
       <div className="story-seg story-in" style={delay(0.1)} role="radiogroup" aria-label="Warm-up length">
         {[5, 10, 15].map((m) => (
           <button
@@ -285,7 +284,7 @@ function Places({ headingRef, state, profile, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Gym, home or a hotel room.</Title>
-      <Lede>Tell Tally where you are. The session rebuilds for the equipment there.</Lede>
+      <Lede>Pick a place. The session rebuilds.</Lede>
       <div className="story-seg story-in" style={delay(0.1)} role="radiogroup" aria-label="Where are you today?">
         {places.map((p, i) => (
           <button
@@ -319,7 +318,7 @@ function Recent({ headingRef, state, profile, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>It remembers yesterday.</Title>
-      <Lede>Tally tracks what each muscle did and gives it time before training it hard again.</Lede>
+      <Lede>Tired muscles get time off.</Lede>
       <div className="recent-card story-in" style={delay(0.15)}>
         <div className="recent-top">
           <Thumb src={exerciseThumb('bench-press')} />
@@ -369,7 +368,7 @@ function Energy({ headingRef, state, profile, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Rough day? Just say so.</Title>
-      <Lede>Low energy or sore legs, today’s session changes before you start.</Lede>
+      <Lede>Tap how you feel.</Lede>
       <div className="energy-picks story-in" style={delay(0.1)}>
         <div role="radiogroup" aria-label="Energy today">
           <small>Energy</small>
@@ -408,7 +407,7 @@ function Photos({ headingRef }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Start with a snapshot of you.</Title>
-      <Lede>Three photos mark your starting point. Take them again in a few weeks and compare.</Lede>
+      <Lede>Retake in a few weeks and compare.</Lede>
       <div className="snap-row story-in" style={delay(0.15)}>
         {[
           ['Front', ONBOARDING_ART.neutral],
@@ -421,21 +420,20 @@ function Photos({ headingRef }) {
           </figure>
         ))}
       </div>
-      <div className="snap-points">
+      <div className="snap-pills">
         {[
-          ['train', 'A suggested focus, if you want one. You decide.'],
-          ['repeat', 'Side-by-side with your next check-in.'],
-          [null, 'Private to you. Reviewed only with your OK.'],
+          ['repeat', 'Compare later'],
+          [null, 'Private'],
+          ['x', 'Skip anytime'],
         ].map(([icon, text], i) => (
-          <div key={text} className="snap-point story-in" style={delay(0.5 + i * 0.1)}>
-            <span>{icon ? <Icon name={icon} size={18} strokeWidth={2.4} /> : <Lock size={18} />}</span>
+          <span key={text} className="snap-pill story-in" style={delay(0.5 + i * 0.08)}>
+            {icon ? <Icon name={icon} size={16} strokeWidth={2.6} /> : <Lock size={16} />}
             {text}
-          </div>
+          </span>
         ))}
       </div>
-      <p className="story-fine story-in" style={delay(0.9)}>
-        Photos stay off your public profile. With your permission, our server sends them to OpenAI for review. You can
-        use measurements instead.
+      <p className="story-fine story-in" style={delay(0.8)}>
+        Reviewed by OpenAI only with your OK.
       </p>
     </div>
   )
@@ -452,7 +450,7 @@ function Proof({ headingRef, profile }) {
     <div className="story">
       {picked && <YouSaid>{FIRST_SESSION_OPTIONS.find(([id]) => id === profile.firstSession)?.[1]}</YouSaid>}
       <Title headingRef={headingRef}>{picked ? 'You just did what works.' : 'Picking a time is what works.'}</Title>
-      <Lede>In one study, people who decided when they’d exercise were more than twice as likely to do it.</Lede>
+      <Lede>Picking a time more than doubles your odds.</Lede>
       <div className="proof-bars story-in" style={delay(0.15)} role="img" aria-label={`${PLAN_STUDY.planned}% of people who decided when exercised that week, against ${PLAN_STUDY.others}% of others`}>
         <div className="proof-col is-win">
           <b>{a}%</b>
@@ -469,10 +467,10 @@ function Proof({ headingRef, profile }) {
           <small>Just meant to</small>
         </div>
       </div>
-      <p className="story-fine">Exercised in the following week. {PLAN_STUDY.source}.</p>
+      <p className="story-fine">Exercised within a week. {PLAN_STUDY.source}.</p>
       <span className="story-chip story-chip--accent pop-in" style={delay(1.6)}>
         <Check size={15} />
-        {picked ? `Session 1, ${picked}. Tally has it ready.` : 'Tally keeps a session ready for whenever.'}
+        {picked ? `Session 1 is ready ${picked}.` : 'A session waits for you.'}
       </span>
     </div>
   )
@@ -489,7 +487,7 @@ export function FirstSession({ headingRef, state, profile, name, today, now, goa
       <Title headingRef={headingRef}>
         {startingPoint ? 'Here’s a day of your plan.' : first ? `${first}, session 1 is ready.` : 'Session 1 is ready.'}
       </Title>
-      <Lede>Built from your answers. Next, watch it change when your day does.</Lede>
+      <Lede>Built from your answers.</Lede>
       <div className="first-chips story-in" style={delay(0.12)}>
         {chips.map((c) => (
           <span key={c}>{c}</span>

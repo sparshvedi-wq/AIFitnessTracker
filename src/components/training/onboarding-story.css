@@ -2938,15 +2938,6 @@
   font-weight: 500;
   line-height: 1.4;
 }
-.q-why-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 7px;
-  border-radius: 50%;
-  background: rgb(var(--accent));
-  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.16);
-}
 
 /* Option tiles */
 .q-tiles {
@@ -3702,29 +3693,6 @@
   font-weight: 700;
   text-align: center;
 }
-.snap-points {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.snap-point {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-.snap-point > span {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  background: rgb(var(--lit));
-  color: rgb(var(--accent-ink));
-}
 
 /* ── Proof ───────────────────────────────────────────────── */
 .proof-bars {
@@ -3813,4 +3781,218 @@
 .tally-reduce-motion .proof-col-bar i,
 .tally-reduce-motion .swap-pic {
   animation: none;
+}
+
+/* ── Less to read, more to look at ───────────────────────────────────
+   Questions carry at most a short help pill, ledes are one short line in
+   a larger size, and answer tiles are big, with a tinted icon. */
+.q-head {
+  gap: 12px;
+  padding: 14px 0 22px;
+}
+.q-why {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: rgb(var(--accent) / 0.12);
+  color: rgb(var(--accent));
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.story-lede {
+  margin-top: -4px;
+  color: rgb(var(--ink) / 0.72);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.q-tiles {
+  gap: 14px;
+}
+.q-tile {
+  min-height: 78px;
+  padding: 14px 16px 14px 14px;
+}
+.q-tile-title {
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+.q-tiles--grid .q-tile {
+  min-height: 72px;
+}
+.q-tiles--grid .q-tile-title {
+  font-size: 18px;
+}
+.q-tile .story-tile-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: rgb(var(--accent) / 0.14);
+  color: rgb(var(--accent));
+}
+.q-tile.is-on .story-tile-icon {
+  background: rgb(var(--accent));
+  color: #fff;
+}
+.q-art-label {
+  font-size: 17px;
+}
+.you-said {
+  font-size: 14px;
+}
+.story-fine {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* Photos: three short pills instead of a list. */
+.snap-pills {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.snap-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 19px;
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+  font-size: 14.5px;
+  font-weight: 700;
+}
+.snap-pill svg {
+  color: rgb(var(--accent));
+}
+
+/* ── Motion: quick and restrained ────────────────────────────────────
+   One set of curves for every onboarding screen, questions included. Things
+   ease in and settle; nothing bounces. */
+.setup-dialog,
+.story {
+  --story-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --story-pop: cubic-bezier(0.25, 1.12, 0.4, 1);
+}
+.story-in {
+  animation-duration: 0.5s;
+}
+@keyframes story-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Each screen slides in from the side you're heading. */
+.screen-in {
+  animation: screen-in 0.42s var(--story-ease) both;
+}
+.screen-in--back {
+  animation-name: screen-in-back;
+}
+@keyframes screen-in {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes screen-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Press sinks; a pick settles in. */
+.story-tile,
+.q-art-card {
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    box-shadow 0.25s,
+    color 0.2s,
+    transform 0.22s var(--story-pop);
+}
+.story-tile:active,
+.q-art-card:active {
+  transform: scale(0.97) translateY(1px);
+  transition-duration: 0.08s;
+}
+.story-tile.is-on {
+  box-shadow:
+    0 4px 0 rgb(var(--lit-edge)),
+    0 0 0 5px rgb(var(--accent) / 0.14);
+}
+.story-tile.is-on .story-tile-icon {
+  animation: pick-bounce 0.45s var(--story-pop);
+}
+.q-ring.is-on > * {
+  animation: pick-check 0.42s var(--story-pop) both;
+}
+@keyframes pick-bounce {
+  40% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes pick-check {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.setup-dialog .btn-primary {
+  transition:
+    transform 0.2s var(--story-pop),
+    box-shadow 0.2s,
+    background-color 0.2s;
+}
+.setup-dialog .btn-primary:not(:disabled):active {
+  transform: scale(0.98) translateY(3px);
+  transition-duration: 0.08s;
+}
+
+/* The progress bar fills and glows; it never jumps. */
+.setup-chapter > span {
+  transition: transform 0.6s var(--story-ease, cubic-bezier(0.22, 1, 0.36, 1));
+  box-shadow: 0 0 12px rgb(var(--accent) / 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-in,
+  .q-ring.is-on > *,
+  .story-tile.is-on .story-tile-icon {
+    animation: none !important;
+  }
+}
+.tally-reduce-motion .screen-in,
+.tally-reduce-motion .q-ring.is-on > *,
+.tally-reduce-motion .story-tile.is-on .story-tile-icon {
+  animation: none !important;
 }

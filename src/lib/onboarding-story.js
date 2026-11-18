@@ -48,8 +48,6 @@ export const STORY_STEPS = [
 export const isStoryStep = (step) => STORY_STEPS.includes(step)
 /** Screens with their own main button (a gate, a hold, or the paywall). */
 export const OWN_CTA_STEPS = ['building-demo', 'pledge', ...PAYWALL_STEPS]
-/** Screens drawn on the night palette in both themes. */
-export const NIGHT_STEPS = ['year-demo', 'tally-demo']
 
 export const PROBLEM_OPTIONS = [
   ['often', 'Yes, often'],

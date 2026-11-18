@@ -18,6 +18,7 @@ import {
   useTimers,
 } from './story-kit.jsx'
 import { STORY_SCREENS } from './OnboardingStoryMore.jsx'
+import OnboardingIntro from './OnboardingIntro.jsx'
 import Icon from '../Icon.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import {
@@ -50,33 +51,6 @@ import {
 import { resolvePlace } from '../../lib/places.js'
 
 /* ── Act 1 ─────────────────────────────────────────────────────────── */
-
-function Welcome({ headingRef }) {
-  return (
-    <div className="story story-welcome">
-      <div className="welcome-stage" aria-hidden="true">
-        <span className="welcome-disc" />
-        <span className="welcome-orbit" />
-        <img className="welcome-hero" src={ONBOARDING_ART.welcome} alt="" decoding="async" />
-        <span className="float-tag" style={{ left: '2%', top: '17%', ...delay(0.5) }}>
-          <i><Icon name="clock" size={14} strokeWidth={2.6} /></i>20 min
-        </span>
-        <span className="float-tag" style={{ right: '1%', top: '38%', ...delay(0.75) }}>
-          <i><Icon name="home" size={14} strokeWidth={2.6} /></i>At home
-        </span>
-        <span className="float-tag" style={{ left: '5%', top: '66%', ...delay(1) }}>
-          <i><Icon name="trendUp" size={14} strokeWidth={2.6} /></i>+2 reps
-        </span>
-      </div>
-      <div className="welcome-copy story-in" style={delay(0.2)}>
-        <h3 ref={headingRef} tabIndex={-1} className="story-title story-title--hero">
-          Workouts that bend to your week.
-        </h3>
-        <p>Tally plans every session around your time, place and energy, then sets your weights as you go.</p>
-      </div>
-    </div>
-  )
-}
 
 const PROBLEM_ICONS = {
   often: 'M4 7l6 6 4-4 6 6M20 11v4h-4',
@@ -127,7 +101,7 @@ function Solution({ headingRef }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Only 20 minutes? Tally rebuilds the workout.</Title>
-      <Lede>Fewer moves, the important ones first. No guilt, no starting over.</Lede>
+      <Lede>Key moves first. No starting over.</Lede>
       <div className="solution-trigger story-in" style={delay(0.15)}>
         <span>
           <Icon name="clock" size={18} strokeWidth={2.4} />
@@ -404,7 +378,7 @@ function Squeeze({ headingRef, state, profile, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Pick your time. The workout fits it.</Title>
-      <Lede>This is your real plan. Tap a length and watch it rebuild.</Lede>
+      <Lede>Tap a length. Watch it rebuild.</Lede>
       <div className="story-seg story-in" style={delay(0.1)} role="radiogroup" aria-label="Session length">
         {[20, 30, 45].map((m) => (
           <button
@@ -478,7 +452,7 @@ function MidWorkout({ headingRef, state, profile, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Out of time mid-workout?</Title>
-      <Lede>Tap “Less time left”. Tally trims what’s left and keeps every set you’ve done.</Lede>
+      <Lede>One tap trims the rest.</Lede>
       <div className="mid-phone story-in" style={delay(0.15)}>
         <div className="mid-top">
           <div>
@@ -573,7 +547,7 @@ function Rollover({ headingRef }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Skipped moves come back later.</Title>
-      <Lede>Not next time if those muscles are still tired. When they’re ready.</Lede>
+      <Lede>Once those muscles are ready.</Lede>
       <div className="roll-tray story-in" style={delay(0.1)}>
         <span className="roll-label">Cut today</span>
         {tray.map((m) => (
@@ -674,7 +648,7 @@ function Feel({ headingRef, state, today, now }) {
   return (
     <div className="story">
       <Title headingRef={headingRef}>Rate the set. Tally picks your next weight.</Title>
-      <Lede>No maths, no guessing. One tap after each set.</Lede>
+      <Lede>One tap after each set.</Lede>
       <div className="feel-done story-in" style={delay(0.1)}>
         <Thumb src={ROLLOVER_STORY.cut[0].image} className="is-lg" />
         <div>
@@ -1302,7 +1276,7 @@ function SaveOffer({ price, onClaim, onDecline }) {
 
 const SCREENS = {
   ...STORY_SCREENS,
-  welcome: Welcome,
+  welcome: OnboardingIntro,
   problem: Problem,
   'solution-demo': Solution,
   rhythm: Rhythm,

@@ -78,11 +78,11 @@ export default function History({ nav }) {
               </span>
             ))}
           </div>
-          <h2 className="font-display text-[25px] text-ink">Your first session goes here.</h2>
-          <p>Sessions, warmups and check-ins. All in one place.</p>
+          <h2 className="font-display text-[25px] text-ink [text-wrap:balance]">Your first session goes here.</h2>
+          <p className="[text-wrap:balance]">Workouts, warm-ups and check-ins, all in one place.</p>
           <div className="mt-2 flex flex-wrap justify-center gap-2">
             <button className="btn-primary" onClick={() => nav.go('train')}>
-              Find a session
+              Start a workout
             </button>
             <button
               className="btn-secondary"
@@ -208,7 +208,7 @@ export default function History({ nav }) {
             </p>
             {!query && (
               <button className="btn-secondary" onClick={() => nav.go('train')}>
-                Find a session
+                Start a workout
               </button>
             )}
           </div>

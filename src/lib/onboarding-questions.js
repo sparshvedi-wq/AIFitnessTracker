@@ -1,38 +1,37 @@
-// The words on each onboarding question: the question, and one line on what
-// Tally does with the answer. Every "why" line is something the app really
-// does (tests/onboarding-questions.test.mjs checks each one is present and
-// short), so people always know why they are being asked.
+// The words on each onboarding question: the question, and at most a few
+// words of help when the answer needs it. Kept short on purpose; the demos
+// show what Tally does, so the questions don't have to explain it.
 
 export const QUESTION_COPY = {
-  fallout: ['When a plan falls apart, what happens next?', 'Be honest. Most people say the same thing.'],
-  goal: ['What do you want most?', 'Every session leans toward it.'],
-  physique: ['Which look are you after?', 'Your picture of the goal. Change it any time.'],
-  experience: ['How much have you trained?', 'Sets how many sets you start with and which moves you see.'],
-  barriers: ['What gets in your way?', 'Pick all that apply. Tally answers each one.'],
-  variety: ['Same moves, or new ones?', 'Decides how often Tally brings in exercises you haven’t done.'],
-  about: ['What should we call you?', 'Optional. It’s how your plan greets you.'],
-  gender: ['How do you describe yourself?', 'Only used to guess your first weights. Your sets take over after.'],
-  age: ['Which age group?', 'Keeps photo features safe for under-18s.'],
-  sports: ['Do you play a sport?', 'Tally can train around games and practice.'],
-  'sport-choice': ['Which sports?', 'Each one gets its own warm-up.'],
-  priority: ['What comes first?', 'Decides how hard training gets near a game.'],
-  location: ['Where do you usually train?', 'Every move fits the equipment there.'],
-  home: ['Do you also train at home?', 'Tally keeps home sessions to what you own.'],
-  equipment: ['What’s at home?', 'Home sessions only use what you pick.'],
-  'home-loads': ['Which dumbbells do you have?', 'Suggested weights match the sizes you own.'],
-  movement: ['What works in your space?', 'Moves fit your floor, room and noise level.'],
-  time: ['How long can you usually train?', 'A starting length. Change it before any session.'],
-  comfort: ['Any areas to leave out?', 'Tally plans around them. Tap the body to choose.'],
-  'photo-choice': ['How should Tally see your start?', 'Photos or a few numbers. Both work.'],
-  manual: ['A few details instead', 'Height and weight give your plan a starting point.'],
+  fallout: ['When a plan breaks, then what?', null],
+  goal: ['What do you want most?', null],
+  physique: ['Which look are you after?', null],
+  experience: ['How much have you trained?', null],
+  barriers: ['What gets in your way?', 'Pick all that apply'],
+  variety: ['Same moves, or new ones?', null],
+  about: ['What should we call you?', 'Optional'],
+  gender: ['How do you describe yourself?', 'Only for your first weights'],
+  age: ['How old are you?', null],
+  sports: ['Do you play a sport?', null],
+  'sport-choice': ['Which sports?', 'Each gets its own warm-up'],
+  priority: ['What comes first?', null],
+  location: ['Where do you train?', null],
+  home: ['Train at home too?', null],
+  equipment: ['What’s at home?', null],
+  'home-loads': ['Which dumbbells?', null],
+  movement: ['What works in your space?', null],
+  time: ['How long per session?', 'Change it any day'],
+  comfort: ['Any areas to avoid?', 'Tap the body'],
+  'photo-choice': ['Photos or numbers?', 'Both work'],
+  manual: ['A few details', null],
 }
 
 // What usually happens after a plan breaks, said the way people say it.
 export const FALLOUT_OPTIONS = [
-  ['week', 'I skip the rest of the week'],
-  ['restart', 'I start over from scratch'],
+  ['week', 'I skip the week'],
+  ['restart', 'I start over'],
   ['stop', 'I stop for a while'],
-  ['push', 'I push through, worn out'],
+  ['push', 'I push on, worn out'],
 ]
 /** Their answer, as one step of the restart loop. */
 export const falloutStep = (id) =>

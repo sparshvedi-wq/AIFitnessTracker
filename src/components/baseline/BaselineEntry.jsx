@@ -242,9 +242,15 @@ export function BalanceSection({ nav }) {
   return (
     <section className="page-section">
       <SectionHead title="Strength balance" />
-      <div className="mt-3 rounded-tuck bg-surface px-5 py-[18px]">
-        {measured ? <StrengthBalance balance={balance} /> : null}
-        <div className={`${measured ? 'mt-4 ' : ''}grid grid-cols-2 gap-2`}>
+      <div className="mt-3 rounded-tuck bg-surface p-4">
+        {measured ? (
+          <StrengthBalance balance={balance} />
+        ) : (
+          <p className="text-[14px] leading-snug text-muted">
+            See how your main lifts compare. Test them in a short session, or enter what you know.
+          </p>
+        )}
+        <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             className="btn-secondary min-h-11 !px-3 text-[14px]"
             onClick={start}

@@ -19,8 +19,11 @@ import {
   editableStep,
   PAYWALL_STEPS,
 } from '../../lib/onboarding.js'
-import { isStoryStep, NIGHT_STEPS, OWN_CTA_STEPS } from '../../lib/onboarding-story.js'
+import { isStoryStep, OWN_CTA_STEPS } from '../../lib/onboarding-story.js'
 import OnboardingStory from './OnboardingStory.jsx'
+import { INTRO_CTA, INTRO_SLIDES } from './OnboardingIntro.jsx'
+// After the story styles, so Paper wins where both style the same thing.
+import './onboarding-paper.css'
 import { BASELINE_MINUTES, baselineMoves } from '../../lib/baseline.js'
 import {
   hasStartingProfile,
@@ -110,37 +113,16 @@ const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
 }
 // What the main button says where "Continue" would undersell the moment.
+// Plain labels: "Continue" everywhere except where the button does something
+// more specific.
 const NEXT_LABEL = {
-  'why-demo': 'Show me',
-  'barrier-demo': 'That works for me',
   'building-demo': 'See my plan',
-  commit: 'Continue',
-  welcome: 'Build my plan',
-  'solution-demo': 'Let’s build yours',
-  'year-demo': 'Make them count',
-  'fix-demo': 'That works for me',
-  'squeeze-demo': 'Looks good',
-  'midworkout-demo': 'Where do cuts go?',
-  'rollover-demo': 'Smart. Continue',
-  'tally-demo': 'Keep going',
-  'path-demo': 'This is my plan',
-  'loop-demo': 'Break the loop',
-  'goal-demo': 'That’s what I want',
-  'barrier-unsure-demo': 'That helps',
-  'barrier-enjoyment-demo': 'Nice',
-  'equipment-demo': 'Handy',
-  'sport-demo': 'Ready to play',
-  'recent-demo': 'Makes sense',
-  'recovery-demo': 'I like that',
-  'photo-demo': 'Continue',
-  'proof-demo': 'Let’s do it',
-  'value-demo': 'Sounds fair',
   'ready-demo': 'Unlock my plan',
 }
 // The main button's motion on a few story screens.
-const CTA_MOTION = { welcome: 'story-cta--glow', 'ready-demo': 'story-cta--shine' }
+const CTA_MOTION = { 'ready-demo': 'story-cta--shine' }
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
-const PLACE_DETAIL = { gym: 'Any equipment', home: 'What you have at home', 'on-the-go': 'No equipment at all' }
+const PLACE_DETAIL = { gym: 'Full kit', home: 'Your own kit', 'on-the-go': 'No kit' }
 const timePatch = (minutes) => (minutes === 'flexible' ? { flexibleTime: true } : { minutes, flexibleTime: false })
 const placePatch = (location) => ({ location, ...(location === 'home' ? { hasHomeSetup: true } : {}) })
 const DEV = import.meta.env.DEV
@@ -164,6 +146,10 @@ export default function TrainingProfile({ onClose }) {
       })
     : null
   const [current, setCurrent] = useState(draft?.step || (returning ? 'review' : 'welcome'))
+  // Which way the last move went, so the next screen slides in from that side.
+  const [slide, setSlide] = useState('fwd')
+  // Which of the five welcome slides is showing.
+  const [introSlide, setIntroSlide] = useState(0)
   const [responseFor, setResponseFor] = useState(() =>
     returning ? null : restoredOnboardingResponse(draft, p),
   )
@@ -293,6 +279,8 @@ export default function TrainingProfile({ onClose }) {
   // Without a new profile, keep the latest one: a story screen may have just
   // saved an answer in the same tick (the pledge's hold).
   const move = (next, profile = null) => {
+    const to = steps.indexOf(next)
+    setSlide(to !== -1 && to < index ? 'back' : 'fwd')
     setResponseFor(null)
     if (profile) setP(profile)
     setCurrent(next)
@@ -343,6 +331,10 @@ export default function TrainingProfile({ onClose }) {
     onClose()
   }
   const advance = () => {
+    if (step === 'welcome' && introSlide < INTRO_SLIDES - 1) {
+      setIntroSlide((i) => Math.min(i + 1, INTRO_SLIDES - 1))
+      return
+    }
     if (responseFor) {
       move(nextStep)
       return
@@ -427,6 +419,8 @@ export default function TrainingProfile({ onClose }) {
     setGoalMode,
     setWeeklyGoal,
     onNext: () => move(nextStep),
+    introSlide,
+    setIntroSlide,
     onChoose: choose,
     onBack: back,
     onSubscribe: finish,
@@ -470,7 +464,7 @@ export default function TrainingProfile({ onClose }) {
         ) : null
       }
       hideHandle={!returning}
-      className={`${!returning ? 'setup-dialog' : ''} ${NIGHT_STEPS.includes(step) ? 'dark setup-dialog--night' : ''} ${paywall ? 'setup-dialog--pay' : ''}`}
+      className={`${!returning ? 'setup-dialog setup-dialog--paper' : ''} ${paywall ? 'setup-dialog--pay' : ''}`}
       bodyClassName={`${!returning ? 'setup-body' : ''} ${paywall ? 'setup-body--pay' : ''}`}
       footerClassName={!returning ? 'setup-footer' : ''}
       onClose={close}
@@ -505,7 +499,9 @@ export default function TrainingProfile({ onClose }) {
           >
             {responseFor
               ? 'Continue'
-              : step === 'review'
+              : step === 'welcome'
+                ? INTRO_CTA[introSlide]
+                : step === 'review'
                 ? !baselineReady
                   ? 'Add photos or details'
                   : returning
@@ -520,7 +516,8 @@ export default function TrainingProfile({ onClose }) {
       }
     >
       <div
-        className={`onboarding-question ${!returning ? `setup-page setup-page--${responseFor ? 'response' : step}` : ''}`}
+        key={returning ? undefined : `${step}${responseFor ? '-response' : ''}`}
+        className={`onboarding-question ${!returning ? `setup-page setup-page--${responseFor ? 'response' : step} screen-in screen-in--${slide}` : ''}`}
       >
         {recap ? (
           <SetupRecap
@@ -541,8 +538,8 @@ export default function TrainingProfile({ onClose }) {
               <StoryOptions
                 label="Starting point"
                 options={[
-                  { id: 'photos', title: 'Use my photos', detail: 'Front, side and back', icon: 'camera' },
-                  { id: 'manual', title: 'Skip photos', detail: 'Height and weight instead', icon: 'note' },
+                  { id: 'photos', title: 'Take photos', icon: 'camera' },
+                  { id: 'manual', title: 'Height and weight', icon: 'note' },
                 ]}
                 value={p.baselineMode === 'manual' ? 'manual' : 'photos'}
                 onSelect={(baselineMode) => set({ baselineMode })}
@@ -581,7 +578,7 @@ export default function TrainingProfile({ onClose }) {
             {step === 'experience' && (
               <StoryOptions
                 label="Experience"
-                options={EXPERIENCE_OPTIONS.map(([id, title, detail], i) => ({ id, title, detail, icon: i + 1 }))}
+                options={EXPERIENCE_OPTIONS.map(([id, title], i) => ({ id, title, icon: i + 1 }))}
                 value={p.experience}
                 onSelect={(experience) => set({ experience })}
                 onDone={(experience) => choose({ experience })}
@@ -635,10 +632,9 @@ export default function TrainingProfile({ onClose }) {
             {step === 'variety' && (
               <StoryOptions
                 label="Variety"
-                options={VARIETY_OPTIONS.map(([id, title, detail], i) => ({
+                options={VARIETY_OPTIONS.map(([id, title], i) => ({
                   id,
                   title,
-                  detail,
                   icon: ['target', 'repeat', 'sparkle'][i],
                 }))}
                 value={p.variety}
@@ -707,15 +703,13 @@ export default function TrainingProfile({ onClose }) {
                   {
                     id: 'goal',
                     title: p.goal === 'General fitness' ? 'Feeling fitter' : p.goal,
-                    detail: 'Sport fits around it',
                     icon: 'target',
                   },
-                  { id: 'balanced', title: 'A balance of both', detail: 'Lighter near games', icon: 'pair' },
+                  { id: 'balanced', title: 'Both equally', icon: 'pair' },
                   {
                     id: 'sport',
                     title:
                       p.sports.length === 1 ? SPORTS.find((x) => x.id === p.sports[0])?.name || 'My sport' : 'My sports',
-                    detail: 'Training supports your game',
                     icon: 'sport',
                   },
                 ]}
@@ -743,8 +737,8 @@ export default function TrainingProfile({ onClose }) {
               <StoryOptions
                 label="Home training"
                 options={[
-                  { id: true, title: 'Yes, sometimes', detail: 'Next, tell Tally what’s there', icon: 'home' },
-                  { id: false, title: 'Not for now', detail: 'You can add it later', icon: 'x' },
+                  { id: true, title: 'Yes, sometimes', icon: 'home' },
+                  { id: false, title: 'Not for now', icon: 'x' },
                 ]}
                 value={Boolean(p.hasHomeSetup)}
                 onSelect={(hasHomeSetup) => set({ hasHomeSetup })}
@@ -773,7 +767,7 @@ export default function TrainingProfile({ onClose }) {
                   ...[...TIME_OPTIONS, ...(!TIME_OPTIONS.includes(p.minutes) && !p.flexibleTime ? [p.minutes] : [])].map(
                     (m) => ({ id: m, num: m, unit: 'min' }),
                   ),
-                  { id: 'flexible', title: 'It varies', detail: 'Choose the time before each session', icon: 'clock', wide: true },
+                  { id: 'flexible', title: 'It varies', icon: 'clock', wide: true },
                 ]}
                 value={p.flexibleTime ? 'flexible' : p.minutes}
                 onSelect={(minutes) => set(timePatch(minutes))}

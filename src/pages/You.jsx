@@ -118,13 +118,15 @@ export default function You({ nav }) {
           ))}
         </div>
       ) : (
-        <button
-          className="mt-5 flex min-h-14 w-full items-center gap-3 rounded-tuck bg-surface px-4 text-left"
-          onClick={nav.openProfile}
-        >
-          <Icon name="train" size={23} className="text-accent" />
-          <span className="flex-1 text-[14px] font-semibold">{settings.training.goal}</span>
-          <Icon name="edit" size={16} className="text-muted" />
+        <button className="list-row mt-5 rounded-tuck bg-surface px-4" onClick={nav.openProfile}>
+          <span className="icon-tile">
+            <Icon name="train" size={20} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] text-muted">Main goal</span>
+            <span className="block truncate text-[16px] font-semibold">{settings.training.goal}</span>
+          </span>
+          <Icon name="chevronRight" size={17} className="text-faint" />
         </button>
       )}
 
@@ -156,7 +158,7 @@ export default function You({ nav }) {
               onClick={() => setSheet('lift')}
             />
           ) : (
-            <AddRow label="Set a strength goal" onClick={() => setSheet('lift')} />
+            <AddRow label="Set a strength goal" detail="Pick a lift and a target weight" onClick={() => setSheet('lift')} />
           )}
           <GoalCard
             title={hasTarget ? `Around ${goal} days in any 7` : 'Train when it suits you'}
@@ -164,7 +166,7 @@ export default function You({ nav }) {
             pct={hasTarget ? Math.min(100, (progress.count / goal) * 100) : null}
             note={
               !hasTarget
-                ? null
+                ? 'No weekly target. Tap to set one.'
                 : progress.count >= goal
                   ? 'Target met. Rest when you need to.'
                   : 'Any seven days. Nothing to make up.'
@@ -178,7 +180,7 @@ export default function You({ nav }) {
       <BalanceSection nav={nav} />
 
       {!display.metricLight && (
-        <section className="page-section rounded-tuck bg-surface px-5 py-[18px]">
+        <section className="page-section rounded-tuck bg-surface p-4">
           <div className="flex items-center justify-between">
             <span className="text-[14px] font-semibold">Bodyweight</span>
             <button
@@ -259,7 +261,7 @@ export default function You({ nav }) {
             ['phone', 'Haptics', 'vibrate'],
             ['volume', 'Sounds', 'sound'],
             ['sun', 'Keep screen on', 'keepAwake'],
-            ['mic', 'Spoken cues', 'voice', 'Accessibility'],
+            ['mic', 'Spoken cues', 'voice'],
           ].map(([icon, label, key, group]) => (
             <div key={key} className="list-row min-h-[60px] border-t border-line">
               <RowIcon name={icon} />
@@ -444,7 +446,7 @@ function AddRow({ label, detail, onClick }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-[15px] font-semibold">{label}</span>
-        <span className="mt-0.5 block text-[13px] text-muted">{detail}</span>
+        {detail && <span className="mt-0.5 block text-[13px] text-muted">{detail}</span>}
       </span>
     </button>
   )

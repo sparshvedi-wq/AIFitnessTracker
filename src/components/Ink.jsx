@@ -215,7 +215,7 @@ export function Toggle({ checked, onChange, label }) {
         className={`absolute inset-x-0 top-2 h-7 rounded-full transition-colors ${checked ? 'bg-accent' : 'bg-outline'}`}
       />
       <span
-        className={`absolute top-2.5 h-6 w-6 rounded-full bg-ink transition-[left] ${checked ? 'left-[22px]' : 'left-0.5'}`}
+        className={`absolute top-2.5 h-6 w-6 rounded-full bg-white shadow-[0_1px_3px_rgb(0_0_0/0.28)] transition-[left] ${checked ? 'left-[22px]' : 'left-0.5'}`}
       />
     </button>
   )

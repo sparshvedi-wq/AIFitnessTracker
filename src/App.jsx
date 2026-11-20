@@ -1,7 +1,8 @@
 // App shell: four tabs (Home, Train, History, You), plus the active workout,
 // which keeps running above whichever tab is open.
 
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import BootSkeleton from './components/Skeleton.jsx'
 import Home from './pages/Home.jsx'
 import Train from './pages/Train.jsx'
 import History from './pages/History.jsx'
@@ -10,12 +11,7 @@ import WorkoutHost from './components/workout/WorkoutHost.jsx'
 import { useApp } from './store/AppContext.jsx'
 import ToastHost from './components/Toast.jsx'
 import Icon from './components/Icon.jsx'
-import SessionSetup from './components/training/SessionSetup.jsx'
-import TrainingProfile from './components/training/TrainingProfile.jsx'
-import PhotoCheckins from './components/training/PhotoCheckins.jsx'
-import PersonalSettings from './components/training/PersonalSettings.jsx'
 import { displayOf } from './lib/preferences.js'
-import TrainingEvents from './components/training/TrainingEvents.jsx'
 import { ONBOARDING_VERSION } from './lib/onboarding.js'
 import { shortSessionRequest } from './lib/flexible-training.js'
 import { photoDraft } from './lib/photo-draft.js'
@@ -23,6 +19,12 @@ import WorkoutSwitchDialog from './components/workout/WorkoutSwitchDialog.jsx'
 import { endForSwitch } from './lib/workout-switch.js'
 import { feel } from './lib/coach.js'
 import { firstSessionAchievement } from './lib/milestones.js'
+
+const SessionSetup = lazy(() => import('./components/training/SessionSetup.jsx'))
+const TrainingProfile = lazy(() => import('./components/training/TrainingProfile.jsx'))
+const PhotoCheckins = lazy(() => import('./components/training/PhotoCheckins.jsx'))
+const PersonalSettings = lazy(() => import('./components/training/PersonalSettings.jsx'))
+const TrainingEvents = lazy(() => import('./components/training/TrainingEvents.jsx'))
 
 // Quiet, consistent touch feedback: a selection tick on choices and toggles,
 // a light tap on primary actions. Follows the Haptics setting.
@@ -200,6 +202,7 @@ export default function App() {
             setSetup(shortSessionRequest())
           }}
         />
+        <Suspense fallback={<div className="fixed inset-0 z-40 overflow-hidden bg-bg"><BootSkeleton /></div>}>
         {setup && (
           <SessionSetup
             routine={setup}
@@ -241,6 +244,7 @@ export default function App() {
             onClose={() => setPersonalOpen(false)}
           />
         )}
+        </Suspense>
         {pendingWorkout && state.activeWorkout?.id === pendingWorkout.sessionId && (
           <WorkoutSwitchDialog
             session={state.activeWorkout}

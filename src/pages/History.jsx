@@ -123,7 +123,7 @@ export default function History({ nav }) {
           {[
             [view.days, 'Days'],
             [view.sets, 'Sets'],
-            [view.activities, 'Activities'],
+            [view.activities, 'Other activities'],
           ].map(([value, label]) => (
             <StatTile key={label} value={value} label={label} className="stat-tile--bare" />
           ))}

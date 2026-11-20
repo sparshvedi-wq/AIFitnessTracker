@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import visuals from '../../lib/exercise-visuals.json'
+import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 
 // The two frames share one source so changing position never triggers a download.
 export default function ExerciseVisualGuide({ exercise }) {
   const [frame, setFrame] = useState(0)
   const [failed, setFailed] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  const source = exerciseThumb(exercise.exId)
+  if (!source) return null
   const visual = visuals[exercise.exId]
-  if (!visual) return null
-  const source = `${import.meta.env.BASE_URL}exercise-guides/${exercise.exId}.png`
+  const stacked = visual.layout === 'stacked'
 
   return (
     <figure className="mt-4 overflow-hidden rounded-[22px] border border-line">
-      <div className="relative aspect-square overflow-hidden bg-[#131416]">
+      <div className={`relative overflow-hidden bg-[#131416] ${stacked ? 'aspect-[2/1]' : 'aspect-square'}`}>
         {!loaded && !failed && (
           <div
             className="absolute inset-0 flex items-center justify-center text-[13px] text-[#ECE9E2]"
@@ -38,11 +40,12 @@ export default function ExerciseVisualGuide({ exercise }) {
           <img
             src={source}
             alt={`${exercise.name}: ${visual.frames[frame]}. Illustrated mannequin demonstration.`}
-            width="2048"
-            height="1024"
             decoding="async"
-            className="absolute inset-y-0 h-full w-[200%] max-w-none object-fill"
-            style={{ left: frame === 0 ? '0%' : '-100%', opacity: loaded ? 1 : 0 }}
+            className={`absolute max-w-none object-fill ${stacked ? 'left-0 h-[200%] w-full' : 'top-0 h-full w-[200%]'}`}
+            style={{
+              [stacked ? 'top' : 'left']: frame === 0 ? '0%' : '-100%',
+              opacity: loaded ? 1 : 0,
+            }}
             onLoad={() => setLoaded(true)}
             onError={() => setFailed(true)}
           />

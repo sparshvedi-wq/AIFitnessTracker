@@ -35,6 +35,7 @@ export function withTarget(item, meta, def, ctx) {
     type: def.type,
     weighted: def.weighted,
     index: ctx.historyIndex,
+    place: ['stack', 'plate', 'assist'].includes(meta.load) ? ctx.place.id : null,
   })
   const signal = ctx.signals.get(meta.id)
   const trend = progressionTrend(sessions, meta, def.type)

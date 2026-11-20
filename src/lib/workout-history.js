@@ -93,11 +93,13 @@ export function correctWorkout(workout, { date, note, exercises }, today) {
   }
 }
 
-export function rebuildRecords(workouts) {
+export function rebuildRecords(workouts, previous = []) {
   const ordered = [...workouts].sort(
     (a, b) => a.date.localeCompare(b.date) || (a.startedAt || 0) - (b.startedAt || 0),
   )
-  return ordered.map((w, i) => ({
+  let prefix = 0
+  while (prefix < ordered.length && ordered[prefix] === previous[prefix]) prefix++
+  return [...ordered.slice(0, prefix), ...ordered.slice(prefix).map((w, offset) => ({
     ...w,
     records: w.sample
       ? w.records
@@ -109,7 +111,7 @@ export function rebuildRecords(workouts) {
               sets: e.sets.map((s) => ({ ...s, status: 'done' })),
             })),
           },
-          ordered.slice(0, i),
+          ordered.slice(0, prefix + offset),
         ),
-  }))
+  }))]
 }

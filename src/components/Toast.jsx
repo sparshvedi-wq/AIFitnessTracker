@@ -1,6 +1,7 @@
 // Toast notifications with an optional action (e.g. "Undo" after delete).
 // They sit at the top so they never cover a screen's primary action.
 
+import { exportData } from '../lib/backup.js'
 import { useApp } from '../store/AppContext.jsx'
 import Icon from './Icon.jsx'
 
@@ -11,7 +12,7 @@ const DOT = {
 }
 
 export default function ToastHost() {
-  const { toasts, dismissToast, storageError, retrySave } = useApp()
+  const { state, toasts, dismissToast, storageError, retrySave } = useApp()
   return (
     <div
       data-dialog-exempt
@@ -21,7 +22,8 @@ export default function ToastHost() {
           role="alert"
           className="pointer-events-auto flex w-full max-w-sm items-center gap-3 rounded-2xl border border-danger bg-surface p-4 text-[14px]"
         >
-          <span className="flex-1">Changes aren’t saved yet.</span>
+          <span className="flex-1">{storageError === 'Another tab changed the same training data.' ? storageError : 'Changes aren’t saved yet.'}</span>
+          {storageError === 'Another tab changed the same training data.' && <button className="btn-secondary min-h-11" onClick={() => exportData(state)}>Export this copy</button>}
           <button className="btn-secondary min-h-11" onClick={retrySave}>
             Retry
           </button>

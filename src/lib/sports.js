@@ -332,7 +332,7 @@ export function orderedSports(profile = {}, lastSport) {
 export function buildSportWarmup(
   sportId,
   minutes = 10,
-  { lowImpact = false, movement = null, avoidMuscles = [] } = {},
+  { lowImpact = false, movement = null, avoidMuscles = [], excluded = new Set(), signals = new Map() } = {},
 ) {
   const s = sportById(sportId)
   minutes = Math.min(20, Math.max(5, Math.round(Number(minutes) || 10)))
@@ -357,6 +357,7 @@ export function buildSportWarmup(
     },
   ]
   const items = []
+  const allowed = (id) => !excluded.has(id) && !signals.get(id)?.comfort.restricted && !signals.get(id)?.explicitDislike
   const preferences =
     movement || lowImpact
       ? {
@@ -395,9 +396,10 @@ export function buildSportWarmup(
         }[id]
         id =
           preferences.position === 'seated'
-            ? ['seated-heel-raise', 'seated-reach', 'seated-brace', 'seated-scapular'][
-                (phaseIndex + index) % 4
-              ]
+            ? ['seated-heel-raise', 'seated-reach', 'seated-brace', 'seated-scapular']
+                .map((_, i, ids) => ids[(phaseIndex + index + i) % ids.length])
+                .find((candidate) => allowed(candidate) && candidate !== items.at(-1)?.exId &&
+                  !avoidMuscles.includes(SEATED_EXERCISES.find((e) => e.id === candidate)?.muscle))
             : stationary && movementAllowed(stationary, preferences)
               ? stationary
               : phaseIndex === 0
@@ -427,7 +429,7 @@ export function buildSportWarmup(
       (['Legs', 'Glutes', 'Cardio'].includes(def?.muscle)
         ? ['Legs', 'Glutes', 'Core']
         : [def?.muscle || 'Legs'])
-    return movementAllowed(item.exId, preferences) && !uses.some((m) => avoidMuscles.includes(m))
+    return Boolean(item.exId) && allowed(item.exId) && movementAllowed(item.exId, preferences) && !uses.some((m) => avoidMuscles.includes(m))
   })
   return {
     id: `sport-${s.id}`,

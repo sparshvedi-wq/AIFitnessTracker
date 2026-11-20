@@ -61,7 +61,7 @@ export function nextTimeNotes(workout, profile, unit, customExercises = [], cont
     const done = (e.sets || []).filter(isWork)
     if (!def || !done.length) continue
     const meta = metaOf(def.id) || { load: def.weighted ? 'hand' : 'bw', role: 'accessory' }
-    const place = placeFor(metaOf(def.id), profile, record.location)
+    const place = placeFor(metaOf(def.id), profile, done.at(-1)?.location ?? e.location ?? record.location)
     const sizes = DUMBBELL_MOVES.includes(def.id) ? availableLoads(profile, place) : []
     const signal = signals.get(def.id)
     const target = strengthTarget({

@@ -18,6 +18,44 @@ const MUSCLES = {
 }
 
 const BY_EXERCISE = {
+  'scapular-push-up': {
+    mistakes: ['Bending the elbows', 'Moving from the hips instead of the shoulder blades', 'Forcing a large range'],
+  },
+  'glute-bridge-march': {
+    mistakes: ['Dropping your hips each time a foot lifts', 'Letting your pelvis turn', 'Rushing the foot switch'],
+  },
+  'front-squat': {
+    mistakes: ['Letting the elbows drop', 'Supporting the bar with your wrists instead of your shoulders', 'Letting your heels lift'],
+  },
+  'cable-pallof-press': {
+    mistakes: ['Facing the pulley instead of standing sideways', 'Letting the cable turn your torso', 'Leaning away from the cable'],
+  },
+  'band-pallof-press': {
+    mistakes: ['Facing the anchor instead of standing sideways', 'Using an unstable anchor', 'Letting the band turn your torso'],
+  },
+  'ball-hamstring-curl': {
+    mistakes: ['Dropping the hips as the ball comes in', 'Arching the lower back to lift higher', 'Letting the ball roll back quickly'],
+  },
+  'kneeling-push-up': {
+    muscles: { primary: 'Chest and triceps', secondary: 'Front shoulders and core' },
+    mistakes: ['Bending at the hips instead of lowering as one piece', 'Flaring the elbows', 'Reaching down with your chin'],
+  },
+  'lateral-lunge': {
+    muscles: { primary: 'Quads and glutes', secondary: 'Inner thighs and core' },
+    mistakes: ['Letting your bent knee fall inward', 'Lifting the heel on the stepping side', 'Bending the other knee into a squat'],
+  },
+  'single-leg-glute-bridge': {
+    muscles: { primary: 'Glutes', secondary: 'Hamstrings and core' },
+    mistakes: ['Letting one hip drop or turn', 'Arching your lower back to get higher', 'Pushing off with the free foot'],
+  },
+  'bird-dog': {
+    muscles: { primary: 'Core and lower back', secondary: 'Glutes and shoulders' },
+    mistakes: ['Turning your hips toward the lifted leg', 'Arching your lower back to reach higher', 'Reaching with the arm and leg on the same side'],
+  },
+  'db-floor-press': {
+    muscles: { primary: 'Chest and triceps', secondary: 'Front shoulders' },
+    mistakes: ['Bouncing your upper arms off the floor', 'Letting the weights roll toward your face', 'Holding your elbows straight out to the sides'],
+  },
   'seated-knee-extension': {
     muscles: { primary: 'Quads', secondary: 'Gentle knee movement; no added load' },
     mistakes: [
@@ -123,14 +161,14 @@ const BY_EXERCISE = {
     mistakes: [
       'Arching your lower back',
       'Pressing the bar out in front',
-      'Not finishing with arms straight overhead',
+      'Stopping with the bar forward of your shoulders',
     ],
   },
   'pull-up': {
     muscles: { primary: 'Lats', secondary: 'Biceps and mid back' },
     mistakes: [
       'Kicking or swinging for momentum',
-      'Stopping short of a full hang',
+      'Dropping quickly into the bottom position',
       'Shrugging shoulders to your ears',
     ],
   },
@@ -140,7 +178,7 @@ const BY_EXERCISE = {
   },
   'push-up': {
     muscles: { primary: 'Chest and triceps', secondary: 'Shoulders and core' },
-    mistakes: ['Hips sagging toward the floor', 'Half reps', 'Head dropping forward'],
+    mistakes: ['Hips sagging toward the floor', 'Rushing the lowering phase', 'Head dropping forward'],
   },
   lunge: {
     muscles: { primary: 'Quads and glutes', secondary: 'Hamstrings and calves' },
@@ -154,6 +192,11 @@ const BY_EXERCISE = {
 
 // Common mistakes for each substitution family (catalog metadata).
 const FAMILY_MISTAKES = {
+  jumping: ['Landing stiff-legged or loudly', 'Letting knees collapse inward on landing', 'Continuing at a pace you can no longer control'],
+  'conditioning-floor': ['Letting your hips sag or bounce', 'Shifting your hands away from under your shoulders', 'Speeding up before you can control each step'],
+  'spine-mobility': ['Forcing your back past a comfortable range', 'Rushing the movement', 'Holding your breath'],
+  'hip-mobility': ['Forcing the stretch', 'Arching your back to reach farther', 'Bouncing at the end of the movement'],
+  'hamstring-mobility': ['Bouncing into the stretch', 'Forcing your knee straight', 'Rounding your back to reach farther'],
   'horizontal-press': ['Flaring elbows straight out to the sides', 'Bouncing at the bottom', 'Letting your hips sag or lift'],
   'incline-press': ['Setting the incline steeper than you need', 'Flaring elbows straight out', 'Bouncing at the bottom'],
   'vertical-press': ['Arching your lower back to finish the press', 'Pressing forward instead of up', 'Rushing the lowering phase'],

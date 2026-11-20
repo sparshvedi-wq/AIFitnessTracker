@@ -347,7 +347,7 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
   const bw = live ? G.bodyweight : bodyweightAt(G.metrics, record.date, unit)
   const effort = isNum(record.effort) ? record.effort : null
   const entries = []
-  for (const e of record.exercises || []) {
+  for (const e of [...(record.exercises || []), ...(record.attemptOnly || []), ...(record.priorAttempts || [])]) {
     if (!e?.exId) continue
     const profile = exerciseProfile(e.exId, findExercise(e.exId, G.customExercises))
     if (!profile) continue
@@ -366,8 +366,11 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
     const meta = metaOf(e.exId)
     const ceiling = ceilingFor(meta, unit)
     const start = Number.isInteger(e.calibratedFrom) && e.calibratedFrom > 0 ? e.calibratedFrom : 0
-    const out = byKey.get(e.exId) || { profile, place: record.location, observations: [], sets: [], rejected: [] }
-    byKey.set(e.exId, out)
+    const group = (place) => {
+      const key = JSON.stringify([e.exId, place])
+      if (!byKey.has(key)) byKey.set(key, { exId: e.exId, profile, place, observations: [], sets: [], rejected: [] })
+      return byKey.get(key)
+    }
     let workIndex = 0
     const attempts = (Array.isArray(e.attempts) ? e.attempts : []).filter((a) => a && Number.isInteger(a.setIndex) && a.setIndex >= start)
     const pushAttempts = (index, final) => {
@@ -382,11 +385,12 @@ function recordEvidence(G, record, { live = false, skip = () => false } = {}) {
         // planned reps). Without: not even one.
         const most = isNum(a.reps) && a.reps >= 1 ? Math.min(MAX_MODEL_REPS, Math.round(a.reps)) : 0
         const bound = most ? IMPLICIT.tooHeavyForReps : IMPLICIT.tooHeavy
-        out.observations.push({ kind: 'upper', reps: most, rir: bound.atMost, sd: bound.sd, L, a: availability(G.fatigue, profile), explicit: true, source: 'too-heavy', setIndex: a.setIndex, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, ...(a.test ? { test: 'missed' } : {}) })
+        group(a.location ?? e.location ?? record.location).observations.push({ kind: 'upper', reps: most, rir: bound.atMost, sd: bound.sd, L, a: availability(G.fatigue, profile), explicit: true, source: 'too-heavy', setIndex: a.setIndex, bwKnown: bw.known, bwShare: (profile.bw * bw.value) / L, ...(a.test ? { test: 'missed' } : {}) })
       }
     }
     for (const s of sets) {
       // The time the set was logged, when saved; otherwise spread over the session.
+      const out = group(s.location ?? e.location ?? record.location)
       const loggedAt = isNum(s.at) ? s.at + shift : isNum(s.doneAt) ? s.doneAt + shift : null
       const at = loggedAt ?? times[Math.min(t, times.length - 1)] ?? recordTime(record)
       t++
@@ -773,15 +777,17 @@ function applyRecord(G, record, { live = false, skip } = {}) {
     return
   }
   const { byKey, stimulus } = recordEvidence(G, record, { live, skip })
-  for (const [exId, ev] of byKey) {
+  for (const ev of byKey.values()) {
+    const exId = ev.exId
     if (!ev.profile.tie || !ev.observations.length) {
       for (const r of ev.rejected) G.rejected.push({ ...r, exId, workoutId: record.id, date: record.date })
       continue
     }
     ensureExercise(G, ev.profile, ev.place)
   }
-  if (!live) advance(G, isNum(record.startedAt) ? Math.min(record.startedAt + timeShift(record), at) : at, { trainedKeys: [...byKey.keys()] })
-  for (const [exId, ev] of byKey) {
+  if (!live) advance(G, isNum(record.startedAt) ? Math.min(record.startedAt + timeShift(record), at) : at, { trainedKeys: [...new Set([...byKey.values()].map((ev) => ev.exId))] })
+  for (const ev of byKey.values()) {
+    const exId = ev.exId
     if (!ev.profile.tie || !ev.observations.length) continue
     const firstSession = !G.exercises.get(exId)?.n
     const { rejected, innovation } = applyExercise(G, exId, ev, { live, firstSession })

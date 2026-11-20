@@ -566,7 +566,7 @@ export function markTooHeavy(session, ctx, now = Date.now(), { soft = false } = 
           : {
               ...e,
               offer: { ...offer, status: 'missed' },
-              attempts: [...(Array.isArray(e.attempts) ? e.attempts : []), { weight: round(set.weight), unit: ctx.unit, setIndex: workIndexOf(e, c.set), at: now, test: true, ...(set.reps > 1 ? { reps: set.reps - 1 } : {}) }],
+              attempts: [...(Array.isArray(e.attempts) ? e.attempts : []), { weight: round(set.weight), unit: ctx.unit, location: session.location, setIndex: workIndexOf(e, c.set), at: now, test: true, ...(set.reps > 1 ? { reps: set.reps - 1 } : {}) }],
               sets: e.sets.map((s, j) =>
                 j === c.set
                   ? { ...s, test: undefined, weight: offer.from, targetWeight: offer.from, ...(isNum(offer.fromReps) ? { reps: offer.fromReps, targetReps: offer.fromReps } : {}) }
@@ -580,6 +580,7 @@ export function markTooHeavy(session, ctx, now = Date.now(), { soft = false } = 
   const attempt = {
     weight: round(set.weight),
     unit: ctx.unit,
+    location: session.location,
     setIndex: workIndexOf(ex, c.set),
     at: now,
     ...(soft && planned >= 2 ? { reps: planned - 1 } : {}),

@@ -6,6 +6,7 @@
 // A workout is a finished session saved to state.workouts.
 
 import { findExercise } from './exercises.js'
+import { convertWeight } from './units.js'
 import { uid } from './id.js'
 import { addDays, fromKey, todayKey, toKey } from './date.js'
 import { DUMBBELL_MOVES, fitAvailableLoad } from './preferences.js'
@@ -229,6 +230,7 @@ export function buildSession(
     placeName: routine.placeName || null,
     readiness: routine.readiness || null,
     equipmentProfile: routine.equipmentProfile || null,
+    pace: routine.pace || 1,
     movement: routine.movement || null,
     schedule: routine.schedule || null,
     // Muscles kept lighter today (a nearby practice, a very hard session).
@@ -284,7 +286,7 @@ export function makeSessionExercise(def, item, target, { last = null, note = nul
     exId: def.id,
     name: def.name,
     muscle: def.muscle,
-    type: def.type,
+    type: item.sec > 0 && target.sec > 0 && target.reps == null ? 'time' : def.type,
     weighted: def.weighted,
     cues: def.cues || [],
     restSec: item.restSec ?? 60,
@@ -456,7 +458,7 @@ export function completeSet(session, now = Date.now(), patch = {}) {
   if (!c) return session
   const ex = session.exercises[c.ex]
   // When the set was logged: places it in time for recovery and learns pace.
-  let next = { ...patchSet(session, c, { doneAt: now, ...patch, status: 'done' }), lastLogged: { ...c } }
+  let next = { ...patchSet(session, c, { doneAt: now, location: session.location ?? null, ...patch, status: 'done' }), lastLogged: { ...c } }
   // Carry a changed weight into the sets still to come, unless you've
   // already set those yourself.
   const weight = next.exercises[c.ex].sets[c.set].weight
@@ -641,7 +643,7 @@ export function totals(exercises) {
         reps += s.reps || 0
         // Weight actually lifted: both dumbbells for two-handed per-hand moves
         // (from the exercise library); assistance is not lifted weight.
-        if (e.weighted && !assisted(e.exId)) volume += (s.reps || 0) * (s.weight || 0) * handsOf(e.exId)
+        if (e.weighted && !assisted(e.exId)) volume += (s.reps || 0) * (s.weight || 0) * handsOf(e.exId) * (e.unilateral ? 2 : 1)
       }
     }
   }
@@ -666,7 +668,7 @@ export function workoutVolume(w) {
 // Epley estimate of a one-rep max.
 export const oneRepMax = (weight, reps) => (reps > 0 && weight > 0 ? weight * (1 + reps / 30) : 0)
 
-export function bestLifts(workouts, exId) {
+export function bestLifts(workouts, exId, unit, place) {
   let weight = 0
   let e1rm = 0
   let reps = 0
@@ -678,12 +680,13 @@ export function bestLifts(workouts, exId) {
     for (const e of w.exercises) {
       if (e.exId !== exId) continue
       for (const s of e.sets) {
-        if (s.kind === 'warmup') continue
+        if (s.kind === 'warmup' || (place !== undefined && (s.location ?? e.location ?? w.location ?? null) !== place)) continue
+        const load = convertWeight(s.weight || 0, w.unit || unit, unit || w.unit)
         if (assisted(exId)) {
-          if ((s.reps || 0) > 0) assistance = Math.min(assistance ?? Infinity, s.weight || 0)
+          if ((s.reps || 0) > 0) assistance = Math.min(assistance ?? Infinity, load)
         } else {
-          weight = Math.max(weight, s.weight || 0)
-          e1rm = Math.max(e1rm, oneRepMax(s.weight || 0, s.reps || 0))
+          weight = Math.max(weight, load)
+          e1rm = Math.max(e1rm, oneRepMax(load, s.reps || 0))
         }
         reps = Math.max(reps, s.reps || 0)
         sec = Math.max(sec, s.sec || 0)
@@ -699,19 +702,24 @@ export function findRecords(session, workouts) {
   if (['sport', 'recovery', 'pump'].includes(session.kind)) return []
   workouts = workouts.filter((w) => !w.sample && !['sport', 'recovery', 'pump'].includes(w.kind))
   const out = []
-  for (const e of session.exercises) {
+  const groups = session.exercises.flatMap((e) => {
+    if (!exerciseProfile(e.exId)?.machine) return [e]
+    const byPlace = new Map()
+    for (const s of e.sets) {
+      const place = s.location ?? e.location ?? session.location ?? null
+      if (!byPlace.has(place)) byPlace.set(place, { ...e, location: place, sets: [] })
+      byPlace.get(place).sets.push(s)
+    }
+    return [...byPlace.values()]
+  })
+  for (const e of groups) {
     const done = e.sets.filter((s) => s.status === 'done' && s.kind !== 'warmup')
     if (!done.length) continue
     // Machine and cable stacks differ between gyms: their numbers are only
     // compared with the same place.
-    const pool = exerciseProfile(e.exId)?.machine
-      ? workouts.filter((w) => (w.location || null) === (session.location || null))
-      : workouts
-    const prior = pool.some((w) =>
-      w.exercises.some((x) => x.exId === e.exId && x.sets.some((s) => s.kind !== 'warmup')),
-    )
-    if (!prior) continue
-    const best = bestLifts(pool, e.exId)
+    const place = exerciseProfile(e.exId)?.machine ? e.location : undefined
+    const best = bestLifts(workouts, e.exId, session.unit, place)
+    if (!best.reps && !best.sec && best.assistance == null) continue
     const unit = session.unit
     if (e.type === 'time') {
       const sec = Math.max(...done.map((s) => s.sec || 0))
@@ -748,6 +756,7 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
       muscle: e.muscle,
       type: e.type,
       weighted: e.weighted,
+      location: e.sets.find((s) => s.status === 'done')?.location ?? e.attempts?.[0]?.location ?? session.location ?? null,
       // The rest it was planned with, so "Repeat" and pace keep it.
       ...(Number.isFinite(e.restSec) ? { restSec: e.restSec } : {}),
       ...(e.unilateral ? { unilateral: true } : {}),
@@ -760,11 +769,13 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
         .filter((s) => s.status === 'done')
         .map((s) => ({
           kind: s.kind || 'work',
+          location: s.location ?? session.location ?? null,
           reps: e.type === 'time' ? null : s.reps || 0,
           sec: e.type === 'time' ? s.sec || 0 : null,
           weight: e.weighted ? s.weight || 0 : null,
           targetReps: s.targetReps,
           targetSec: s.targetSec,
+          ...(e.weighted && Number.isFinite(s.targetWeight) ? { targetWeight: s.targetWeight } : {}),
           // How the set felt (one tap) and whether the numbers were typed in.
           ...(s.feel ? { feel: s.feel } : {}),
           ...(reserveFor(s.feel, s.reserve) ? { reserve: s.reserve } : {}),
@@ -775,6 +786,11 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
         })),
     }))
     .filter((e) => e.sets.length > 0)
+  const attemptOnly = [...(session.priorAttempts || []), ...session.exercises
+    .filter((e) => e.attempts?.length && !e.sets.some((s) => s.status === 'done'))
+    .map((e) => ({ exId: e.exId, location: session.location, attempts: e.attempts, sets: [] }))]
+  const loggedPlaces = new Set(exercises.flatMap((e) => e.sets.map((s) => s.location)).filter(Boolean))
+  const recordPlace = loggedPlaces.size === 1 ? [...loggedPlaces][0] : session.location
 
   return {
     id: session.id,
@@ -787,8 +803,9 @@ export function toWorkoutRecord(session, workouts, { now = Date.now(), effort = 
     kind: session.kind || 'routine',
     sport: session.sport,
     requestedMinutes: session.requestedMinutes,
-    location: session.location,
-    placeName: session.placeName || null,
+    location: recordPlace,
+    placeName: loggedPlaces.size > 1 ? 'Multiple places' : recordPlace === session.location ? session.placeName || null : null,
+    ...(attemptOnly.length ? { attemptOnly } : {}),
     movement: session.movement,
     schedule: session.schedule,
     planning: session.planning,

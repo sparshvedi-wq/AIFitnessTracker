@@ -6,6 +6,8 @@ import { nextTimeNotes } from '../../lib/next-time.js'
 import { profileOf } from '../../lib/planner.js'
 import { count } from '../../lib/presentation.js'
 import { findExercise } from '../../lib/exercises.js'
+import { preferredLoadQuestion } from '../../lib/engine/load-preference.js'
+import { metaOf } from '../../lib/catalog/index.js'
 import { chooseQuestion } from '../../lib/engine/feedback.js'
 import { answerEvent, dismissEvent } from '../../lib/engine/learning.js'
 import { useApp } from '../../store/AppContext.jsx'
@@ -36,6 +38,8 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
     })
   }, [achievement, state.settings.milestones, dispatch])
   const invitation = nextVisitInvitation(workout)
+  const firstCutForTime = workout.unfinished?.some((u) => u.reason === 'time') &&
+    !state.workouts.some((w) => w.id !== workout.id && !w.sample && w.unfinished?.some((u) => u.reason === 'time'))
   // Same counting as the tally and the milestone: working sets, warm-ups apart.
   const sets = workingSetCount(workout)
   const warmups = warmupSetCount(workout)
@@ -55,6 +59,12 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
     const saved = state.workouts.find((w) => w.id === workout.id) || workout
     return chooseQuestion(state, saved, { now: Date.now(), today })
   })
+  const [loadChoice] = useState(() => {
+    const choice = preferredLoadQuestion(state, workout)
+    return choice && metaOf(choice.exId)?.load !== 'assist' ? choice : null
+  })
+  const [loadChoiceDone, setLoadChoiceDone] = useState(false)
+  const useLoadChoice = loadChoice && (!question || question.question === 'again' || question.question === 'effort')
   const [answer, setAnswer] = useState(null)
   const [detail, setDetail] = useState('')
   const [hidden, setHidden] = useState(false)
@@ -76,7 +86,10 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
   }
   const dismiss = () => {
     // A dismissal is never an answer; it only spaces out future questions.
-    if (question && !settled.current) {
+    if (useLoadChoice && !loadChoiceDone && !settled.current) {
+      settled.current = true
+      dispatch({ type: 'LEARNING_EVENT', event: dismissEvent({ exId: loadChoice.exId, question: 'load', workoutId: workout.id, at: Date.now() }) })
+    } else if (!useLoadChoice && question && !settled.current) {
       settled.current = true
       dispatch({
         type: 'LEARNING_EVENT',
@@ -126,7 +139,18 @@ export default function SessionSaved({ workout, onClose, onPreview }) {
             <span className="font-semibold text-accent">· {count(workout.newBests, 'new best')}</span>
           )}
         </p>
-        {question && !hidden && (
+        {firstCutForTime && (
+          <p className="mt-4 rounded-tuck bg-surface2 p-4 text-[15px]">
+            Your completed sets count. Tally can bring unfinished moves back when they fit your time and recovery.
+          </p>
+        )}
+        {useLoadChoice && !loadChoiceDone && (
+          <button className="btn-secondary mt-4 min-h-12 w-full" onClick={() => {
+            setLoadChoiceDone(true)
+            dispatch({ type: 'LEARNING_EVENT', event: { ...loadChoice, kind: 'load-limit', question: 'load', at: Date.now() } })
+          }}>Keep {loadChoice.name} at {Number(loadChoice.weight.toFixed(1))} {loadChoice.unit} next time</button>
+        )}
+        {!useLoadChoice && question && !hidden && (
           <section className="mt-5 rounded-tuck bg-surface2 p-4" aria-labelledby="feedback-question">
             <div className="flex items-start justify-between gap-3">
               <h4 id="feedback-question" className="text-[15px] font-semibold leading-snug">

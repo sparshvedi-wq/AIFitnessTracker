@@ -75,7 +75,7 @@ export async function openPreviews(state) {
       console.error('Could not move a check-in preview:', error)
     }
   }
-  const stored = await loadPreviews(state.checkins.filter((c) => !c.previews).map((c) => c.id)).catch(
+  const stored = await loadPreviews(keptPreviewIds(state.checkins.filter((c) => !c.previews && c.hasPreviews !== false))).catch(
     (error) => {
       console.error('Could not open check-in previews:', error)
       return {}

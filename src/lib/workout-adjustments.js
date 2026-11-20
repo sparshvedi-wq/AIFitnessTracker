@@ -99,7 +99,7 @@ export function adaptRoutineItems(state, items, location, readiness, options = {
       ? Boolean(code) && code !== 'experience'
       : place.base !== 'gym' && def.weighted
     const quietSwap = quiet && QUIET_ALTERNATIVES[def.id]
-    if (quietSwap && movementAllowed(QUIET_ALTERNATIVES[def.id], movement)) {
+    if (quietSwap && !ineligibility(metaOf(quietSwap), elig) && movementAllowed(quietSwap, movement)) {
       const old = def.name
       def = findExercise(QUIET_ALTERNATIVES[def.id])
       if (avoids.has('Legs')) {
@@ -294,7 +294,7 @@ function swapNote(def, weight, adaptive, unit) {
 // The estimate is a planning aid, never a deadline or a measured duration.
 export function shortenSession(session, minutes, now = Date.now()) {
   if (!Number.isFinite(minutes) || minutes < 1) return session
-  let budget = minutes * 60
+  let budget = minutes * 60 / (session.pace || 1)
   let keptPending = 0
   const exercises = session.exercises.map((e) => {
     const item = { exId: e.exId, reps: e.sets[0]?.reps, sec: e.type === 'time' ? e.sets[0]?.sec || 30 : null, restSec: e.restSec, unilateral: e.unilateral }

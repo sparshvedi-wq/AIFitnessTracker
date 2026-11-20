@@ -17,6 +17,7 @@ import {
 import { CORE_METADATA } from './core-metadata.js'
 import { IMPORTED } from './imported.js'
 import { IMPORT_MANIFEST } from './import-manifest.js'
+import exerciseVisuals from '../exercise-visuals.json' with { type: 'json' }
 
 export { CATALOG_VERSION }
 
@@ -78,7 +79,7 @@ export function validateRaw(id, raw) {
   return issues
 }
 
-function expand(id, raw, { image }) {
+function expand(id, raw) {
   const issues = validateRaw(id, raw)
   const primary = list(raw.p)
   const secondary = list(raw.s)
@@ -115,15 +116,15 @@ function expand(id, raw, { image }) {
     tempo: Number.isFinite(raw.tempo) ? raw.tempo : 3,
     setupSec: setupSeconds(equipment, raw.setup),
     variationOf: raw.var || null,
-    image,
+    image: Object.hasOwn(exerciseVisuals, id),
     reviewed: issues.length === 0,
     issues,
   }
 }
 
 const META = {}
-for (const [id, raw] of Object.entries(CORE_METADATA)) META[id] = expand(id, raw, { image: true })
-for (const def of IMPORTED) META[def.id] = expand(def.id, def.meta, { image: false })
+for (const [id, raw] of Object.entries(CORE_METADATA)) META[id] = expand(id, raw)
+for (const def of IMPORTED) META[def.id] = expand(def.id, def.meta)
 for (const meta of Object.values(META)) meta.equipmentClass = equipmentClass(meta)
 
 // Aliases: legacy names that differ from the canonical name stay searchable.

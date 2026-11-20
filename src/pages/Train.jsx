@@ -53,6 +53,7 @@ export default function Train({ nav }) {
   const start = useStartWorkout(nav)
   const [filter, setFilter] = useState('All')
   const [query, setQuery] = useState('')
+  const [visibleMatches, setVisibleMatches] = useState(20)
   const [searching, setSearching] = useState(false)
   const [preview, setPreview] = useState(null)
   const [editing, setEditing] = useState(undefined) // undefined closed, null new, object edit
@@ -122,7 +123,7 @@ export default function Train({ nav }) {
           aria-label="Search routines or exercises"
           className="input mt-4"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); setVisibleMatches(20) }}
           placeholder="Exercise, muscle or routine"
         />
       ) : (
@@ -170,7 +171,7 @@ export default function Train({ nav }) {
         <section className="mt-5">
           <SectionHead title="Exercises" right={matches.length} />
           <div className="mt-2 rounded-tuck bg-surface px-4">
-            {matches.slice(0, 20).map((e) => (
+            {matches.slice(0, visibleMatches).map((e) => (
               <button
                 key={e.id}
                 className="list-row border-b border-line last:border-0"
@@ -186,6 +187,7 @@ export default function Train({ nav }) {
               </button>
             ))}
           </div>
+          {matches.length > visibleMatches && <button className="btn-secondary mt-3 w-full" onClick={() => setVisibleMatches(matches.length)}>Show all {matches.length} exercises</button>}
           {!matches.length && <p className="mt-3 text-[14px] text-muted">No matches. Try a muscle name.</p>}
         </section>
       )}

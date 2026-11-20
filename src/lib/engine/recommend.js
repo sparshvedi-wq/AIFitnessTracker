@@ -709,6 +709,7 @@ function finishPlan(ctx, chosen, items, screen, candidates) {
     focus: focusLine,
     items: planItems,
     requestedMinutes: ctx.minutes,
+    pace: ctx.pace,
     estimatedSeconds: Math.round((planSeconds(planItems) + ctx.easeIn) * ctx.pace),
     lockedTargets: true,
     location: ctx.place.id,
@@ -787,7 +788,7 @@ export function recommendMovement(state, options) {
     if (pick) pool.push(pick)
   }
   const items = []
-  const budget = minutes * 60 - TIMING.easeInSec.short
+  const budget = minutes * 60 / ctx.pace - TIMING.easeInSec.short
   for (const meta of pool) {
     const def = findExercise(meta.id)
     const restSec = Math.max(15, MIN_REST[meta.role] ?? 15)
@@ -807,7 +808,8 @@ export function recommendMovement(state, options) {
     focus: headline({ facts }).text,
     items,
     requestedMinutes: minutes,
-    estimatedSeconds: planSeconds(items) + TIMING.easeInSec.short,
+    pace: ctx.pace,
+    estimatedSeconds: Math.round((planSeconds(items) + TIMING.easeInSec.short) * ctx.pace),
     lockedTargets: true,
     location: ctx.place.id,
     placeName: ctx.place.name,

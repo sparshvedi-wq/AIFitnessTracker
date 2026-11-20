@@ -350,5 +350,836 @@
   "wu-hinge": {
     "name": "Standing hip hinge",
     "frames": ["Stand tall, knees soft", "Move hips back with a long spine"]
+  },
+  "kneeling-push-up": {
+    "name": "Kneeling push-up",
+    "frames": ["Kneeling plank","Lower chest toward the floor"]
+  },
+  "lateral-lunge": {
+    "name": "Lateral lunge",
+    "frames": ["Stand tall","Sit into the stepping hip"]
+  },
+  "single-leg-glute-bridge": {
+    "name": "Single-leg glute bridge",
+    "frames": ["Plant one foot","Lift hips without turning"]
+  },
+  "bird-dog": {
+    "name": "Bird dog",
+    "frames": ["Hands and knees","Reach opposite arm and leg"]
+  },
+  "db-floor-press": {
+    "name": "Dumbbell floor press",
+    "frames": ["Dumbbells above chest","Lower upper arms to the floor"]
+  },
+  "bench-push-up": {
+    "name": "Incline push-up (bench)",
+    "frames": ["Hands on bench, arms straight", "Lower chest to the bench edge"],
+    "format": "jpg"
+  },
+  "close-grip-push-up": {
+    "name": "Close-grip push-up",
+    "frames": ["Set hands slightly inside shoulders", "Lower with elbows close"],
+    "format": "jpg"
+  },
+  "wide-push-up": {
+    "name": "Wide-grip push-up",
+    "frames": ["Set hands just outside shoulders", "Lower as one straight line"],
+    "format": "jpg"
+  },
+  "scapular-push-up": {
+    "name": "Scapular push-up",
+    "frames": ["Let shoulder blades come together", "Push the floor away with straight arms"],
+    "format": "jpg"
+  },
+  "paused-squat": {
+    "name": "Paused squat",
+    "frames": ["Stand tall with feet planted", "Pause at the bottom"],
+    "format": "jpg"
+  },
+  "sumo-squat": {
+    "name": "Sumo squat",
+    "frames": ["Take a wide, toes-out stance", "Sit between your hips"],
+    "format": "jpg"
+  },
+  "reverse-lunge": {
+    "name": "Reverse lunge",
+    "frames": ["Start with feet together", "Step back into the lunge"],
+    "format": "jpg"
+  },
+  "forward-lunge": {
+    "name": "Forward lunge",
+    "frames": ["Start with feet together", "Step forward and lower"],
+    "format": "jpg"
+  },
+  "glute-bridge-march": {
+    "name": "Glute bridge march",
+    "frames": ["Hold a bridge with both feet down", "Lift one foot without dropping your hips"],
+    "format": "jpg"
+  },
+  "bodyweight-calf-raise": {
+    "name": "Bodyweight calf raise",
+    "frames": ["Start with heels down", "Rise onto the balls of both feet"],
+    "format": "jpg"
+  },
+  "single-leg-calf-raise": {
+    "name": "Single-leg calf raise",
+    "frames": ["Balance on one foot", "Lift the supporting heel"],
+    "format": "jpg"
+  },
+  "kneeling-side-plank": {
+    "name": "Kneeling side plank",
+    "frames": ["Set forearm and stacked knees", "Lift hips into a straight line"],
+    "format": "jpg"
+  },
+  "reverse-crunch": {
+    "name": "Reverse crunch",
+    "frames": ["Bring knees above hips", "Curl hips gently off the floor"],
+    "format": "jpg"
+  },
+  "bicycle-crunch": {
+    "name": "Bicycle crunch",
+    "frames": ["Start on your back", "Turn toward the opposite knee"],
+    "format": "jpg"
+  },
+  "heel-tap": {
+    "name": "Heel tap",
+    "frames": ["Lie back, feet planted", "Reach toward one heel"],
+    "format": "jpg"
+  },
+  "superman": {
+    "name": "Superman raise",
+    "frames": ["Lie face down, arms forward", "Lift arms and legs a little"],
+    "format": "jpg"
+  },
+  "dead-bug-heel-tap": {
+    "name": "Dead bug heel tap",
+    "frames": ["Bring bent knees above hips", "Tap one heel down"],
+    "format": "jpg"
+  },
+  "bench-dip": {
+    "name": "Bench dip",
+    "frames": ["Set hands on bench edge", "Bend elbows within a comfortable range"],
+    "format": "jpg"
+  },
+  "hip-thrust": {
+    "name": "Hip thrust",
+    "frames": ["Rest upper back on bench", "Lift hips until your body is level"],
+    "format": "jpg"
+  },
+  "db-squeeze-press": {
+    "name": "Dumbbell squeeze floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-neutral-bench": {
+    "name": "Dumbbell neutral-grip bench press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-incline-press": {
+    "name": "Dumbbell incline bench press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-alt-floor-press": {
+    "name": "Dumbbell alternating floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-single-arm-floor-press": {
+    "name": "Dumbbell single-arm floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-pullover": {
+    "name": "Dumbbell pullover",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-chest-supported-row": {
+    "name": "Dumbbell chest-supported row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-seated-press": {
+    "name": "Dumbbell seated shoulder press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-arnold-press": {
+    "name": "Dumbbell Arnold press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-front-raise": {
+    "name": "Dumbbell front raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-shrug": {
+    "name": "Dumbbell shrug",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-hammer-curl": {
+    "name": "Dumbbell hammer curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-concentration-curl": {
+    "name": "Dumbbell concentration curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-incline-curl": {
+    "name": "Dumbbell incline curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-reverse-curl": {
+    "name": "Dumbbell reverse curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-cross-body-curl": {
+    "name": "Dumbbell cross-body hammer curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-overhead-triceps-extension": {
+    "name": "Dumbbell overhead triceps extension",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-kickback": {
+    "name": "Dumbbell triceps kickback",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-lying-triceps-extension": {
+    "name": "Dumbbell lying triceps extension",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-front-squat": {
+    "name": "Dumbbell front squat",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-sumo-squat": {
+    "name": "Dumbbell sumo squat",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-split-squat": {
+    "name": "Dumbbell split squat",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-reverse-lunge": {
+    "name": "Dumbbell reverse lunge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-lateral-lunge": {
+    "name": "Dumbbell lateral lunge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-step-up": {
+    "name": "Dumbbell step-up",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-single-leg-rdl": {
+    "name": "Dumbbell single-leg Romanian deadlift",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-glute-bridge": {
+    "name": "Dumbbell glute bridge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-hip-thrust": {
+    "name": "Dumbbell hip thrust",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "db-seated-calf-raise": {
+    "name": "Dumbbell seated calf raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-anchored-row": {
+    "name": "Standing band row",
+    "frames": ["Face the anchor with arms forward", "Pull elbows toward your ribs"],
+    "format": "jpg"
+  },
+  "band-chest-press": {
+    "name": "Band chest press",
+    "frames": ["Face away from the anchor", "Press both hands forward"],
+    "format": "jpg"
+  },
+  "band-floor-press": {
+    "name": "Band floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-chest-fly": {
+    "name": "Band chest fly",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-lat-pulldown": {
+    "name": "Band lat pulldown",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-straight-arm-pulldown": {
+    "name": "Band straight-arm pulldown",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-face-pull": {
+    "name": "Band face pull",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-pull-apart": {
+    "name": "Band pull-apart",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-shoulder-press": {
+    "name": "Band shoulder press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-lateral-raise": {
+    "name": "Band lateral raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-front-raise": {
+    "name": "Band front raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-external-rotation": {
+    "name": "Band external rotation",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-curl": {
+    "name": "Band curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-hammer-curl": {
+    "name": "Band hammer curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-pushdown": {
+    "name": "Band triceps pushdown",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-overhead-extension": {
+    "name": "Band overhead triceps extension",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-squat": {
+    "name": "Band squat",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-rdl": {
+    "name": "Band Romanian deadlift",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-good-morning": {
+    "name": "Band good morning",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-glute-bridge": {
+    "name": "Band glute bridge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-lateral-walk": {
+    "name": "Band lateral walk",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-hip-abduction": {
+    "name": "Band standing hip abduction",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-hip-extension": {
+    "name": "Band standing hip extension",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "band-leg-curl": {
+    "name": "Band leg curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "front-squat": {
+    "name": "Barbell front squat",
+    "frames": ["Rack the bar across front shoulders", "Squat with elbows pointing forward"],
+    "format": "jpg"
+  },
+  "box-squat": {
+    "name": "Barbell box squat",
+    "frames": ["Stand clear of the box", "Sit back and touch the box"],
+    "format": "jpg"
+  },
+  "paused-back-squat": {
+    "name": "Barbell paused squat",
+    "frames": ["Stand tall with the bar supported", "Pause without bouncing"],
+    "format": "jpg"
+  },
+  "barbell-split-squat": {
+    "name": "Barbell split squat",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "sumo-deadlift": {
+    "name": "Barbell sumo deadlift",
+    "frames": ["Take a wide stance and grip inside knees", "Stand up with the bar close"],
+    "format": "jpg"
+  },
+  "barbell-glute-bridge": {
+    "name": "Barbell glute bridge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "barbell-hip-thrust": {
+    "name": "Barbell hip thrust",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "good-morning": {
+    "name": "Barbell good morning",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "incline-bench-press": {
+    "name": "Barbell incline bench press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "close-grip-bench": {
+    "name": "Barbell close-grip bench press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "barbell-floor-press": {
+    "name": "Barbell floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "paused-bench-press": {
+    "name": "Barbell paused bench press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "seated-barbell-press": {
+    "name": "Barbell seated overhead press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "landmine-press": {
+    "name": "Landmine press",
+    "frames": ["Hold the bar near your shoulder", "Press diagonally up and forward"],
+    "format": "jpg"
+  },
+  "underhand-row": {
+    "name": "Barbell underhand row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "pendlay-row": {
+    "name": "Barbell Pendlay row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "barbell-shrug": {
+    "name": "Barbell shrug",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "barbell-curl": {
+    "name": "Barbell curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "barbell-reverse-curl": {
+    "name": "Barbell reverse curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-chest-press": {
+    "name": "Machine chest press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-incline-press": {
+    "name": "Machine incline chest press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-shoulder-press": {
+    "name": "Machine shoulder press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-row": {
+    "name": "Machine seated row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-high-row": {
+    "name": "Machine chest-supported high row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-pullover": {
+    "name": "Machine pullover",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "assisted-pull-up": {
+    "name": "Assisted pull-up",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "assisted-dip": {
+    "name": "Assisted dip",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-lateral-raise": {
+    "name": "Machine lateral raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "reverse-pec-deck": {
+    "name": "Reverse pec deck",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "pec-deck": {
+    "name": "Pec deck",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-curl": {
+    "name": "Machine biceps curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "machine-triceps-extension": {
+    "name": "Machine triceps extension",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "hack-squat": {
+    "name": "Hack squat",
+    "frames": ["Set feet on the platform", "Bend knees with your back supported"],
+    "format": "jpg"
+  },
+  "belt-squat": {
+    "name": "Belt squat",
+    "frames": ["Attach the belt and stand tall", "Squat with the belt under tension"],
+    "format": "jpg"
+  },
+  "pendulum-squat": {
+    "name": "Pendulum squat",
+    "frames": ["Set shoulders under the pads", "Lower with feet flat on the platform"],
+    "format": "jpg"
+  },
+  "seated-leg-curl": {
+    "name": "Seated leg curl",
+    "frames": ["Start with legs extended", "Curl heels down and back"],
+    "format": "jpg"
+  },
+  "lying-leg-curl": {
+    "name": "Lying leg curl",
+    "frames": ["Set ankles under the roller", "Curl heels toward your hips"],
+    "format": "jpg"
+  },
+  "leg-extension": {
+    "name": "Leg extension",
+    "frames": ["Start with knees bent", "Straighten knees with control"],
+    "format": "jpg"
+  },
+  "machine-calf-raise": {
+    "name": "Machine calf raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "hip-abduction-machine": {
+    "name": "Machine hip abduction",
+    "frames": ["Start with thighs close together", "Press thighs out against pads"],
+    "format": "jpg"
+  },
+  "hip-adduction-machine": {
+    "name": "Machine hip adduction",
+    "frames": ["Start with thighs comfortably apart", "Draw thighs together"],
+    "format": "jpg"
+  },
+  "machine-glute-kickback": {
+    "name": "Machine glute kickback",
+    "frames": ["Set up with the working knee bent", "Press the pad back without arching"],
+    "format": "jpg"
+  },
+  "machine-crunch": {
+    "name": "Machine abdominal crunch",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-row": {
+    "name": "Seated cable row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "wide-cable-row": {
+    "name": "Wide-grip cable row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "single-arm-cable-row": {
+    "name": "Single-arm cable row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-straight-arm-pulldown": {
+    "name": "Cable straight-arm pulldown",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "single-arm-pulldown": {
+    "name": "Single-arm cable pulldown",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-lateral-raise": {
+    "name": "Cable lateral raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-front-raise": {
+    "name": "Cable front raise",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-rear-delt-fly": {
+    "name": "Cable rear delt fly",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-fly": {
+    "name": "Cable fly",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "low-high-cable-fly": {
+    "name": "Low-to-high cable fly",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "high-low-cable-fly": {
+    "name": "High-to-low cable fly",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-curl": {
+    "name": "Cable biceps curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-hammer-curl": {
+    "name": "Cable hammer curl",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "cable-wood-chop": {
+    "name": "Cable wood chop",
+    "frames": ["Reach toward the high pulley", "Rotate toward the opposite hip"],
+    "format": "jpg"
+  },
+  "kb-deadlift": {
+    "name": "Kettlebell deadlift",
+    "frames": ["Hinge to reach the bell", "Stand with the bell close"],
+    "format": "jpg"
+  },
+  "kb-rdl": {
+    "name": "Kettlebell Romanian deadlift",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-sumo-deadlift": {
+    "name": "Kettlebell sumo deadlift",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-single-leg-deadlift": {
+    "name": "Kettlebell single-leg deadlift",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-reverse-lunge": {
+    "name": "Kettlebell reverse lunge",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-floor-press": {
+    "name": "Kettlebell floor press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-row": {
+    "name": "Kettlebell row",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-strict-press": {
+    "name": "Kettlebell strict press",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-halo": {
+    "name": "Kettlebell halo",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "kb-suitcase-march": {
+    "name": "Kettlebell suitcase march",
+    "frames": ["Starting position", "Working position"],
+    "format": "jpg"
+  },
+  "suspension-row": {
+    "name": "Suspension row",
+    "frames": ["Lean back with arms extended", "Pull chest toward the handles"],
+    "format": "jpg"
+  },
+  "ball-hamstring-curl": {
+    "name": "Stability ball hamstring curl",
+    "frames": ["Bridge with heels on the ball", "Pull the ball toward your hips"],
+    "format": "jpg"
+  },
+  "slider-reverse-lunge": {
+    "name": "Slider reverse lunge",
+    "frames": ["Place one foot on the slider", "Slide that foot back and lower"],
+    "format": "jpg"
+  },
+  "ab-wheel-rollout": {
+    "name": "Kneeling ab wheel rollout",
+    "frames": ["Kneel with wheel beneath shoulders", "Roll forward with your ribs down"],
+    "format": "jpg"
+  },
+  "hanging-knee-raise": {
+    "name": "Hanging knee raise",
+    "frames": ["Start in a steady hang", "Draw knees up without swinging"],
+    "format": "jpg"
+  },
+  "pike-push-up": {
+    "name": "Pike push-up",
+    "frames": ["Hips high, arms straight", "Bend elbows with hips still high"],
+    "format": "jpg"
+  },
+  "tempo-squat": {
+    "name": "Tempo squat",
+    "frames": ["Stand with feet planted", "Lower slowly into the squat"],
+    "format": "jpg"
+  },
+  "curtsy-lunge": {
+    "name": "Curtsy lunge",
+    "frames": ["Stand with feet under hips", "Step behind and across"],
+    "format": "jpg"
+  },
+  "db-floor-fly": {
+    "name": "Dumbbell floor fly",
+    "frames": ["Dumbbells above your chest", "Open arms with soft elbows"],
+    "format": "jpg"
+  },
+  "db-bent-over-row": {
+    "name": "Dumbbell bent-over row",
+    "frames": ["Hinge and let the weights hang", "Row both weights toward your hips"],
+    "format": "jpg"
+  },
+  "db-wide-row": {
+    "name": "Dumbbell wide-elbow row",
+    "frames": ["Hinge with weights hanging", "Draw your elbows out and back"],
+    "format": "jpg"
+  },
+  "db-scaption": {
+    "name": "Dumbbell scaption raise",
+    "frames": ["Weights at your sides", "Raise in a wide V"],
+    "format": "jpg"
+  },
+  "db-rear-delt-fly": {
+    "name": "Dumbbell rear delt fly",
+    "frames": ["Hinge with arms hanging", "Lift arms out wide"],
+    "format": "jpg"
+  },
+  "band-reverse-fly": {
+    "name": "Band reverse fly",
+    "frames": ["Hold band in front", "Spread your arms wide"],
+    "format": "jpg"
+  },
+  "band-pallof-press": {
+    "name": "Band Pallof press",
+    "frames": ["Hold the band at your chest", "Press forward and stay square"],
+    "format": "jpg"
+  },
+  "machine-decline-press": {
+    "name": "Machine decline chest press",
+    "frames": ["Handles near the lower chest", "Press forward and down"],
+    "format": "jpg"
+  },
+  "cable-chest-press": {
+    "name": "Cable chest press",
+    "frames": ["Start with hands beside your chest", "Press away from the pulleys"],
+    "format": "jpg"
+  },
+  "cable-pallof-press": {
+    "name": "Cable Pallof press",
+    "frames": ["Hold the cable at your chest", "Press forward without turning"],
+    "format": "jpg"
+  },
+  "kb-front-rack-squat": {
+    "name": "Kettlebell front-rack squat",
+    "frames": ["Rack the bell at your shoulder", "Squat with the bell still racked"],
+    "format": "jpg"
+  },
+  "kb-swing": {
+    "name": "Kettlebell swing",
+    "frames": ["Hinge as the bell swings back", "Stand tall as the bell rises"],
+    "format": "jpg"
+  },
+  "prone-yt-raise": {
+    "name": "Prone Y-T raise",
+    "frames": ["Reach overhead in a Y", "Reach out to the sides in a T"],
+    "format": "jpg"
+  },
+  "cable-overhead-extension": {
+    "name": "Cable overhead triceps extension",
+    "frames": ["Hold the rope behind your head", "Straighten elbows forward and up"],
+    "format": "jpg"
+  },
+  "barbell-lying-triceps-extension": {
+    "name": "Barbell lying triceps extension",
+    "frames": ["Hold the bar above your shoulders", "Bend elbows to lower toward your forehead"],
+    "format": "jpg",
+    "layout": "stacked"
   }
 }

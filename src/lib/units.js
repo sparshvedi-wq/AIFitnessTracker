@@ -39,6 +39,7 @@ export function convertStateUnits(state, to) {
     ...w,
     unit: to,
     exercises: exercises(w.exercises, w.unit || from),
+    ...(w.attemptOnly ? { attemptOnly: exercises(w.attemptOnly, w.unit || from) } : {}),
     ...(w.totals ? { totals: { ...w.totals, volume: weight(w.totals.volume, w.unit || from) } } : {}),
     records: (w.records || []).map((r) => ({ ...r, label: label(r.label, w.unit || from) })),
   })

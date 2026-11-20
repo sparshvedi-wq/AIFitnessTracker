@@ -1,3 +1,4 @@
+import { withSaveLock, mergeBrowserEdits } from './browser-save.js'
 import { todayKey } from './date.js'
 import { isNativeApp, persistNativeState, readNativeState } from './native.js'
 import { DEFAULT_PROFILE } from './planner.js'
@@ -73,11 +74,17 @@ function readBrowserSave() {
   return localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
 }
 
+let browserBase = null
+let browserRaw = null
 export function loadState() {
   try {
     const raw = isNativeApp() ? readNativeState() : readBrowserSave()
-    if (!raw) return defaultState()
-    return normalizeState(validateSnapshot(raw))
+    const state = raw ? normalizeState(validateSnapshot(raw)) : defaultState()
+    if (!isNativeApp()) {
+      browserBase = state
+      browserRaw = raw
+    }
+    return state
   } catch (err) {
     console.error('Failed to load saved training:', err)
     throw new Error('Your saved training could not be opened. The saved copy has not been replaced.')
@@ -126,12 +133,31 @@ export function normalizeState(parsed) {
   return migrateExerciseIds(normalized, CATALOG).state
 }
 
+let lastWritten = null
 export function saveState(state) {
   try {
     const raw = JSON.stringify(state)
     if (isNativeApp()) return persistNativeState(raw)
-    localStorage.setItem(STORAGE_KEY, raw)
-    return Promise.resolve()
+    return withSaveLock(() => {
+      const disk = readBrowserSave()
+      let merged = state
+      if (disk && browserBase && (disk !== browserRaw || browserBase !== lastWritten)) {
+        const remote = normalizeState(validateSnapshot(disk))
+        try {
+          merged = mergeBrowserEdits(browserBase, state, remote)
+        } catch (error) {
+          // Keep this tab's copy available through refresh and explicit export.
+          sessionStorage.setItem('tally:conflicting-edit', raw)
+          throw error
+        }
+      }
+      const next = merged === state ? raw : JSON.stringify(merged)
+      if (disk !== next) localStorage.setItem(STORAGE_KEY, next)
+      browserRaw = next
+      browserBase = state
+      lastWritten = next === raw ? state : merged
+      return next === raw ? null : normalizeState(merged)
+    })
   } catch (err) {
     console.error('Failed to save state:', err)
     return Promise.reject(err)

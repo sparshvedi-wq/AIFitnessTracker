@@ -151,7 +151,7 @@ export function buildDailyPlan(state, options = {}) {
       ...profile,
       excludedExercises: [...new Set([...(profile.excludedExercises || []), ...readiness.avoidToday])],
     }
-  const request = { ...options, today, profile, readiness, now: options.now ?? Date.now() }
+  const request = { ...options, shortSession: Boolean(options.shortSession || (options.minutes > 0 && options.minutes < 10)), today, profile, readiness, now: options.now ?? Date.now() }
   return readiness.unwell || options.mode === 'movement'
     ? recommendMovement(state, request)
     : recommendStrength(state, request)
@@ -206,13 +206,13 @@ export function buildEventPump(state, event, options = {}) {
     movement,
     quiet: quietAt(p, location),
     level: EXPERIENCE_LEVEL[p.experience] ?? 0,
-    excluded: new Set(p.excludedExercises || []),
+    excluded: new Set([...(p.excludedExercises || []), ...(r.avoidToday || [])]),
     blockedAreas: new Set([...r.pain, ...r.sore, ...recent, ...schedule.muscles]),
     signals: exerciseSignals(state, { now: options.now ?? Date.now(), today, place: location }),
   }
   const pool = MOVEMENTS.filter((m) => {
     const meta = metaOf(m.id)
-    return wanted.includes(m.muscle) && !ineligibility(meta, elig) && meta.load !== 'bar' && meta.level === 0
+    return !r.unwell && !r.rest && wanted.includes(m.muscle) && !ineligibility(meta, elig) && meta.load !== 'bar' && meta.level === 0
   })
   const items = [],
     used = new Set()

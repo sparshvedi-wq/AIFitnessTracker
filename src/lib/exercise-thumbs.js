@@ -2,9 +2,10 @@ import visuals from './exercise-visuals.json' with { type: 'json' }
 
 // Only exercises with a real M1 demonstration get a picture; others show their name.
 export function exerciseThumb(exId) {
-  if (!exId || !visuals[exId]) return null
+  if (!exId || !Object.hasOwn(visuals, exId)) return null
   const base = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/'
-  return `${base}exercise-guides/${exId}.png`
+  const format = visuals[exId].format || 'png'
+  return `${base}exercise-guides/${exId}.${format}`
 }
 
 // Up to `limit` exercises from a plan that have a demonstration, in plan order.

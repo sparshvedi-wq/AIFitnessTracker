@@ -15,7 +15,7 @@ export default function MuscleRecovery({ state, today }) {
   return (
     <section className="mt-3 rounded-tuck bg-surface p-5" aria-label="Estimated muscle readiness">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[16px] font-semibold">Muscle readiness</h2>
+        <h2 className="text-[16px] font-semibold">Estimated readiness</h2>
         <button
           className="icon-btn -mr-2 h-11 w-11 text-muted"
           aria-label="About muscle readiness"
@@ -54,7 +54,7 @@ export default function MuscleRecovery({ state, today }) {
                   className={`text-[12px] font-semibold ${r.avoid || r.sore ? 'text-ink2' : 'text-muted'}`}
                 >
                   {status}
-                  {!r.avoid && <span className="ml-2 tabular-nums text-accent-ink">{percent}%</span>}
+                  {info && !r.avoid && <span className="ml-2 tabular-nums text-accent-ink">{percent}%</span>}
                 </span>
               </div>
               <div

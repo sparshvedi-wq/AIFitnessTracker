@@ -13,6 +13,7 @@
 // same preview twice is a no-op.
 import { metaOf } from '../catalog/index.js'
 import { findExercise } from '../exercises.js'
+import { profileOf, readinessOf } from '../planner.js'
 import { hashString } from './rng.js'
 import { eligibilityContext, planningContext } from './recommend.js'
 import { ineligibility } from './eligibility.js'
@@ -45,8 +46,8 @@ export function previewReplan(state, session, change, { now = Date.now(), today,
   const ctx = planningContext(state, {
     today,
     now,
-    profile: { ...session.equipmentProfile, ...profile },
-    readiness: { ...session.readiness, ...readiness },
+    profile: { ...profileOf(state), ...session.equipmentProfile, ...profile },
+    readiness: { ...readinessOf(state, today), ...session.readiness, ...readiness },
     location,
     movement: change.location ? undefined : session.movement || undefined,
     liveSession: session,
@@ -58,6 +59,16 @@ export function previewReplan(state, session, change, { now = Date.now(), today,
 
   // 1. Unfinished exercises that no longer fit the place or preferences get a substitute or are removed.
   let exercises = session.exercises.map((e) => {
+    if (location !== session.location) {
+      const sizes = DUMBBELL_MOVES.includes(e.exId) ? ctx.dumbbellSizes : []
+      e = { ...e, offer: null, startChoices: sizes.length ? sizes : undefined,
+        sets: e.sets.map((s) => {
+          if (s.status !== 'todo') return s.location !== undefined ? s : { ...s, location: session.location ?? null }
+          return { ...s, location, weight: fitAvailableLoad(s.weight, sizes), targetWeight: fitAvailableLoad(s.targetWeight, sizes) }
+        }),
+        attempts: e.attempts?.map((a) => ({ ...a, location: a.location ?? session.location })),
+      }
+    }
     const pending = pendingWork(e)
     if (!pending.length) return e
     const meta = metaOf(e.exId)
@@ -115,7 +126,7 @@ export function previewReplan(state, session, change, { now = Date.now(), today,
   let minutes = null
   if (Number.isFinite(change.minutes) && change.minutes > 0) {
     minutes = change.minutes
-    let budget = change.minutes * 60
+    let budget = change.minutes * 60 / (session.pace || ctx.pace)
     exercises = exercises.map((e) => {
       const item = { exId: e.exId, reps: e.sets[0]?.reps, sec: e.type === 'time' ? e.sets[0]?.sec || 30 : null, restSec: e.restSec, unilateral: e.unilateral }
       const setup = itemSeconds({ ...item, sets: 1 }) - extraSetSeconds(item)

@@ -14,6 +14,7 @@ import {
   buildEventPump,
   todayChoice,
 } from '../../lib/planner.js'
+import { exerciseSignals } from '../../lib/engine/learning.js'
 import { buildSportWarmup, orderedSports } from '../../lib/sports.js'
 import { findExercise, MUSCLES } from '../../lib/exercises.js'
 import { buildSession, prepareSession, beginPrepared, fmtClock, fmtNum } from '../../lib/workout.js'
@@ -133,6 +134,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     [state.workouts, state.customExercises, state.settings.weightUnit, state.learning, state.metrics, now, today],
   )
   const plan = useMemo(() => {
+    if (readiness.unwell || readiness.rest)
+      return buildDailyPlan(planningState, { today, now, minutes, location, readiness, movement: onTheGo || undefined, mode: 'movement' })
     if (kind === 'pump')
       return buildEventPump(
         planningState,
@@ -142,6 +145,8 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     if (kind === 'sport')
       return {
         ...buildSportWarmup(sport, minutes, {
+          excluded: new Set([...(p.excludedExercises || []), ...(readiness.avoidToday || []), ...skipToday]),
+          signals: exerciseSignals(planningState, { now, today, place: location }),
           lowImpact: lowImpact || readiness.energy === 'low',
           movement,
           avoidMuscles: [...(p.avoidMuscles || []), ...readiness.pain, ...readiness.sore],
@@ -177,6 +182,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
       name: routine.name,
       items,
       strengthContext: adapted.context,
+      pace: adapted.context.pace,
       lighterMuscles: adapted.context.lighterMuscles,
       location,
     }
@@ -190,6 +196,7 @@ export default function SessionSetup({ routine, onClose, onStart }) {
     return {
       ...planned,
       items: shown,
+      estimatedSeconds: Math.round(planSeconds(items) * adapted.context.pace),
       // A gentle movement session stays a movement session, not strength history.
       kind: routine.kind === 'recovery' ? 'recovery' : 'routine',
       location,

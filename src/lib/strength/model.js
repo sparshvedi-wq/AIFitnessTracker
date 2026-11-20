@@ -112,7 +112,7 @@ export function sessionObservations(record, exId, { unit, mode, experience, meta
   const ceiling = ceilingFor(meta, unit)
   const table = feelTable(experience)
   const rirsSoFar = []
-  for (const e of record.exercises || []) {
+  for (const e of [...(record.exercises || []), ...(record.attemptOnly || [])]) {
     if (e?.exId !== exId) continue
     // Sets before a mid-workout "set my working weight" no longer count.
     const start = Number.isInteger(e.calibratedFrom) && e.calibratedFrom > 0 ? e.calibratedFrom : 0

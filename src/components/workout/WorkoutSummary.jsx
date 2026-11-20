@@ -1,5 +1,6 @@
 // Review the actual work and optional feedback, then save.
 
+import { routineFromWorkout } from '../../lib/workout-history.js'
 import { count } from '../../lib/presentation.js'
 import { useMemo, useState } from 'react'
 import { useApp } from '../../store/AppContext.jsx'
@@ -9,7 +10,6 @@ import {
   findRecords,
   fmtClock,
   fmtNum,
-  routineLoad,
   setCounts,
   toWorkoutRecord,
   totals,
@@ -78,15 +78,7 @@ export default function WorkoutSummary({ session, now, onKeepGoing, onClose, onS
           id,
           name: session.name,
           circuit: session.circuit,
-          items: (session.kind === 'manual' ? worked : session.exercises).map((e) => ({
-            exId: e.exId,
-            sets:
-              e.sets.filter((s) => (session.kind === 'manual' ? s.status === 'done' : s.status !== 'skipped'))
-                .length || e.sets.length,
-            ...(e.type === 'time' ? { sec: e.sets[0].sec } : { reps: e.sets[0].reps }),
-            weight: routineLoad(e),
-            restSec: e.restSec,
-          })),
+          items: routineFromWorkout(record).items,
         },
       })
       record.routineId = id

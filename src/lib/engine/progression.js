@@ -14,14 +14,14 @@ import { realHistory, recordTime, recordOutcome } from './ledger.js'
 const SKIP_KINDS = ['sport', 'pump', 'recovery']
 
 /** Comparable past sessions of one exercise, oldest first. */
-export function comparableSessions(workouts, exId, { unit, today, type, weighted, index } = {}) {
+export function comparableSessions(workouts, exId, { unit, today, type, weighted, index, place } = {}) {
   const out = []
   const records = index ? index.get(exId) || [] : realHistory(workouts, today)
   for (const w of records) {
     if (SKIP_KINDS.includes(w.kind)) continue
     const sets = (w.exercises || [])
       .filter((e) => e.exId === exId && (!type || !e.type || e.type === type))
-      .flatMap((e) => e.sets || [])
+      .flatMap((e) => (e.sets || []).filter((s) => !place || (s.location ?? e.location ?? w.location) === place))
       .filter((s) => s.kind !== 'warmup' && (!s.status || s.status === 'done'))
       .map((s) => ({
         reps: Number.isFinite(s.reps) ? s.reps : null,
@@ -63,7 +63,7 @@ export function sessionScore(session, meta, type) {
   if (type === 'time') return Math.max(...session.sets.map((s) => s.sec || 0))
   if (meta?.load === 'assist')
     // Less assistance at the same reps is better; compare by assistance-reduced reps.
-    return Math.max(...session.sets.map((s) => (s.reps || 0) - (s.weight || 0) / 10))
+    return Math.max(...session.sets.map((s) => (s.reps || 0) - convertWeight(s.weight || 0, session.unit || 'lb', 'lb') / 10))
   if (session.sets.some((s) => s.weight > 0)) return Math.max(...session.sets.map((s) => e1rm(s.weight, s.reps)))
   return Math.max(...session.sets.map((s) => s.reps || 0))
 }

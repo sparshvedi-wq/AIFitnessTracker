@@ -198,6 +198,7 @@ test('a browser storage failure is reported to the app instead of silently claim
   const previous = globalThis.localStorage,
     log = console.error
   globalThis.localStorage = {
+    getItem: () => null,
     setItem() {
       throw new Error('Quota exceeded')
     },

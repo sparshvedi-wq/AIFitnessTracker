@@ -63,7 +63,7 @@ export const QUESTIONS = {
 const VALID_VALUES = Object.fromEntries(Object.entries(QUESTIONS).map(([k, q]) => [k, q.answers.map((a) => a[0])]))
 // 'anchor' is "this is my working weight" (or, without numbers, "recalibrate"):
 // the strength model starts again from it (src/lib/strength/model.js).
-const EVENT_KINDS = ['answer', 'retry', 'reset', 'dismiss', 'anchor']
+const EVENT_KINDS = ['answer', 'retry', 'reset', 'dismiss', 'anchor', 'load-limit']
 
 // An anchor keeps its numbers only when they are sane; broken numbers drop the event.
 function anchorFields(e) {
@@ -94,7 +94,8 @@ export function normalizeLearning(raw) {
         e.exId.length <= 120 &&
         Number.isFinite(e.at) &&
         (e.kind !== 'answer' || VALID_VALUES[e.question]?.includes(e.value)) &&
-        (e.kind !== 'anchor' || anchorFields(e) !== null),
+        (e.kind !== 'anchor' || anchorFields(e) !== null) &&
+        (e.kind !== 'load-limit' || (Number.isFinite(e.weight) && e.weight > 0 && e.weight <= 10000 && ['lb','kg'].includes(e.unit))),
     )
     .map((e) => ({
       id: typeof e.id === 'string' ? e.id.slice(0, 80) : `${e.kind}-${e.at}-${e.exId}`,
@@ -102,6 +103,7 @@ export function normalizeLearning(raw) {
       exId: e.exId,
       at: e.at,
       ...(e.kind === 'anchor' ? anchorFields(e) : {}),
+      ...(e.kind === 'load-limit' ? { weight: e.weight, unit: e.unit } : {}),
       ...(e.question ? { question: e.question } : {}),
       ...(e.value ? { value: e.value } : {}),
       ...(typeof e.place === 'string' ? { place: e.place.slice(0, 80) } : {}),
@@ -110,8 +112,22 @@ export function normalizeLearning(raw) {
       ...(typeof e.detail === 'string' && e.detail.trim() ? { detail: e.detail.trim().slice(0, 140) } : {}),
     }))
     .sort((a, b) => a.at - b.at)
-    .slice(-LEARNING.maxEvents)
-  return { version: LEARNING_VERSION, events: clean }
+  const recent = clean.slice(-LEARNING.maxEvents)
+  // Preserve the latest durable decisions even after questions leave the recent log.
+  const retained = new Map()
+  for (const event of clean.slice(0, clean.length - recent.length)) {
+    let key = event.kind
+    if (['dismiss', 'load-limit'].includes(event.kind)) continue
+    if (event.kind === 'answer') {
+      if (event.question === 'feel' && event.value === 'uncomfortable' ||
+          event.question === 'setup' && event.value === 'movement') key = 'comfort-report'
+      else if (event.question === 'feel' && ['good', 'hard-fine'].includes(event.value)) key = 'comfort-clear'
+      else if (event.question === 'again' && event.value !== 'unsure') key = 'preference'
+      else continue
+    }
+    retained.set(JSON.stringify([event.exId, key]), event)
+  }
+  return { version: LEARNING_VERSION, events: [...retained.values()].sort((a,b) => a.at-b.at).concat(recent) }
 }
 
 let counter = 0
@@ -229,7 +245,7 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
     history = []
   }
   for (const record of history) {
-    if (['sport', 'recovery'].includes(record.kind)) continue
+    const feedbackOnly = ['sport', 'recovery'].includes(record.kind)
     const at = recordTime(record)
     if (!Number.isFinite(at) || at > now) continue
     const here = place && record.location === place
@@ -241,6 +257,16 @@ export function exerciseSignals(state, { now, today, place = null } = {}) {
     }
     for (const o of outcome.exercises || []) {
       if (!o?.exId || !counts(o.exId, at)) continue
+      if (feedbackOnly) {
+        if (o.reason === 'discomfort' && (o.status === 'skipped' || (o.status === 'partial' && o.deliberate))) {
+          const signal = get(o.exId)
+          signal.comfort.reports++
+          signal.comfort.since = Math.max(signal.comfort.since || 0, at)
+          signal.skips.discomfort = (signal.skips.discomfort || 0) + 1
+          signal.sources.explicit++
+        }
+        continue
+      }
       const s = get(o.exId)
       const w = fade(at)
       if (o.doneWork > 0) {

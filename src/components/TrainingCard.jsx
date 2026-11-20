@@ -10,7 +10,7 @@ import { dailyArtwork } from '../lib/personal-records.js'
 // The session at a glance: how long, how much, and anything unusual about today.
 export function planFacts(plan) {
   const sets = plan.items.reduce((n, it) => n + (it.sets || 0), 0)
-  const minutes = Math.max(5, Math.round(planSeconds(plan.items) / 300) * 5)
+  const minutes = Math.max(1, Math.round((plan.estimatedSeconds ?? planSeconds(plan.items)) / 60))
   return [
     [minutes, 'min'],
     [new Set(plan.items.map((it) => it.exId)).size, 'moves'],

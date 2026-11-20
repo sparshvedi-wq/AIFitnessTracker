@@ -5,6 +5,7 @@ import Modal from '../Modal.jsx'
 import Icon from '../Icon.jsx'
 import ExerciseVisualGuide from './ExerciseVisualGuide.jsx'
 import { formGuide } from '../../lib/form.js'
+import { findExercise } from '../../lib/exercises.js'
 import { useApp } from '../../store/AppContext.jsx'
 import { atPlace, exerciseNote, withExerciseNote } from '../../lib/exercise-notes.js'
 import { metaOf } from '../../lib/catalog/index.js'
@@ -32,11 +33,13 @@ function GuideContent({
   const learned = learnedSummary(signal)
   const [note, setNote] = useState(() => exerciseNote(state.settings.exerciseNotes, exercise.exId, location))
   if (!exercise) return null
-  const guide = formGuide(exercise.exId, exercise.muscle)
+  const definition = findExercise(exercise.exId, state.customExercises) || exercise
+  const technique = definition.cues || []
+  const guide = formGuide(exercise.exId, definition.muscle)
   const excluded = (state.settings.training.excludedExercises || []).includes(exercise.exId)
   const items =
     tab === 0
-      ? exercise.cues.map((c) => ({ t: c }))
+      ? technique.map((cue) => ({ t: cue }))
       : tab === 1
         ? [
             { t: guide.muscles.primary, s: 'Main muscles' },

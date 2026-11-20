@@ -55,7 +55,7 @@ export default function Home({ nav }) {
   const hasLogged = workouts.some((w) => w.exercises.some((e) => e.sets?.length))
   const setupPending = settings.training.onboardingVersion !== ONBOARDING_VERSION
   // Someone new starts with a short session that finds their weights.
-  const startingPoint = !setupPending && baselineDue(state)
+  const startingPoint = !setupPending && baselineDue(state, today)
 
   return (
     <div className="animate-fade-in">
@@ -73,18 +73,6 @@ export default function Home({ nav }) {
         </button>
       </header>
       <h1 className="sr-only">Home</h1>
-
-      <WeekStrip state={state} today={today} />
-
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <TallyCard workouts={workouts} today={today} fresh={freshMarks} />
-        <LiftedCard
-          workouts={workouts}
-          today={today}
-          unit={settings.weightUnit}
-          onOpen={() => nav.go('history')}
-        />
-      </div>
 
       {!active && welcomeBack && (
         <div className="mt-4 rounded-tuck border-2 border-line bg-surface p-4">
@@ -115,14 +103,6 @@ export default function Home({ nav }) {
           <BaselineCard nav={nav} />
         ) : (
           <>
-            <TrainingCard
-              title="Today"
-              plan={next}
-              customExercises={state.customExercises}
-              onStart={() => start(next)}
-              startLabel="Start training"
-              artworkDay={today}
-            />
             {next.alternatives?.length > 0 && (
               <div className="mt-4 flex gap-2" role="group" aria-label="Other options today">
                 {next.alternatives.map((alt) =>
@@ -155,8 +135,28 @@ export default function Home({ nav }) {
                 )}
               </div>
             )}
+            <TrainingCard
+              title="Today"
+              plan={next}
+              customExercises={state.customExercises}
+              onStart={() => start(next)}
+              startLabel={readiness.unwell ? 'Review gentle movement' : 'Review workout'}
+              artworkDay={today}
+            />
           </>
         )}
+      </div>
+
+      <WeekStrip state={state} today={today} />
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <TallyCard workouts={workouts} today={today} fresh={freshMarks} />
+        <LiftedCard
+          workouts={workouts}
+          today={today}
+          unit={settings.weightUnit}
+          onOpen={() => nav.go('history')}
+        />
       </div>
 
       {setupPending && (

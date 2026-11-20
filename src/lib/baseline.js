@@ -140,8 +140,16 @@ const FULL = 7
 
 const isWork = (s) => s && s.kind !== 'warmup'
 
-/** A first session nobody has asked to skip, for someone with no strength training saved. */
-export function baselineDue(state) {
+/** A saved choice takes precedence over the usual session length. */
+export function preferShortFirstSession(profile) {
+  if (profile.firstSessionMode) return profile.firstSessionMode === 'training'
+  if (profile.baseline?.status === 'skipped') return true
+  return !profile.flexibleTime && profile.minutes > 0 && profile.minutes < BASELINE_MINUTES
+}
+
+export function baselineDue(state, today) {
+  const readiness = readinessOf(state, today)
+  if (readiness.unwell || readiness.rest) return false
   const training = state?.settings?.training || {}
   if (!training.completed || training.baseline?.status) return false
   if (state.activeWorkout) return false
@@ -159,6 +167,7 @@ export function baselineMoves(state, { today, now = Date.now(), location } = {})
   const r = readinessOf(state, today)
   const place = resolvePlace(p, location || p.location)
   const movement = movementPreferences(p, place.id)
+  if (r.unwell || r.rest) return { moves: [], place, movement }
   const ctx = {
     kind: movement?.position === 'seated' ? 'seated' : 'strength',
     caps: placeCapabilities(place),
@@ -455,7 +464,11 @@ export function swapBaselineMove(session, customExercises = []) {
     { exId: nextId, slot: here.ex.slot, label: here.ex.slotLabel, alternatives: [...rest, here.ex.exId] },
     customExercises,
   )
-  const next = { ...patchEx(session, here.c.ex, swapped), cursor: { ex: here.c.ex, set: 0 } }
+  const exercises = [...session.exercises]
+  exercises[here.c.ex] = swapped
+  const priorAttempts = [...(session.priorAttempts || [])]
+  if (here.ex.attempts?.length) priorAttempts.push({ exId: here.ex.exId, location: session.location, sets: [], attempts: here.ex.attempts })
+  const next = { ...session, exercises, priorAttempts, cursor: { ex: here.c.ex, set: 0 } }
   return withStep(next, stepAt(next))
 }
 

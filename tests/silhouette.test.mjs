@@ -12,7 +12,7 @@ test('exercise thumbnails only use real demonstrations that ship with the app', 
   assert.ok(ids.length > 0)
   for (const id of ids) {
     const src = exerciseThumb(id)
-    assert.equal(src, `/exercise-guides/${id}.png`)
+    assert.equal(src, `/exercise-guides/${id}.${visuals[id].format || 'png'}`)
     assert.ok(existsSync(new URL(`../public${src}`, import.meta.url)), `missing guide for ${id}`)
   }
   assert.equal(exerciseThumb('not-a-real-exercise'), null)

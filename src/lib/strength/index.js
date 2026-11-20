@@ -15,6 +15,7 @@
 // Everything is pure and deterministic. If anything unexpected happens inside
 // the model, these return null and callers keep their simple fallback rules:
 // a plan is never blocked and never shows a non-number.
+import { nextLoadLimit } from '../engine/load-preference.js'
 import { metaOf } from '../catalog/index.js'
 import { findExercise } from '../exercises.js'
 import { realHistory } from '../engine/ledger.js'
@@ -517,7 +518,15 @@ export function strengthTarget(args) {
     const meta = args.meta || metaOf(args.exId)
     const profile = meta ? exerciseProfile(args.exId, def) : null
     if (profile?.tie && TIED.includes(profile.mode)) {
-      const fromGraph = graphTarget(args, def, profile)
+      let fromGraph = graphTarget(args, def, profile)
+      if (fromGraph && profile.mode === 'load' && !args.live && !args.graph && !isNum(args.fixedWeight)) {
+        const limit = nextLoadLimit(args)
+        if (limit != null && (fromGraph.weight > limit || fromGraph.offer?.weight > limit) &&
+            (!args.sizes?.length || args.sizes.some((v) => Math.abs(v-limit) < 0.02))) {
+          if (fromGraph.weight > limit) fromGraph = graphTarget({ ...args, fixedWeight: limit, offerIncrease: false }, def, profile)
+          if (fromGraph) fromGraph = { ...fromGraph, offer: null, up: false }
+        }
+      }
       if (fromGraph || profile.mode === 'bodyweight') return fromGraph
     }
     const mode = strengthMode(def, meta)

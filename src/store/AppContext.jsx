@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { loadState, saveState, defaultState, normalizeState } from '../lib/storage.js'
+import { STORAGE_KEY, loadState, saveState, defaultState, normalizeState } from '../lib/storage.js'
 import { uid } from '../lib/id.js'
 import { todayKey } from '../lib/date.js'
 import { makeSampleWeights, makeSampleWorkouts } from '../lib/sample.js'
@@ -8,7 +8,7 @@ import { resetForTesting } from '../lib/testing.js'
 import { convertStateUnits } from '../lib/units.js'
 import { saveTrainingEvent } from '../lib/training-events.js'
 import { rebuildRecords } from '../lib/workout-history.js'
-import { deletePreviews, keptPreviewIds, savePreviews } from '../lib/photo-store.js'
+import { deletePreviews, keptPreviewIds, openPreviews, savePreviews } from '../lib/photo-store.js'
 import { withLearningEvent } from '../lib/engine/learning.js'
 import { validPersonalRecord } from '../lib/personal-records.js'
 
@@ -96,7 +96,7 @@ function reducer(state, action) {
       return {
         ...state,
         activeWorkout: null,
-        workouts: rebuildRecords([...state.workouts, action.workout]),
+        workouts: rebuildRecords([...state.workouts.filter((w) => w.id !== action.workout.id), action.workout], state.workouts),
         settings:
           action.workout.kind === 'sport'
             ? {
@@ -111,20 +111,21 @@ function reducer(state, action) {
       }
 
     case 'DELETE_WORKOUT':
-      return { ...state, workouts: rebuildRecords(state.workouts.filter((w) => w.id !== action.id)) }
+      return { ...state, workouts: rebuildRecords(state.workouts.filter((w) => w.id !== action.id), state.workouts) }
 
     case 'UPDATE_WORKOUT':
       return {
         ...state,
         workouts: rebuildRecords(
           state.workouts.map((w) => (w.id === action.workout.id ? action.workout : w)),
+          state.workouts,
         ),
       }
 
     case 'RESTORE_WORKOUT':
       return {
         ...state,
-        workouts: rebuildRecords([...state.workouts, action.workout]),
+        workouts: rebuildRecords([...state.workouts.filter((w) => w.id !== action.workout.id), action.workout], state.workouts),
       }
 
     // Load or remove the preview history from lib/sample.js
@@ -151,6 +152,9 @@ function reducer(state, action) {
       }
       return { ...state, sample: false, metrics, workouts: state.workouts.filter((w) => !w.sample) }
     }
+
+    case 'SYNC_SAVED_STATE':
+      return state === action.expected ? action.state : state
 
     case 'IMPORT_STATE':
       return normalizeState(action.state)
@@ -196,6 +200,13 @@ export function AppProvider({ children, initialState, initialPreviews = {} }) {
   const [today, setToday] = useState(todayKey)
   const [storageError, setStorageError] = useState(false)
   const [saveAttempt, setSaveAttempt] = useState(0)
+  useEffect(() => {
+    const refresh = (event) => {
+      if (event.key === STORAGE_KEY) setSaveAttempt((n) => n + 1)
+    }
+    window.addEventListener('storage', refresh)
+    return () => window.removeEventListener('storage', refresh)
+  }, [])
   const retrySave = useCallback(() => setSaveAttempt((n) => n + 1), [])
 
   useEffect(() => {
@@ -211,11 +222,20 @@ export function AppProvider({ children, initialState, initialPreviews = {} }) {
   useEffect(() => {
     let current = true
     Promise.resolve(saveState(state))
-      .then(() => {
-        if (current) setStorageError(false)
+      .then(async (merged) => {
+        if (!current) return
+        setStorageError(false)
+        if (merged) {
+          if (JSON.stringify(merged.checkins) !== JSON.stringify(state.checkins)) {
+            const opened = await openPreviews(merged)
+            if (!current) return
+            setPhotoPreviews(opened.previews)
+          }
+          dispatch({ type: 'SYNC_SAVED_STATE', expected: state, state: merged })
+        }
       })
-      .catch(() => {
-        if (current) setStorageError(true)
+      .catch((error) => {
+        if (current) setStorageError(error.message || 'Changes aren’t saved yet.')
       })
     return () => {
       current = false

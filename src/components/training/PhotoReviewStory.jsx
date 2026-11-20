@@ -22,10 +22,18 @@ export function PhotoReviewLoading({ status, previews }) {
   return (
     <section className="review-loading" role="status" aria-live="polite">
       <div className="photo-review-stage loading-contact-sheet" aria-hidden="true">
-        {['front','side','back'].map((view,i)=><div key={view} className={'review-portrait '+(angle===i?'is-current':'')}>
-          {angle===i ? <PlanReveal ongoing><img src={photos[i] || ONBOARDING_ART.neutral} alt=""/></PlanReveal> : <img src={photos[i] || ONBOARDING_ART.neutral} alt=""/>}
-        </div>)}
-        <span className="angle-stamp">{['Front','Side','Back'][angle]}</span>
+        {['front', 'side', 'back'].map((view, i) => (
+          <div key={view} className={'review-portrait ' + (angle === i ? 'is-current' : '')}>
+            {angle === i ? (
+              <PlanReveal ongoing>
+                <img src={photos[i] || ONBOARDING_ART.neutral} alt="" />
+              </PlanReveal>
+            ) : (
+              <img src={photos[i] || ONBOARDING_ART.neutral} alt="" />
+            )}
+          </div>
+        ))}
+        <span className="angle-stamp">{['Front', 'Side', 'Back'][angle]}</span>
       </div>
       <h3 className="font-display text-[30px]">{status}</h3>
       <p className="loading-insight">
@@ -72,36 +80,40 @@ export default function PhotoReviewStory({
   onFocusChange,
   canApply,
   appliesOnContinue = false,
+  inSetup = false,
 }) {
   const slides = photoReviewSlides(review),
     slide = slides[Math.min(step, slides.length - 1)]
   if (!slide) return null
   return (
     <section className="review-story">
-      <div className="review-story-top">
-        <div
-          className="review-story-track"
-          role="progressbar"
-          aria-label="Photo review progress"
-          aria-valuemin={0}
-          aria-valuemax={slides.length}
-          aria-valuenow={step + 1}
-        >
-          {slides.map((_, i) => (
-            <span key={i} className={i <= step ? 'is-filled' : ''} />
-          ))}
-        </div>
-        {step > 0 && (
-          <button
-            type="button"
-            className="icon-btn !h-11 !w-11"
-            aria-label="Previous review slide"
-            onClick={() => onStep(step - 1)}
+      {/* In setup, the setup header already shows progress and goes back. */}
+      {!inSetup && (
+        <div className="review-story-top">
+          <div
+            className="review-story-track"
+            role="progressbar"
+            aria-label="Photo review progress"
+            aria-valuemin={0}
+            aria-valuemax={slides.length}
+            aria-valuenow={step + 1}
           >
-            <Icon name="chevronLeft" size={18} />
-          </button>
-        )}
-      </div>
+            {slides.map((_, i) => (
+              <span key={i} className={i <= step ? 'is-filled' : ''} />
+            ))}
+          </div>
+          {step > 0 && (
+            <button
+              type="button"
+              className="icon-btn !h-11 !w-11"
+              aria-label="Previous review slide"
+              onClick={() => onStep(step - 1)}
+            >
+              <Icon name="chevronLeft" size={18} />
+            </button>
+          )}
+        </div>
+      )}
       {review.demo && <span className="review-demo">Sample preview</span>}
       <div key={step} className="review-slide">
         {slide.kind === 'overview' && (
@@ -170,10 +182,7 @@ export default function PhotoReviewStory({
             <img className="review-plan-art" src={ONBOARDING_ART.review} alt="" />
             <h3 className="review-title">Your training goes beyond this photo.</h3>
             <p className="review-copy">
-              {review.observations?.length
-                ? `${review.observations.length} photo observation${review.observations.length === 1 ? '' : 's'}. `
-                : ''}
-              Your logged sets, recovery and feedback also guide your workouts.
+              Your future photo check-ins, logged sets, recovery and feedback also guide your workouts.
             </p>
             {canApply && slide.focus.length > 0 && (
               <>

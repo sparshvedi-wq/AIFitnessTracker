@@ -179,3 +179,88 @@
   box-shadow: 0 0 0 1px rgb(var(--ink));
   transform: none;
 }
+.setup-dialog--paper .is-on > .pay-ring {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+  color: rgb(var(--bg));
+}
+/* No light sweep across the main buttons: calm, not salesy. */
+.setup-dialog--paper .pay-cta::after,
+.setup-dialog--paper .story-cta--shine::after {
+  content: none;
+}
+
+/* Starting photos: a segmented Front / Side / Back, one flat frame. */
+.setup-dialog--paper .photo-angles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgb(var(--surface-2));
+}
+.setup-dialog--paper .photo-angle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  border-radius: 999px;
+  color: rgb(var(--muted));
+  font-size: 15px;
+  font-weight: 600;
+  text-transform: capitalize;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+.setup-dialog--paper .photo-angle[aria-pressed='true'] {
+  background: rgb(var(--ink));
+  color: rgb(var(--bg));
+}
+.setup-dialog--paper .photo-angle .photo-angle-thumb {
+  width: 22px;
+  height: 30px;
+  border-radius: 6px;
+}
+.setup-dialog--paper .photo-frame {
+  border: 0;
+  border-radius: 24px;
+  background: rgb(var(--surface-2));
+}
+.setup-dialog--paper .photo-frame:has(.photo-mannequin-guide)::after {
+  content: none;
+}
+/* Secondary buttons are flat pills here, like the rest of setup. */
+.setup-dialog--paper .btn-secondary {
+  border-width: 1px;
+  border-radius: 999px;
+  box-shadow: none;
+}
+.setup-dialog--paper .setup-footer .icon-btn {
+  border: 1px solid rgb(var(--line));
+}
+.setup-dialog--paper .review-evidence button {
+  border: 1px solid rgb(var(--line));
+}
+
+/* Day 1 sizes to its content, so the options below follow the plan
+   directly instead of sitting a screen further down. */
+.setup-dialog--paper .story.first-session {
+  min-height: auto;
+  flex: none;
+}
+.setup-dialog--paper .baseline-preview-option {
+  margin: 4px 8px 0;
+  padding: 14px 16px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 16px;
+  background: rgb(var(--surface));
+  font-size: 15px;
+}
+.setup-dialog--paper .baseline-preview-option input {
+  accent-color: rgb(var(--ink));
+}
+.setup-dialog--paper .funnel-edit-answers {
+  margin: 4px 8px 0;
+}

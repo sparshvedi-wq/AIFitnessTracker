@@ -1,7 +1,7 @@
 // Act 1 story screens: the restart loop in their own words, then one live demo
 // for each answer, each running the real planner on temporary data. Also the
 // research proof before the price, and session 1 after the plan is built.
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Icon from '../Icon.jsx'
 import MannequinRegions from './MannequinRegions.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
@@ -18,7 +18,6 @@ import {
   warmupDemo,
 } from '../../lib/onboarding-story.js'
 import { BODY_AREAS } from '../../lib/body-areas.js'
-import { exerciseThumb } from '../../lib/exercise-thumbs.js'
 import { StoryOptions } from './OnboardingQuestions.jsx'
 import {
   Check,
@@ -29,8 +28,10 @@ import {
   Title,
   YouSaid,
   delay,
+  reducedMotion,
   useAutoplay,
   useCountUp,
+  useTimers,
 } from './story-kit.jsx'
 
 /* ── The restart loop ─────────────────────────────────────────────── */
@@ -304,38 +305,73 @@ function Places({ headingRef, state, profile, today, now }) {
   )
 }
 
+// Yesterday's hard chest session (an example, never saved). Today's plan shows
+// first as it would have been, then the chest work comes out and the day is
+// rebuilt: both are the real planner, with and without that session.
 function Recent({ headingRef, state, profile, today, now }) {
   const demo = useMemo(() => recentDemo(state, profile, { today, now }), [state, profile, today, now])
+  const planned = useMemo(() => firstSession(state, profile, { today, now }).moves.slice(0, 3), [state, profile, today, now])
+  const rebuilt = demo.moves.slice(0, 3)
+  // 0: as planned, 1: chest work struck out, 2: rebuilt.
+  const [phase, setPhase] = useState(() => (reducedMotion() ? 2 : 0))
+  const timers = useTimers()
+  useEffect(() => {
+    if (reducedMotion()) return
+    timers.later(() => setPhase(1), 1500)
+    timers.later(() => setPhase(2), 2600)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  const had = new Set(planned.map((m) => m.muscle))
+  const trains = [...new Set(rebuilt.map((m) => m.muscle))]
+  const left = demo.chest[0] ?? 0
+  const rows = phase < 2 ? planned : rebuilt
   return (
     <div className="story">
       <Title headingRef={headingRef}>It remembers yesterday.</Title>
-      <Lede>Tired muscles get time off.</Lede>
-      <div className="recent-card story-in" style={delay(0.15)}>
-        <div className="recent-top">
-          <Thumb src={exerciseThumb('bench-press')} />
-          <div>
-            <small>Yesterday · example</small>
-            <b>Bench press · 4 hard sets</b>
+      <Lede>{demo.chestToday ? 'Tired muscles get a lighter day.' : 'Chest worked hard. Today it rests.'}</Lede>
+      <div className="recent-card story-in" style={delay(0.1)}>
+        <div className="recent-fig" aria-hidden="true">
+          <MannequinRegions view="front" selected={phase === 2 ? ['Chest', ...trains] : ['Chest']} />
+        </div>
+        <div className="recent-info">
+          <small>Yesterday · example</small>
+          <b>Bench press, 4 hard sets</b>
+          <div className="recent-meter" role="img" aria-label={`Chest about ${left}% recovered, an estimate`}>
+            <div className="recent-meter-top">
+              <span>Chest recovered</span>
+              <b>{left}%</b>
+            </div>
+            <span className="recent-track">
+              <i style={{ '--to': `${left}%` }} />
+            </span>
+            <small>Estimate · {demo.chest[1] ?? left}% tomorrow</small>
           </div>
         </div>
-        <div className="recent-bars" role="img" aria-label={`Estimated chest recovery: ${demo.chest.map((v) => `${v}%`).join(', ')} over the next three days`}>
-          {demo.chest.map((v, i) => (
-            <div key={i} className="recent-bar">
-              <span className="recent-fill" style={{ height: `${v}%`, ...delay(0.4 + i * 0.15) }} />
-              <b>{v}%</b>
-              <small>{['Now', 'Tomorrow', 'Day after'][i]}</small>
-            </div>
-          ))}
-          <span className="recent-cap">Chest recovery (estimate)</span>
+      </div>
+      <div className="story-card story-in" style={delay(0.3)}>
+        <div className="story-card-head">
+          <span key={phase < 2 ? 'a' : 'b'} className="tick-in">
+            {phase < 2 ? 'Today, as planned' : 'Today, rebuilt'}
+          </span>
+        </div>
+        <div aria-live="polite">
+          {rows.map((m) => {
+            const out = phase === 1 && m.muscle === 'Chest'
+            const added = phase === 2 && !had.has(m.muscle)
+            return (
+              <div key={`${phase < 2 ? 'a' : 'b'}${m.exId}`} className={`story-move recent-move ${out ? 'is-out' : ''} ${added ? 'is-new' : ''}`}>
+                <Thumb src={m.image} />
+                <div className="min-w-0 flex-1">
+                  <div className="story-move-name">{m.name}</div>
+                  <div className="story-move-detail">{[m.muscle, m.detail].filter(Boolean).join(' · ')}</div>
+                </div>
+                {out && <span className="recent-tag is-out">Rests</span>}
+                {added && <span className="recent-tag is-new">Swapped in</span>}
+              </div>
+            )
+          })}
         </div>
       </div>
-      <MoveList className="story-in" moves={demo.moves.slice(0, 3)} head="So today" />
-      {!demo.chestToday && (
-        <span className="story-chip pop-in" style={delay(1.1)}>
-          <Check size={15} />
-          Chest rests. Everything else trains.
-        </span>
-      )}
     </div>
   )
 }
@@ -477,7 +513,7 @@ export function FirstSession({ headingRef, state, profile, name, today, now, sta
   const areas = BODY_AREAS.filter((a) => !(profile.avoidMuscles || []).includes(a))
   const later = areas.some((a) => !trained.has(a))
   return (
-    <div className="story story--flush">
+    <div className="story story--flush first-session">
       <Title headingRef={headingRef}>
         {startingPoint || !first ? 'Here’s day 1 of your plan.' : `${first}, here’s day 1 of your plan.`}
       </Title>

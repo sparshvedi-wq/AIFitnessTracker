@@ -39,6 +39,7 @@ import {
   TRAINER_ANCHOR,
   feelChange,
   feelDemo,
+  firstSession,
   fixCards,
   midWorkoutDemo,
   pathWeeks,
@@ -654,8 +655,9 @@ function FirstTally({ headingRef, goalMode, weeklyGoal }) {
               <line key={`${a}${b}`} x1={a} y1={b} x2={c} y2={d} />
             ))}
           </g>
-          <path className="tally-ghost" d="M102 70v120M150 70v120M174 70v120M198 70v120" />
-          <path className="tally-first" d="M78 62v136" />
+          {/* Four evenly spaced strokes and the strike that will close the group. */}
+          <path className="tally-ghost" d="M117 70v120M147 70v120M177 70v120M66 158L196 98" />
+          <path className="tally-first" d="M85 62v136" />
         </svg>
       </div>
       <div className="story-in" style={delay(1.3)}>
@@ -918,37 +920,50 @@ function PayBack({ onBack }) {
   )
 }
 
-function TryFree({ headingRef, name, onNext }) {
+// The first paywall page sells their own plan: session 1 as the planner built
+// it, and three things the trial does with it. No stock hero, no badges.
+function TryFree({ headingRef, state, profile, name, today, now, onNext }) {
   const first = name.trim().split(' ')[0]
+  const session = useMemo(() => firstSession(state, profile, { today, now }), [state, profile, today, now])
+  const gets = [
+    profile.flexibleTime ? 'Every workout fits the time you have' : `Every workout fits ${profile.minutes} minutes`,
+    'Your next weight, picked from each set',
+    'Skipped moves come back later',
+  ]
   return (
     <div className="story story-pay">
-      <div className="pay-hero" aria-hidden="true">
-        <svg viewBox="0 0 390 340" preserveAspectRatio="xMidYMax slice">
-          <circle cx="195" cy="250" r="190" className="pay-c1" />
-          <circle cx="195" cy="250" r="130" className="pay-c2" />
-        </svg>
-        <img src={ONBOARDING_ART.strength} alt="" />
-        <span className="pay-free">
-          <b>$0</b>
-          today
-        </span>
-      </div>
-      <div className="pay-body">
-        <h3 ref={headingRef} tabIndex={-1} className="story-title story-in" style={delay(0.2)}>
+      <div className="pay-body pay-body--top pay-body--first">
+        <p className="pay-eyebrow story-in">
+          <TallyMark />
+          {TRIAL_DAYS} days free
+        </p>
+        <h3 ref={headingRef} tabIndex={-1} className="story-title story-in" style={delay(0.05)}>
           {first ? `Start your plan free, ${first}.` : 'Start your plan free.'}
         </h3>
-        <div className="pay-points">
-          {[
-            ['clock', 'Plans around your time'],
-            ['trendUp', 'Your next weight, picked for you'],
-            ['repeat', 'Skipped moves come back later'],
-          ].map(([icon, label], i) => (
-            <div key={label} className="pay-point story-in" style={delay(0.35 + i * 0.1)}>
-              <span><Icon name={icon} size={22} strokeWidth={2.2} /></span>
-              {label}
+        <div className="pay-session story-in" style={delay(0.15)}>
+          <div className="pay-session-head">
+            <span>Session 1</span>
+            <b>{session.minutes} min</b>
+          </div>
+          {session.moves.slice(0, 3).map((m) => (
+            <div key={m.exId} className="pay-session-move">
+              <Thumb src={m.image} />
+              <span className="pay-session-name">{m.name}</span>
+              <small>{m.detail}</small>
             </div>
           ))}
+          {session.moves.length > 3 && (
+            <p className="pay-session-more">+{session.moves.length - 3} more, ready when you are</p>
+          )}
         </div>
+        <ul className="pay-gets">
+          {gets.map((label, i) => (
+            <li key={label} className="story-in" style={delay(0.3 + i * 0.08)}>
+              <Check size={15} />
+              {label}
+            </li>
+          ))}
+        </ul>
       </div>
       <div className="pay-foot">
         <PaywallDots at={1} />
@@ -1066,20 +1081,6 @@ function Plans({ headingRef, name, profile, set, onBack, onSubscribe }) {
             <i />
           </button>
         </div>}
-        {freeYear && (
-          <div className="pay-mini" aria-label={`Today free. Reminder on day ${TRIAL_DAYS - 2}. Billed on day ${TRIAL_DAYS}.`}>
-            {[
-              ['Today', '$0'],
-              [`Day ${TRIAL_DAYS - 2}`, 'Reminder'],
-              [`Day ${TRIAL_DAYS}`, pricing.year.price],
-            ].map(([when, what], i) => (
-              <span key={when} style={delay(0.1 + i * 0.08)}>
-                <b>{when}</b>
-                {what}
-              </span>
-            ))}
-          </div>
-        )}
       </div>
       <div className="pay-foot">
         <PaywallDots at={3} />

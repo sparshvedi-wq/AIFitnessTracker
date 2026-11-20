@@ -58,7 +58,7 @@ export const CTA_WAIT = {
   'barrier-enjoyment-demo': 2300,
   'sport-demo': 1900,
   'equipment-demo': 2000,
-  'recent-demo': 1500,
+  'recent-demo': 2900,
   'recovery-demo': 2500,
   'photo-demo': 1000,
   'year-demo': 1700,

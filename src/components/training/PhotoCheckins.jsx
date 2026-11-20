@@ -367,7 +367,7 @@ export default function PhotoCheckins({
         fullScreen={onboarding}
         dismissible={!onboarding}
         onClose={close}
-        className={onboarding ? 'setup-dialog' : ''}
+        className={onboarding ? 'setup-dialog setup-dialog--paper' : ''}
         bodyClassName={onboarding ? 'setup-body' : ''}
         footerClassName={onboarding ? 'setup-footer' : ''}
         hideHandle={onboarding}
@@ -375,8 +375,16 @@ export default function PhotoCheckins({
           onboarding ? (
             <SetupHeader
               label="Your body"
-              fills={[1, 1, 1, 1, adding ? Math.min(0.75, 0.25 + Object.keys(photos).length * 0.17) : 0.85]}
-              onBack={onBack}
+              fills={[
+                1,
+                1,
+                1,
+                1,
+                adding
+                  ? Math.min(0.75, 0.25 + Object.keys(photos).length * 0.17)
+                  : 0.8 + (0.2 * (reviewStep + 1)) / (reviewLast + 1),
+              ]}
+              onBack={!adding && detail?.review && reviewStep > 0 ? () => setReviewStep(reviewStep - 1) : onBack}
               action={
                 DEV ? (
                   <button
@@ -539,7 +547,7 @@ export default function PhotoCheckins({
           <PhotoReviewLoading status={busy} previews={photos} />
         ) : adding ? (
           <>
-            <div className="mt-4 grid grid-cols-3 gap-2">
+            <div className={onboarding ? 'photo-angles mt-4' : 'mt-4 grid grid-cols-3 gap-2'} role="group" aria-label="Photo view">
               {PHOTO_ANGLES.map((a, i) => (
                 <button
                   key={a}
@@ -547,7 +555,11 @@ export default function PhotoCheckins({
                   aria-label={`${a} view`}
                   aria-pressed={angle === a}
                   onClick={() => setAngle(a)}
-                  className={`tile flex min-h-12 items-center justify-center gap-2 !rounded-[16px] text-[15px] font-semibold capitalize ${angle === a ? '' : 'text-ink2'}`}
+                  className={
+                    onboarding
+                      ? 'photo-angle'
+                      : `tile flex min-h-12 items-center justify-center gap-2 !rounded-[16px] text-[15px] font-semibold capitalize ${angle === a ? '' : 'text-ink2'}`
+                  }
                 >
                   {photos[a] && <img src={photos[a].preview} alt="" className="photo-angle-thumb" />}
                   <span>{a}</span>
@@ -795,6 +807,7 @@ export default function PhotoCheckins({
                     onFocusChange={setSelectedFocus}
                     canApply={!detail.synthetic && p.ageGroup === '18+'}
                     appliesOnContinue={onboarding}
+                    inSetup={onboarding}
                   />
                 ) : (
                   <>

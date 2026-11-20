@@ -37,6 +37,7 @@ export default function MannequinRegions({ view = 'front', selected = [], onTogg
         {BODY_REGIONS[view].map(({ area, paths, mirror }) => (
           <g
             key={area}
+            data-area={area}
             className={`mannequin-region ${selected.includes(area) ? 'is-selected' : ''} ${onToggle ? 'is-interactive' : ''}`}
           >
             {paths.map((d) => (

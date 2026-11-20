@@ -33,7 +33,7 @@ test('every story screen is part of the flow', () => {
   const steps = onboardingSteps({
     ...defaultState().settings.training,
     onboardingProblem: 'often',
-    onboardingBarriers: ['time', 'unsure', 'enjoyment'],
+    location: 'gym', goal: 'Get stronger', onboardingBarriers: ['time', 'unsure', 'enjoyment', 'schedule', 'starting'],
     sports: ['tennis'],
     wantsSport: true,
   })

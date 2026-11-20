@@ -4,8 +4,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState } from '../src/lib/storage.js'
-import { editableStep, nextOnboardingStep, onboardingSteps } from '../src/lib/onboarding.js'
-import { FALLOUT_OPTIONS, PLAN_STUDY, QUESTION_COPY, falloutStep } from '../src/lib/onboarding-questions.js'
+import { nextOnboardingStep, onboardingSteps } from '../src/lib/onboarding.js'
+import { QUESTION_COPY } from '../src/lib/onboarding-questions.js'
 import {
   STORY_STEPS,
   energyDemo,
@@ -47,26 +47,11 @@ test('every question in the flow is short, with at most a few words of help', ()
   }
 })
 
-test('the restart loop follows only an answer that plans fall apart', () => {
-  const base = defaultState().settings.training
-  for (const answer of ['often', 'some']) {
-    const p = { ...base, onboardingProblem: answer }
-    assert.equal(nextOnboardingStep('problem', p), 'fallout')
-    assert.equal(nextOnboardingStep('fallout', p), 'loop-demo')
-    assert.equal(nextOnboardingStep('loop-demo', p), 'solution-demo')
-  }
-  for (const answer of ['no', 'new', undefined])
-    assert.equal(nextOnboardingStep('problem', { ...base, onboardingProblem: answer }), 'solution-demo')
-  assert.equal(editableStep('fallout'), false)
-  // Their answer becomes one stop of the loop, and every answer has one.
-  for (const [id] of FALLOUT_OPTIONS) assert.notEqual(falloutStep(id), 'Fall behind')
-  assert.equal(new Set(FALLOUT_OPTIONS.map(([id]) => falloutStep(id))).size, FALLOUT_OPTIONS.length)
-})
-
-test('the research screen quotes one study, and its figures stay in range', () => {
-  assert.ok(PLAN_STUDY.planned > PLAN_STUDY.others * 2, 'the lede says more than twice as likely')
-  assert.ok(PLAN_STUDY.planned <= 100 && PLAN_STUDY.others > 0)
-  assert.match(PLAN_STUDY.source, /2002/)
+test('old pledge and restart questions never interrupt a new plan', () => {
+  const p = { ...defaultState().settings.training, onboardingProblem: 'often' }
+  for (const id of ['problem', 'loop-demo', 'pledge', 'proof-demo', 'value-demo', 'tally-demo'])
+    assert.equal(onboardingSteps(p).includes(id), false, id)
+  assert.equal(nextOnboardingStep('review', p), 'paywall-plans')
 })
 
 test('act 1 demos run the real planner for every place, within the equipment there', () => {

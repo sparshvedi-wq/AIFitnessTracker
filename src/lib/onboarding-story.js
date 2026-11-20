@@ -17,10 +17,6 @@ import { PAYWALL_STEPS } from './onboarding.js'
 /** Full-screen story steps, drawn by OnboardingStory.jsx. */
 export const STORY_STEPS = [
   'welcome',
-  'problem',
-  'fallout',
-  'loop-demo',
-  'solution-demo',
   'goal-demo',
   'barrier-unsure-demo',
   'barrier-enjoyment-demo',
@@ -30,24 +26,14 @@ export const STORY_STEPS = [
   'recovery-demo',
   'photo-demo',
   'rhythm',
-  'year-demo',
   'fix-demo',
-  'building-demo',
-  'squeeze-demo',
   'midworkout-demo',
   'rollover-demo',
   'feel-demo',
-  'tally-demo',
-  'path-demo',
-  'pledge',
-  'proof-demo',
-  'value-demo',
-  'ready-demo',
   ...PAYWALL_STEPS,
 ]
 export const isStoryStep = (step) => STORY_STEPS.includes(step)
-/** Screens with their own main button (a gate, a hold, or the paywall). */
-export const OWN_CTA_STEPS = ['building-demo', 'pledge', ...PAYWALL_STEPS]
+export const OWN_CTA_STEPS = PAYWALL_STEPS
 
 export const PROBLEM_OPTIONS = [
   ['often', 'Yes, often'],
@@ -129,12 +115,15 @@ export function midWorkoutDemo(state, profile, { today, now }) {
 }
 
 // The rollover story, as the engine behaves (tests/onboarding-story.test.mjs
-// keeps it true): work cut for time is reconsidered at every plan, waits while
-// those muscles recover, and is dropped when similar work covers it.
+// keeps it true): work cut for time waits while those muscles recover, then
+// comes back in a later session (up to two moves at a time).
 export const ROLLOVER_STORY = {
   cut: [moveOf('lat-pulldown'), moveOf('biceps-curl')],
-  next: { when: 'Next time you train', title: 'Legs', base: ['Squat', 'RDL'] },
-  after: { when: 'The time after', title: 'Pull', base: ['Pull-ups', 'Rows'] },
+  sessions: [
+    { state: 'cut', when: 'Today', title: 'Pull day', text: 'Cut for time' },
+    { state: 'wait', when: 'Next time', title: 'Legs', text: 'Held while back and arms recover' },
+    { state: 'back', when: 'The time after', title: 'Upper body', text: 'Back in your plan' },
+  ],
 }
 
 /**

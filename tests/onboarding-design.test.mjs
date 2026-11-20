@@ -25,8 +25,8 @@ test('onboarding chapters stay ordered across optional branches', () => {
           for (const baselineMode of ['photos', 'manual']) {
             const p = { ...base, location, hasHomeSetup, sports, equipment, baselineMode }
             const steps = onboardingSteps(p)
-            // The problem and its answer come before the first question.
-            assert.deepEqual(steps.slice(0, 4), ['welcome', 'problem', 'solution-demo', 'goal'])
+            // A working sample leads directly to the first personal choice.
+            assert.deepEqual(steps.slice(0, 4), ['welcome', 'goal', 'age', 'goal-demo'])
             // Chapters only ever move forward, whatever branches an answer adds.
             assert.ok(
               steps.every((s, i) => !i || onboardingStage(s).index >= onboardingStage(steps[i - 1]).index),

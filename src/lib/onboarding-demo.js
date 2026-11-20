@@ -28,17 +28,6 @@ export const barrierLabel = (id) => ONBOARDING_BARRIERS.find(([key]) => key === 
 export const pickedBarriers = (profile) =>
   (profile?.onboardingBarriers || []).filter((id) => id !== 'none' && BARRIER_ANSWERS[id])
 
-// Roughly half of people who begin an exercise programme stop within six
-// months: a long-standing finding in exercise-adherence research (Dishman,
-// 1988, "Exercise Adherence: Its Impact on Public Health"; restated in
-// Wilson & Brookfield, 2009, Int. J. Sport and Exercise Psychology 7(1)).
-// Check the wording against the source again before a public release.
-export const DROPOUT_FACT = {
-  figure: '1 in 2',
-  text: 'people who start training stop within six months.',
-  source: 'Exercise-adherence research',
-}
-
 // When the first session will happen. Naming a time makes following through
 // more likely (implementation intentions; Gollwitzer & Sheeran, 2006).
 // No set days: the question is when they are next free, not which weekday.

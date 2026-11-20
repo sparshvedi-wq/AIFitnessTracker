@@ -6,6 +6,7 @@ import {
   nextOnboardingStep,
   ONBOARDING_VERSION,
   PAYWALL_STEPS,
+  retiredOnboardingSteps,
   editableStep,
 } from '../src/lib/onboarding.js'
 import {
@@ -13,7 +14,6 @@ import {
   toggleOnboardingBarrier,
   consistencyExample,
   planningTimeExample,
-  isOnboardingDemo,
   pickedBarriers,
   offerPoints,
   offerPricing,
@@ -22,7 +22,6 @@ import {
   BARRIER_ANSWERS,
   ONBOARDING_BARRIERS,
   OFFER_PRICES,
-  DROPOUT_FACT,
   FIRST_SESSION_OPTIONS,
 } from '../src/lib/onboarding-demo.js'
 import { metaOf } from '../src/lib/catalog/index.js'
@@ -32,77 +31,34 @@ import { planSeconds } from '../src/lib/engine/session-time.js'
 
 const clock = { today: '2026-11-13', now: new Date('2026-11-13T12:00:00').getTime() }
 
-test('the longer flow demonstrates answers, builds the plan, lets them use it, then ends on the paywall', () => {
-  const p = defaultState().settings.training
-  for (const profile of [
-    p,
-    {
-      ...p,
-      sports: ['tennis'],
-      wantsSport: true,
-      location: 'home',
-      hasHomeSetup: true,
-      equipment: ['Dumbbells'],
-      baselineMode: 'manual',
-    },
-  ]) {
-    const steps = onboardingSteps(profile)
-    assert.deepEqual(steps.slice(-3), PAYWALL_STEPS)
-    for (const [question, demo] of [
-      ['goal', 'goal-demo'],
-      ['rhythm', 'year-demo'],
-      ['time', 'recent-demo'],
-      ['comfort', 'recovery-demo'],
-    ]) {
-      assert.equal(nextOnboardingStep(question, profile), demo)
-      assert.ok(isOnboardingDemo(demo))
-    }
-    assert.equal(steps.includes('sport-demo'), Boolean(profile.sports.length))
-    assert.ok(steps.indexOf('review') > steps.indexOf('photos'))
-    assert.ok(steps.indexOf('gender') > steps.indexOf('about'))
-    // Act 2 and 3 follow the plan, in order, and the paywall is last.
-    assert.deepEqual(steps.slice(steps.indexOf('building-demo'), steps.indexOf('paywall')), [
-      'building-demo',
-      'review',
-      'squeeze-demo',
-      'midworkout-demo',
-      'rollover-demo',
-      'feel-demo',
-      'tally-demo',
-      'path-demo',
-      'pledge',
-      'proof-demo',
-      'value-demo',
-      'ready-demo',
-    ])
-    assert.equal(nextOnboardingStep('paywall-plans', profile), undefined)
-    assert.ok(!steps.includes('offer') && !steps.includes('time-demo') && !steps.includes('compress-demo'))
-    // A first-session commitment comes before the plan; the plan is built, then shown.
-    assert.equal(nextOnboardingStep('recovery-demo', profile), 'photo-demo')
-    assert.equal(nextOnboardingStep('photo-demo', profile), 'photo-choice')
-    assert.equal(
-      nextOnboardingStep('photo-choice', profile),
-      profile.baselineMode === 'manual' ? 'manual' : 'photos',
-    )
-    assert.ok(steps.indexOf('building-demo') > steps.indexOf(profile.baselineMode === 'manual' ? 'manual' : 'photos'))
-    assert.ok(isOnboardingDemo('building-demo') && isOnboardingDemo('why-demo'))
+test('photo and manual branches go from their real session preview straight to membership', () => {
+  for (const baselineMode of ['manual', 'photos']) {
+    const p = { ...defaultState().settings.training, baselineMode }
+    const steps = onboardingSteps(p)
+    assert.deepEqual(steps.slice(-3), [baselineMode, 'review', ...PAYWALL_STEPS])
+    assert.equal(nextOnboardingStep('paywall-plans', p), undefined)
+    assert.equal(nextOnboardingStep('welcome', p), 'goal')
+    assert.equal(nextOnboardingStep('goal', p), 'age')
+    assert.equal(nextOnboardingStep('age', p), 'goal-demo')
+    for (const destination of Object.values(retiredOnboardingSteps))
+      assert.ok(steps.includes(destination), destination)
   }
 })
 
-test('obstacles get their fix, and time is demonstrated live once, after the plan', () => {
-  const profile = { ...defaultState().settings.training, onboardingBarriers: ['time', 'schedule'] }
-  assert.equal(nextOnboardingStep('barriers', profile), 'fix-demo')
-  // Time and schedule are shown live in act 2, so they need no screen here.
-  assert.equal(nextOnboardingStep('fix-demo', profile), 'variety')
-  const both = { ...profile, onboardingBarriers: ['enjoyment', 'unsure'] }
-  // Answered in the order they were picked.
-  assert.equal(nextOnboardingStep('fix-demo', both), 'barrier-enjoyment-demo')
-  assert.equal(nextOnboardingStep('barrier-enjoyment-demo', both), 'barrier-unsure-demo')
-  assert.equal(nextOnboardingStep('barrier-unsure-demo', both), 'variety')
-  const steps = onboardingSteps(profile)
-  for (const gone of ['time-demo', 'barrier-time-demo', 'barrier-compress-demo']) assert.ok(!steps.includes(gone))
-  assert.equal(steps.filter((s) => s === 'midworkout-demo').length, 1)
-  assert.equal(nextOnboardingStep('barriers', { ...profile, onboardingBarriers: ['none'] }), 'variety')
+test('the demonstration responds to the obstacle and available equipment', () => {
+  const p = { ...defaultState().settings.training, location: 'gym', goal: 'Get stronger' }
+  const none = onboardingSteps({ ...p, onboardingBarriers: ['none'] })
+  for (const [answer, step] of [['time', 'midworkout-demo'], ['schedule', 'rollover-demo'],
+    ['starting', 'fix-demo'], ['unsure', 'barrier-unsure-demo'], ['enjoyment', 'barrier-enjoyment-demo']]) {
+    assert.equal(none.includes(step), false)
+    const route = onboardingSteps({ ...p, onboardingBarriers: [answer] })
+    assert.equal(route.filter((id) => id === step).length, 1)
+    assert.ok(route.indexOf(step) < route.indexOf('review'))
+  }
+  assert.ok(none.includes('feel-demo'))
+  assert.ok(!onboardingSteps({ ...p, location: 'on-the-go' }).includes('feel-demo'))
+  assert.ok(!none.includes('sport-demo'))
+  assert.ok(onboardingSteps({ ...p, wantsSport: true, sports: ['tennis'] }).includes('sport-demo'))
 })
 
 test('every persuasive line is either the person’s own answer, real arithmetic or something the app does', () => {
@@ -153,7 +109,6 @@ test('every persuasive line is either the person’s own answer, real arithmetic
     everything,
     /\b(guarantee|lose \d|gain \d|\d+ ?(lb|kg|pounds)|in \d+ (days|weeks|months)|users|rated|#1)\b/i,
   )
-  assert.equal(DROPOUT_FACT.figure, '1 in 2')
   assert.ok(
     FIRST_SESSION_OPTIONS.some(([id]) => id === 'unsure'),
     'not committing is always an option',

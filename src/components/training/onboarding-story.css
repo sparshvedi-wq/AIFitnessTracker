@@ -656,19 +656,6 @@
     transform: none;
   }
 }
-.year-fact {
-  align-self: center;
-  margin-top: auto;
-  padding: 7px 14px;
-  border: 1px solid rgb(var(--line));
-  border-radius: 16px;
-  background: rgb(var(--surface));
-  color: rgb(var(--muted));
-  font-size: 14px;
-}
-.year-fact b {
-  color: rgb(var(--ink));
-}
 
 /* ── The fix ─────────────────────────────────────────────── */
 .fix-card {
@@ -1183,200 +1170,152 @@
   color: rgb(var(--accent-ink));
 }
 
-/* ── Rollover ───────────────────────────────────────────── */
-.roll-tray {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  min-height: 62px;
-  padding: 10px 12px;
-  border: 2px dashed rgb(var(--outline));
-  border-radius: 18px;
-}
-.roll-label {
-  width: 52px;
-  flex: none;
-  color: rgb(var(--muted));
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.15;
-}
-.roll-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 40px;
-  padding: 0 12px 0 4px;
-  border-radius: 20px;
-  background: rgb(var(--ink));
-  color: rgb(var(--bg));
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-  animation: roll-pop 0.5s var(--story-pop) both;
-}
-.roll-chip .story-thumb {
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
-}
-@keyframes roll-pop {
-  from {
-    opacity: 0;
-    transform: scale(0.5) translateY(-30px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.roll-empty {
-  color: rgb(var(--faint));
-  font-size: 14px;
-  font-weight: 700;
-}
-.roll-session {
+/* ── Rollover: the same two moves over three sessions ───────
+   Each session appears in turn (--d), joined by a line that draws down. */
+.roll-line {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 14px 12px;
-  border: 2px solid transparent;
-  border-radius: 22px;
-  background: rgb(var(--surface));
-  box-shadow: 0 10px 26px rgb(var(--shadow) / 0.08);
-  transition: all 0.35s;
-}
-.roll-session.is-live {
-  border-color: rgb(var(--accent));
-  box-shadow: 0 12px 30px rgb(var(--accent) / 0.18);
-  transform: scale(1.02);
-}
-.roll-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-.roll-head small {
-  display: block;
-  color: rgb(var(--muted));
-  font-size: 13px;
-  font-weight: 700;
-}
-.roll-head b {
-  font-family: 'Fraunces Variable', Georgia, serif;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.1;
-}
-.roll-base {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 6px;
-}
-.roll-base span {
-  padding: 6px 10px;
-  border-radius: 15px;
-  background: rgb(var(--surface-2));
-  font-size: 13px;
-  font-weight: 700;
-}
-.roll-why {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  gap: 14px;
   margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  animation: roll-slide 0.45s var(--story-ease) both;
+  padding: 0;
+  list-style: none;
 }
-@keyframes roll-slide {
-  from {
-    opacity: 0;
-    transform: translateX(-14px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.roll-ic {
+.roll-step {
+  position: relative;
   display: grid;
-  flex: none;
+  grid-template-columns: 34px minmax(0, 1fr);
+  column-gap: 12px;
+  animation: story-up 0.45s var(--story-ease) var(--d) both;
+}
+/* The line to the next session. */
+.roll-step:not(:last-child)::before {
+  position: absolute;
+  top: 40px;
+  bottom: -12px;
+  left: 16px;
+  width: 2px;
+  border-radius: 1px;
+  background: rgb(var(--line));
+  content: '';
+  transform-origin: top;
+  animation: roll-rail 0.5s var(--story-ease) calc(var(--d) + 0.55s) both;
+}
+@keyframes roll-rail {
+  from {
+    transform: scaleY(0);
+  }
+}
+.roll-node {
+  display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-}
-.roll-ic.is-wait {
-  background: rgb(var(--surface-2));
-  color: rgb(var(--ink-2));
-}
-.roll-ic.is-ok {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
   background: rgb(var(--ink));
   color: rgb(var(--bg));
 }
-.roll-land {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 6px 12px 6px 6px;
-  border-radius: 16px;
-  background: rgb(var(--lit));
-  color: rgb(var(--accent-ink));
-  animation: roll-land 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25) both;
-}
-.roll-land .story-thumb {
-  width: 38px;
-  height: 38px;
+.roll-step.is-wait .roll-node {
+  border: 1.5px solid rgb(var(--line));
   background: rgb(var(--surface));
+  color: rgb(var(--muted));
 }
-.roll-land b {
-  display: block;
-  color: rgb(var(--ink));
-  font-size: 15px;
+.roll-step.is-back .roll-node {
+  background: rgb(var(--accent));
+  color: #fff;
 }
-.roll-land small {
-  font-size: 13px;
+.roll-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-top: 1px;
+}
+.roll-body small {
+  color: rgb(var(--muted));
+  font-size: 12.5px;
   font-weight: 700;
 }
-@keyframes roll-land {
-  0% {
-    opacity: 0;
-    transform: translateY(-110px) scale(0.9);
-  }
-  60% {
+.roll-body b {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.roll-moves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 7px;
+}
+.roll-move {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px 0 4px;
+  border: 1.5px solid rgb(var(--line));
+  border-radius: 18px;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.roll-move .story-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+}
+/* Today: the moves are struck out once they show. */
+.roll-step.is-cut .roll-move {
+  opacity: 0.5;
+  animation: roll-fade 0.35s ease calc(var(--d) + 0.5s + var(--j) * 0.12s) both;
+}
+.roll-step.is-cut .roll-move::after {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  left: 38px;
+  height: 1.5px;
+  background: rgb(var(--ink));
+  content: '';
+  transform-origin: left;
+  animation: roll-strike 0.35s ease calc(var(--d) + 0.5s + var(--j) * 0.12s) both;
+}
+@keyframes roll-fade {
+  from {
     opacity: 1;
   }
-  100% {
-    transform: none;
+}
+@keyframes roll-strike {
+  from {
+    transform: scaleX(0);
   }
 }
-.story-dots {
-  display: flex;
-  justify-content: center;
-  gap: 2px;
+/* Next time: held, not lost. */
+.roll-step.is-wait .roll-move {
+  border-style: dashed;
+  border-color: rgb(var(--outline));
+  background: transparent;
+  color: rgb(var(--muted));
 }
-.story-dots button {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
+.roll-step.is-wait .roll-move .story-thumb {
+  opacity: 0.45;
 }
-.story-dots button::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 4px;
-  background: rgb(var(--outline));
-  transition: all 0.25s;
+/* The time after: they land back in the plan. */
+.roll-step.is-back .roll-move {
+  border-color: rgb(var(--accent));
+  background: rgb(var(--lit));
+  color: rgb(var(--accent-ink));
+  animation: roll-land 0.5s var(--story-pop, cubic-bezier(0.34, 1.56, 0.64, 1))
+    calc(var(--d) + 0.3s + var(--j) * 0.15s) both;
 }
-.story-dots button.is-on::before {
-  width: 22px;
-  background: rgb(var(--ink));
+@keyframes roll-land {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.92);
+  }
 }
 
 /* ── Feel ───────────────────────────────────────────────── */
@@ -3178,144 +3117,64 @@
   right: 16px;
 }
 
-/* ── The restart loop ────────────────────────────────────── */
-.loop {
-  position: relative;
-  width: min(100%, 320px);
-  aspect-ratio: 1;
-  margin: 0 auto;
-}
-.loop > svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.loop-track {
-  fill: none;
-  stroke: rgb(var(--line));
-  stroke-width: 3;
-  stroke-dasharray: 2 9;
-  stroke-linecap: round;
-}
-.loop-run {
-  fill: none;
-  stroke: rgb(var(--ink) / 0.8);
-  stroke-width: 4;
-  stroke-linecap: round;
-  stroke-dasharray: 160 494;
-  animation: loop-run 1.6s linear infinite;
-  transition:
-    stroke 0.5s,
-    opacity 0.5s;
-}
-@keyframes loop-run {
-  to {
-    stroke-dashoffset: -654;
-  }
-}
-.loop-dot {
-  transform-origin: 150px 150px;
-  animation: story-spin 1.6s linear infinite;
-}
-.loop-dot circle {
-  fill: rgb(var(--ink));
-  transition: fill 0.4s;
-}
-.loop.is-broken .loop-run {
-  opacity: 0.18;
-  animation-play-state: paused;
-}
-.loop.is-broken .loop-dot {
-  animation-play-state: paused;
-}
-.loop.is-broken .loop-dot circle {
-  fill: rgb(var(--accent));
-}
-.loop-stop {
-  position: absolute;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  max-width: 48%;
-  min-height: 36px;
-  padding: 0 12px 0 6px;
-  border-radius: 18px;
-  background: rgb(var(--surface));
-  box-shadow: 0 6px 16px rgb(var(--shadow) / 0.12);
-  font-size: 13.5px;
-  font-weight: 700;
-  line-height: 1.15;
-  transition: opacity 0.5s;
-}
-.loop-stop i {
-  display: grid;
-  flex: none;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 13px;
-  background: rgb(var(--surface-2));
-  color: rgb(var(--muted));
-}
-.loop-stop.is-theirs {
-  background: rgb(var(--ink));
-  color: rgb(var(--bg));
-}
-.loop-stop.is-theirs i {
-  background: rgb(var(--accent));
-  color: #fff;
-}
-.loop-stop--top {
-  top: 3%;
-  left: 50%;
-  transform: translateX(-50%);
-}
-.loop-stop--right {
-  top: 50%;
-  right: -2%;
-  transform: translateY(-50%);
-}
-.loop-stop--bottom {
-  bottom: 3%;
-  left: 50%;
-  transform: translateX(-50%);
-  white-space: nowrap;
-  max-width: 80%;
-}
-.loop-stop--left {
-  top: 50%;
-  left: -2%;
-  transform: translateY(-50%);
-}
-.loop.is-broken .loop-stop {
-  opacity: 0.45;
-}
-.loop-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
+/* ── The restart loop: four weeks, fixed plan against Tally ─── */
+.loop-table {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 8px;
+}
+.loop-row {
+  display: grid;
+  grid-template-columns: 50px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+.loop-row--head > span {
+  padding: 0 4px;
   color: rgb(var(--muted));
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  transform: translate(-50%, -50%);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
-.loop-center b {
-  font-family: 'Fraunces Variable', Georgia, serif;
-  font-size: 34px;
+.loop-week {
+  align-self: center;
+  color: rgb(var(--muted));
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.loop-cell {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  font-size: 13.5px;
   font-weight: 600;
-  line-height: 1.1;
-  color: rgb(var(--ink));
+  line-height: 1.25;
+  animation: story-up 0.45s var(--story-ease) both;
 }
-.loop.is-broken .loop-center {
-  color: rgb(var(--accent-ink));
-  animation: story-pop 0.5s var(--story-pop) both;
+.loop-cell svg {
+  flex: none;
 }
-.loop.is-broken .loop-center b {
-  color: rgb(var(--accent));
+.loop-cell.is-fixed {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+}
+.loop-cell.is-fixed.is-bad {
+  color: rgb(var(--muted));
+}
+.loop-cell.is-fixed.is-bad svg {
+  color: rgb(var(--danger));
+}
+.loop-cell.is-loop {
+  border: 1.5px dashed rgb(var(--outline));
+  background: transparent;
+}
+.loop-cell.is-tally {
+  background: rgb(var(--ink));
+  color: rgb(var(--bg));
 }
 
 /* ── Goal echo ───────────────────────────────────────────── */
@@ -3767,16 +3626,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loop-run,
-  .loop-dot,
   .recent-fill,
   .proof-col-bar i,
   .swap-pic {
     animation: none;
   }
 }
-.tally-reduce-motion .loop-run,
-.tally-reduce-motion .loop-dot,
 .tally-reduce-motion .recent-fill,
 .tally-reduce-motion .proof-col-bar i,
 .tally-reduce-motion .swap-pic {
@@ -3995,4 +3850,78 @@
 .tally-reduce-motion .q-ring.is-on > *,
 .tally-reduce-motion .story-tile.is-on .story-tile-icon {
   animation: none !important;
+}
+
+/* ── Day 1: today's muscles and the ones coming up ─────────── */
+.day-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.day-areas [role='list'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.day-areas [role='listitem'] {
+  padding: 7px 12px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 999px;
+  color: rgb(var(--muted));
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.day-areas [role='listitem'].is-today {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+  color: rgb(var(--bg));
+}
+.day-key {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: rgb(var(--muted));
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.day-key i {
+  width: 10px;
+  height: 10px;
+  margin-left: 8px;
+  border: 1px solid rgb(var(--outline));
+  border-radius: 5px;
+}
+.day-key i.is-today {
+  margin-left: 0;
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+}
+
+/* ── Continue waits while a demo plays ─────────────────────────
+   The button fills from left to right over the wait, then works. */
+.setup-dialog .btn-primary.cta-wait {
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+}
+.setup-dialog .btn-primary.cta-wait::before {
+  position: absolute;
+  inset: 0;
+  background: rgb(var(--bg) / 0.38);
+  content: '';
+  pointer-events: none;
+  transform-origin: right center;
+  animation: cta-wait var(--wait, 2s) linear both;
+}
+.setup-dialog .btn-primary.cta-wait:active {
+  transform: none;
+}
+@keyframes cta-wait {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }

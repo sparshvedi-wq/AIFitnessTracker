@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState, normalizeState } from '../src/lib/storage.js'
+import { preferShortFirstSession } from '../src/lib/baseline.js'
 import { buildDailyPlan } from '../src/lib/planner.js'
 import { nextOnboardingStep, onboardingSteps } from '../src/lib/onboarding.js'
 import { physiqueChoice, physiqueOptions } from '../src/lib/physique-preferences.js'
@@ -11,7 +12,7 @@ import { photoReviewSlides } from '../src/lib/photo-review.js'
 test('physique preference follows goal, survives restore and never changes training prescription', () => {
   const state = defaultState(),
     profile = state.settings.training
-  assert.deepEqual(onboardingSteps(profile).slice(3, 7), ['goal', 'goal-demo', 'physique', 'experience'])
+  assert.deepEqual(onboardingSteps(profile).slice(1, 6), ['goal', 'age', 'goal-demo', 'physique', 'experience'])
   assert.equal(nextOnboardingStep('goal', profile, 'goal'), 'physique')
   assert.equal(nextOnboardingStep('physique', profile, 'goal'), 'review')
   const before = buildDailyPlan(state, { today: '2026-11-06', seed: 5 })
@@ -75,4 +76,13 @@ test('shorter review copy keeps the original evidence and does not invent a smal
   // A saved real reading cannot gain confidence merely from a copy edit.
   const uncertain = { ...input, observation: 'Your shoulders may look slightly uneven.' }
   assert.equal(photoReviewSlides({ observations: [uncertain] })[1].observation, uncertain.observation)
+})
+
+test('a short first workout fits its budget unless the person chooses the longer assessment', () => {
+  assert.equal(preferShortFirstSession({ minutes: 15 }), true)
+  assert.equal(preferShortFirstSession({ minutes: 15, flexibleTime: true }), false)
+  assert.equal(preferShortFirstSession({ minutes: 30 }), false)
+  assert.equal(preferShortFirstSession({ minutes: 15, firstSessionMode: 'baseline' }), false)
+  assert.equal(preferShortFirstSession({ minutes: 45, firstSessionMode: 'training' }), true)
+  assert.equal(preferShortFirstSession({ minutes: 45, baseline: { status: 'skipped' } }), true)
 })

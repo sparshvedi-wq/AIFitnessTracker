@@ -115,6 +115,8 @@ export default function ManualBaselineFields({ value, onChange }) {
           </p>
         )}
       </Field>
+      <details className="mt-5 border-t border-line">
+        <summary className="min-h-11 cursor-pointer py-3 text-[14px] font-semibold">Add muscle estimate or notes</summary>
       <Field label="Muscle estimate">
         <div className="grid grid-cols-2 gap-2">
           {MUSCLE_ESTIMATES.map((v) => (
@@ -128,6 +130,7 @@ export default function ManualBaselineFields({ value, onChange }) {
         </div>
       </Field>
       <ProfileNotes value={value} onChange={onChange} />
+      </details>
       <details className="mt-5 border-t border-line">
         <summary className="min-h-11 cursor-pointer py-3 text-[14px] font-semibold">
           Add a training focus

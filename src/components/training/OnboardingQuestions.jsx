@@ -1,10 +1,9 @@
-// Onboarding questions in the story style: one big question, one line on
-// what Tally does with the answer, and answers that are one tap. A single
-// choice moves on by itself; the footer button is there for going back over.
+// Onboarding questions in the story style: one big question, a few words of
+// help where needed, and answers that are one tap to pick. Continue moves on.
 import Icon from '../Icon.jsx'
 import { ONBOARDING_ART } from '../../lib/onboarding-art.js'
 import { QUESTION_COPY } from '../../lib/onboarding-questions.js'
-import { Check, delay, reducedMotion, useTimers } from './story-kit.jsx'
+import { Check, delay } from './story-kit.jsx'
 
 export function QuestionHead({ step, headingRef, title }) {
   const [question, why] = QUESTION_COPY[step] || [title, null]
@@ -43,11 +42,10 @@ function OptionIcon({ icon }) {
 }
 
 /**
- * Tiles for a choice. `onDone` (single choice only) moves on after the tile
- * has lit; a second tap in that moment changes the answer instead.
+ * Tiles for a choice. A tap only picks; the footer button moves on, so a
+ * quick second tap can never skip a screen.
  */
-export function StoryOptions({ label, options, value, onSelect, onDone, multi = false, layout = 'list' }) {
-  const timers = useTimers()
+export function StoryOptions({ label, options, value, onSelect, multi = false, layout = 'list' }) {
   const isOn = (id) => (multi ? (value || []).includes(id) : value === id)
   return (
     <div
@@ -66,13 +64,7 @@ export function StoryOptions({ label, options, value, onSelect, onDone, multi = 
             aria-pressed={multi ? on : undefined}
             className={`story-tile q-tile story-in ${on ? 'is-on' : ''} ${o.num != null ? 'q-tile--num' : ''} ${o.wide ? 'q-tile--wide' : ''}`}
             style={delay(0.1 + i * 0.05)}
-            onClick={() => {
-              onSelect(o.id)
-              if (!multi && onDone) {
-                timers.clear()
-                timers.later(() => onDone(o.id), reducedMotion() ? 120 : 380)
-              }
-            }}
+            onClick={() => onSelect(o.id)}
           >
             {o.num != null ? (
               <span className="q-num">
@@ -99,8 +91,7 @@ export function StoryOptions({ label, options, value, onSelect, onDone, multi = 
 }
 
 /** Picture cards: goals, builds, places. */
-export function ArtOptions({ label, options, value, onSelect, onDone, layout = 'grid' }) {
-  const timers = useTimers()
+export function ArtOptions({ label, options, value, onSelect, layout = 'grid' }) {
   return (
     <div className={`q-art q-art--${layout}`} role="radiogroup" aria-label={label}>
       {options.map((o, i) => {
@@ -113,13 +104,7 @@ export function ArtOptions({ label, options, value, onSelect, onDone, layout = '
             aria-checked={on}
             className={`q-art-card story-in ${on ? 'is-on' : ''}`}
             style={delay(0.1 + i * 0.06)}
-            onClick={() => {
-              onSelect(o.id)
-              if (onDone) {
-                timers.clear()
-                timers.later(() => onDone(o.id), reducedMotion() ? 120 : 420)
-              }
-            }}
+            onClick={() => onSelect(o.id)}
           >
             <span className="q-art-pic" aria-hidden="true">
               <span className="q-art-glow" />

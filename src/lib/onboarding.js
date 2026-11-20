@@ -2,22 +2,29 @@ import { pickedBarriers } from './onboarding-demo.js'
 export const ONBOARDING_VERSION = 2
 export function onboardingSteps(p) {
   const barriers = pickedBarriers(p)
+  // The restart loop is only shown to people who said plans fall apart.
+  const looped = ['often', 'some'].includes(p.onboardingProblem)
   return [
+    // Act 1: frame the problem in their words, show the answer, make it personal.
     'welcome',
+    'problem',
+    ...(looped ? ['fallout', 'loop-demo'] : []),
+    'solution-demo',
     'goal',
-    'age',
     'goal-demo',
     'physique',
     'experience',
     'rhythm',
+    'year-demo',
     'barriers',
-    ...(barriers.includes('starting') ? ['fix-demo'] : []),
+    ...(barriers.length ? ['fix-demo'] : []),
     // Time and schedule are shown live in act 2 (mid-workout and rollover);
     // the two that need their own demo get one.
     ...barriers.filter((id) => ['unsure', 'enjoyment'].includes(id)).map((id) => `barrier-${id}-demo`),
     'variety',
     'about',
     'gender',
+    'age',
     'sports',
     ...(p.wantsSport || p.sports.length ? ['sport-choice', 'priority'] : []),
     ...(p.sports.length ? ['sport-demo'] : []),
@@ -30,30 +37,32 @@ export function onboardingSteps(p) {
     ...(p.location === 'on-the-go' ? ['movement'] : []),
     'equipment-demo',
     'time',
-    ...(barriers.includes('time') ? ['midworkout-demo'] : []),
-    ...(barriers.includes('schedule') ? ['rollover-demo'] : []),
     'recent-demo',
     'comfort',
     'recovery-demo',
-    ...(['Build muscle', 'Get stronger'].includes(p.goal) && p.location === 'gym' ? ['feel-demo'] : []),
     'photo-demo',
     'photo-choice',
     ...(p.baselineMode === 'manual' ? [] : ['photos']),
     ...(p.baselineMode === 'manual' ? ['manual'] : []),
+    // Act 2: the plan is built, then they use it: less time mid-workout,
+    // where the cut moves go, and weights from a tap.
+    'building-demo',
     'review',
+    'midworkout-demo',
+    'rollover-demo',
+    'feel-demo',
+    'tally-demo',
+    // Act 3: the path, a commitment, why it works, the value, then the paywall.
+    'path-demo',
+    'pledge',
+    'proof-demo',
+    'value-demo',
+    'ready-demo',
     ...PAYWALL_STEPS,
   ]
 }
-/** Billing choices follow the actual session preview. */
-export const PAYWALL_STEPS = ['paywall-plans']
-
-// Old saved drafts keep their answers and resume at the next relevant decision.
-export const retiredOnboardingSteps = {
-  problem: 'goal', fallout: 'goal', 'loop-demo': 'goal', 'solution-demo': 'goal',
-  'year-demo': 'barriers', 'building-demo': 'review', 'tally-demo': 'review',
-  'path-demo': 'review', pledge: 'review', 'proof-demo': 'review', 'value-demo': 'review',
-  'ready-demo': 'review', paywall: 'paywall-plans', 'paywall-reminder': 'paywall-plans',
-}
+/** The three paywall screens. The store sheet and the one-time offer open over the last. */
+export const PAYWALL_STEPS = ['paywall', 'paywall-reminder', 'paywall-plans']
 // Six internal chapters keep progress stable across conditional branches.
 const CHAPTERS = [
   [
@@ -81,7 +90,7 @@ const CHAPTERS = [
   ['location', 'home', 'equipment', 'home-loads', 'movement', 'equipment-demo'],
   [
     'time',
-    'time-demo', 'midworkout-demo', 'rollover-demo', 'feel-demo',
+    'time-demo',
     'compress-demo',
     'recent-demo',
     'planning-demo',
@@ -94,6 +103,9 @@ const CHAPTERS = [
     'building-demo',
     'review',
     'squeeze-demo',
+    'midworkout-demo',
+    'rollover-demo',
+    'feel-demo',
     'tally-demo',
     'path-demo',
     'pledge',
@@ -123,18 +135,17 @@ export function chapterFills(step, p, done = false) {
   return CHAPTERS.map((_, i) => {
     if (i < here) return 1
     if (i > here) return 0
-    if (done || ['review', 'ready-demo', ...PAYWALL_STEPS].includes(step)) return 1
+    if (done || ['ready-demo', ...PAYWALL_STEPS].includes(step)) return 1
     const mine = steps.filter((s) => onboardingStage(s).index === i)
     return (Math.max(0, mine.indexOf(step)) + 1) / (mine.length + 1)
   })
 }
 /** Steps that edit an answer. Stories, the pledge and the paywall are first-run only. */
-export function editableStep(step, group = null) {
-  if (group === 'goal' && step === 'age') return false
+export function editableStep(step) {
   return !step.endsWith('-demo') && !['problem', 'fallout', 'pledge', ...PAYWALL_STEPS].includes(step)
 }
 export function nextOnboardingStep(step, p, editingGroup = null) {
-  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s, editingGroup)),
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s)),
     next = steps[steps.indexOf(step) + 1]
   const finished =
     (editingGroup === 'goal' && step === 'physique') ||

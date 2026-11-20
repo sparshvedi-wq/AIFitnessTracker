@@ -1,18 +1,18 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { defaultState, normalizeState } from '../src/lib/storage.js'
-import { preferShortFirstSession } from '../src/lib/baseline.js'
 import { buildDailyPlan } from '../src/lib/planner.js'
 import { nextOnboardingStep, onboardingSteps } from '../src/lib/onboarding.js'
 import { physiqueChoice, physiqueOptions } from '../src/lib/physique-preferences.js'
 import { manualEntryOf, readManualBaseline } from '../src/lib/starting-profile.js'
+import { preferShortFirstSession } from '../src/lib/baseline.js'
 import { noteFocusSuggestions } from '../src/lib/profile-notes.js'
 import { photoReviewSlides } from '../src/lib/photo-review.js'
 
 test('physique preference follows goal, survives restore and never changes training prescription', () => {
   const state = defaultState(),
     profile = state.settings.training
-  assert.deepEqual(onboardingSteps(profile).slice(1, 6), ['goal', 'age', 'goal-demo', 'physique', 'experience'])
+  assert.deepEqual(onboardingSteps(profile).slice(3, 7), ['goal', 'goal-demo', 'physique', 'experience'])
   assert.equal(nextOnboardingStep('goal', profile, 'goal'), 'physique')
   assert.equal(nextOnboardingStep('physique', profile, 'goal'), 'review')
   const before = buildDailyPlan(state, { today: '2026-11-06', seed: 5 })

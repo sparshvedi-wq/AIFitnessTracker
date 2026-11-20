@@ -17,6 +17,10 @@ import { PAYWALL_STEPS } from './onboarding.js'
 /** Full-screen story steps, drawn by OnboardingStory.jsx. */
 export const STORY_STEPS = [
   'welcome',
+  'problem',
+  'fallout',
+  'loop-demo',
+  'solution-demo',
   'goal-demo',
   'barrier-unsure-demo',
   'barrier-enjoyment-demo',
@@ -26,14 +30,48 @@ export const STORY_STEPS = [
   'recovery-demo',
   'photo-demo',
   'rhythm',
+  'year-demo',
   'fix-demo',
+  'building-demo',
   'midworkout-demo',
   'rollover-demo',
   'feel-demo',
+  'tally-demo',
+  'path-demo',
+  'pledge',
+  'proof-demo',
+  'value-demo',
+  'ready-demo',
   ...PAYWALL_STEPS,
 ]
 export const isStoryStep = (step) => STORY_STEPS.includes(step)
-export const OWN_CTA_STEPS = PAYWALL_STEPS
+/** Screens with their own main button (a gate, a hold, or the paywall). */
+export const OWN_CTA_STEPS = ['building-demo', 'pledge', ...PAYWALL_STEPS]
+// How long Continue waits on each demo, in ms: long enough to see the demo
+// do its thing (each matches that screen's animation), not to read it all.
+// Screens seen before, and reduced motion, never wait.
+export const CTA_WAIT = {
+  'loop-demo': 3200,
+  'solution-demo': 2000,
+  'goal-demo': 1200,
+  'barrier-unsure-demo': 1200,
+  'barrier-enjoyment-demo': 2300,
+  'sport-demo': 1900,
+  'equipment-demo': 2000,
+  'recent-demo': 1500,
+  'recovery-demo': 2500,
+  'photo-demo': 1000,
+  'year-demo': 1700,
+  'fix-demo': 1200,
+  'midworkout-demo': 3400,
+  'rollover-demo': 3000,
+  'feel-demo': 2000,
+  'tally-demo': 1600,
+  'path-demo': 1500,
+  'proof-demo': 1700,
+  'value-demo': 1800,
+  'ready-demo': 1500,
+}
 
 export const PROBLEM_OPTIONS = [
   ['often', 'Yes, often'],

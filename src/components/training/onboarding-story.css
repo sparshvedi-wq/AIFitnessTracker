@@ -931,12 +931,16 @@
     transform: none;
   }
 }
+/* Long drill names wrap to a second line on small phones, never cut off. */
 .story-move-name {
+  display: -webkit-box;
   overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   font-size: 16px;
   font-weight: 700;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
 .story-move-detail {
   margin-top: 1px;

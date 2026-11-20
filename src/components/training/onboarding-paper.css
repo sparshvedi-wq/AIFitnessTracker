@@ -179,20 +179,3 @@
   box-shadow: 0 0 0 1px rgb(var(--ink));
   transform: none;
 }
-
-/* Membership uses billing periods as its price scale. */
-.membership-lede { color: rgb(var(--muted)); font-size: 16px; line-height: 1.45; margin: 4px 0 0; max-width: 32ch; }
-.membership-price { margin-inline-start: auto; text-align: end; font-variant-numeric: tabular-nums; }
-.membership-price b { font-size: clamp(18px, 5vw, 25px); }
-.membership-price small { display: block; color: rgb(var(--muted)); font-size: 14px; }
-.session-more summary { cursor: pointer; min-height: 44px; align-content: center; font-weight: 650; color: rgb(var(--accent-ink)); }
-.restart-figure { width: 100%; height: clamp(160px, 32dvh, 270px); object-fit: contain; }
-
-.setup-dialog--paper .story-move-name { white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
-.photo-permission-note { display: flex; gap: 10px; align-items: start; margin: 0; color: rgb(var(--muted)); font-size: 15px; line-height: 1.45; }
-.photo-permission-note svg { flex-shrink: 0; margin-top: .22em; }
-.entry-terms { text-align: center; font-size: 13px; color: rgb(var(--muted)); margin: 7px 0 0; }
-
-.setup-dialog--paper .story.first-session { min-height: auto; }
-.first-session .story-thumb { width: 64px; background: #171719; }
-.first-session .story-thumb img { object-fit: contain; object-position: center; }

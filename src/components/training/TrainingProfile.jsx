@@ -18,10 +18,11 @@ import {
   restoredOnboardingResponse,
   editableStep,
   PAYWALL_STEPS,
-  retiredOnboardingSteps,
 } from '../../lib/onboarding.js'
-import { isStoryStep, OWN_CTA_STEPS } from '../../lib/onboarding-story.js'
+import { CTA_WAIT, isStoryStep, OWN_CTA_STEPS } from '../../lib/onboarding-story.js'
 import OnboardingStory from './OnboardingStory.jsx'
+import { INTRO_CTA, INTRO_SLIDES } from './OnboardingIntro.jsx'
+import { reducedMotion } from './story-kit.jsx'
 // After the story styles, so Paper wins where both style the same thing.
 import './onboarding-paper.css'
 import { BASELINE_MINUTES, baselineDue, baselineMoves, preferShortFirstSession } from '../../lib/baseline.js'
@@ -34,7 +35,7 @@ import {
 import { PlanRibbon, SetupHeader, SetupRecap } from './SetupVisuals.jsx'
 import { ArtOptions, QuestionHead, StoryOptions } from './OnboardingQuestions.jsx'
 import { FirstSession } from './OnboardingStoryMore.jsx'
-import { ONBOARDING_BARRIERS, toggleOnboardingBarrier, TRIAL_DAYS } from '../../lib/onboarding-demo.js'
+import { ONBOARDING_BARRIERS, toggleOnboardingBarrier } from '../../lib/onboarding-demo.js'
 import { EXPERIENCE_OPTIONS, TIME_OPTIONS, VARIETY_OPTIONS } from '../../lib/onboarding-questions.js'
 import ExerciseThumbs from '../ExerciseThumbs.jsx'
 import { onboardingScene } from '../../lib/onboarding-art.js'
@@ -112,6 +113,15 @@ const TITLES = {
 const HINTS = {
   'home-loads': 'Weight of one dumbbell. Leave empty if you’re not sure.',
 }
+// What the main button says where "Continue" would undersell the moment.
+// Plain labels: "Continue" everywhere except where the button does something
+// more specific.
+const NEXT_LABEL = {
+  'building-demo': 'See my plan',
+  'ready-demo': 'Unlock my plan',
+}
+// The main button's motion on a few story screens.
+const CTA_MOTION = { 'ready-demo': 'story-cta--shine' }
 const LOCATION_SCENE = { gym: 'gym', home: 'equipment', 'on-the-go': 'movement' }
 const PLACE_DETAIL = { gym: 'Full kit', home: 'Your own kit', 'on-the-go': 'No kit' }
 const timePatch = (minutes) => (minutes === 'flexible' ? { flexibleTime: true } : { minutes, flexibleTime: false })
@@ -139,6 +149,8 @@ export default function TrainingProfile({ onClose }) {
   const [current, setCurrent] = useState(draft?.step || (returning ? 'review' : 'welcome'))
   // Which way the last move went, so the next screen slides in from that side.
   const [slide, setSlide] = useState('fwd')
+  // Which of the five welcome slides is showing.
+  const [introSlide, setIntroSlide] = useState(0)
   const [responseFor, setResponseFor] = useState(() =>
     returning ? null : restoredOnboardingResponse(draft, p),
   )
@@ -147,14 +159,16 @@ export default function TrainingProfile({ onClose }) {
   const [editingGroup, setEditingGroup] = useState(draft?.editingGroup || null)
   const [environmentValid, setEnvironmentValid] = useState(true)
   const [demoNow] = useState(Date.now)
-  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s, editingGroup))
+  // Demo screens already watched, so going back never makes anyone wait again.
+  const watched = useRef(new Set())
+  const [readyKey, setReadyKey] = useState(null)
+  const steps = onboardingSteps(p).filter((s) => !editingGroup || editableStep(s))
   // Saved drafts from earlier versions of the flow resume at the nearest step.
   const migratedStep =
     {
-      ...retiredOnboardingSteps,
       commit: 'photo-demo',
       'why-demo': 'barriers',
-      'squeeze-demo': steps.includes('midworkout-demo') ? 'midworkout-demo' : 'recent-demo',
+      'squeeze-demo': 'midworkout-demo',
       'barrier-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
       'planning-demo': 'comfort',
       'time-demo': 'recent-demo',
@@ -171,10 +185,9 @@ export default function TrainingProfile({ onClose }) {
       'barrier-schedule-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
       'barrier-starting-demo': steps.find((id) => id.startsWith('barrier-')) || 'variety',
       'barrier-form-demo': 'variety',
-      offer: 'paywall-plans',
+      offer: 'ready-demo',
     }[current] || current
-  const step = steps.includes(migratedStep) ? migratedStep :
-    ({ 'fix-demo': 'variety', 'feel-demo': 'photo-demo', 'midworkout-demo': 'recent-demo', 'rollover-demo': 'recent-demo' }[migratedStep] || 'welcome')
+  const step = steps.includes(migratedStep) ? migratedStep : 'welcome'
   const index = steps.indexOf(step)
   const heading = useRef(null)
   const recap = responseFor ? chapterRecap(responseFor, { ...p, goalMode, weeklyGoal, name }) : null
@@ -185,19 +198,19 @@ export default function TrainingProfile({ onClose }) {
     : editingGroup
       ? [1, 1, 1, 1, 1]
       : chapterFills(step, p, Boolean(recap))
-  // Someone new starts with the starting-point session (lib/baseline.js);
-  // the review says so, and lets them skip it.
+  // Someone new starts with the starting-point session (lib/baseline.js)
+  // when it is due; the review says so, and lets them skip it.
   const startingMoves = useMemo(() => {
-    if (step !== 'review') return []
+    if (step !== 'review') return 0
     const candidate = {
       ...state,
       settings: { ...state.settings, training: { ...p, completed: true, baseline: null } },
     }
-    if (!baselineDue(candidate, today)) return []
+    if (!baselineDue(candidate, today)) return 0
     try {
-      return baselineMoves(candidate, { today, now: demoNow }).moves
+      return baselineMoves(candidate, { today, now: demoNow }).moves.length
     } catch {
-      return []
+      return 0
     }
   }, [step, state, p, today, demoNow])
   useEffect(() => {
@@ -243,11 +256,13 @@ export default function TrainingProfile({ onClose }) {
     const next = { ...p, ...patch }
     move(nextOnboardingStep(step, next, editingGroup), next)
   }
-  const ageFix = (ageGroup) => ({
-    ageGroup,
-    onboardingAgeConfirmed: true,
-    ...(ageGroup === '13-17' && p.goal === 'Lose weight' ? { goal: 'General fitness' } : {}),
-  })
+  // Age is always picked on purpose. Weight loss isn't offered under 18, so a
+  // teen who chose it earlier is told their goal changed, never silently.
+  const pickAge = (ageGroup) => {
+    const teenGoal = ageGroup === '13-17' && p.goal === 'Lose weight'
+    set({ ageGroup, onboardingAgeConfirmed: true, ...(teenGoal ? { goal: 'General fitness', idealPhysique: null } : {}) })
+    if (teenGoal) toast('Under 18, plans focus on fitness, so your goal is now Feel fitter.')
+  }
   const toggle = (key, value) =>
     set({ [key]: p[key].includes(value) ? p[key].filter((v) => v !== value) : [...p[key], value] })
   const persist = (next = step, profile = p, group = editingGroup, responseStep = responseFor) =>
@@ -284,7 +299,10 @@ export default function TrainingProfile({ onClose }) {
     if (next === 'review') setEditingGroup(null)
   }
   // The first time through, the plan is built on screen before it is shown.
+  const afterBaseline = returning || editingGroup ? 'review' : 'building-demo'
   const manualEntry = p.manualEntry || manualEntryOf(p.manualBaseline, state.settings.weightUnit)
+  // Short sessions start with a normal workout that fits; anyone can choose
+  // the longer starting-weights session instead.
   const skipStart = preferShortFirstSession(p)
   const baselineReady = hasStartingProfile(p, state.checkins, DEV)
   // Saves the answers and closes setup: after the paywall, or "Save changes".
@@ -295,9 +313,7 @@ export default function TrainingProfile({ onClose }) {
     }
     committing.current = true
     const { onboardingDraft, manualEntry: unused, firstSessionMode: _mode, ...profile } = p
-    if (!returning && skipStart && !profile.baseline) {
-      profile.baseline = { status: 'skipped', at: Date.now() }
-    }
+    if (!returning && skipStart && !profile.baseline) profile.baseline = { status: 'skipped', at: Date.now() }
     // The plan they chose on the preview paywall, for when a store is connected.
     if (choice)
       profile.offerChoice = {
@@ -329,6 +345,10 @@ export default function TrainingProfile({ onClose }) {
     onClose()
   }
   const advance = () => {
+    if (step === 'welcome' && introSlide < INTRO_SLIDES - 1) {
+      setIntroSlide((i) => Math.min(i + 1, INTRO_SLIDES - 1))
+      return
+    }
     if (responseFor) {
       move(nextStep)
       return
@@ -346,7 +366,7 @@ export default function TrainingProfile({ onClose }) {
     if (step === 'manual') {
       const result = readManualBaseline(manualEntry)
       if (!result.valid) return
-      move('review', { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
+      move(afterBaseline, { ...p, baselineMode: 'manual', manualBaseline: { ...result.value, date: today } })
       return
     }
     move(nextStep)
@@ -366,7 +386,9 @@ export default function TrainingProfile({ onClose }) {
       move('photo-choice')
       return
     }
-    move(steps[Math.max(0, index - 1)])
+    // Back from the plan returns to the last question, not to the screen that built it.
+    const previous = steps[Math.max(0, index - 1)]
+    move(previous === 'building-demo' ? steps[Math.max(0, index - 2)] : previous)
   }
   const testExit =
     !returning && DEV ? (
@@ -395,6 +417,18 @@ export default function TrainingProfile({ onClose }) {
         )
       : null
   const story = isStoryStep(step) && !recap
+  const gateKey = `${step}:${responseFor || ''}`
+  const waitMs =
+    !returning && !responseFor && !watched.current.has(step) && !reducedMotion() ? CTA_WAIT[step] || 0 : 0
+  const waiting = waitMs > 0 && readyKey !== gateKey
+  useEffect(() => {
+    if (!waitMs) return undefined
+    const timer = setTimeout(() => {
+      watched.current.add(step)
+      setReadyKey(gateKey)
+    }, waitMs)
+    return () => clearTimeout(timer)
+  }, [gateKey, waitMs, step])
   const paywall = PAYWALL_STEPS.includes(step)
   const ownCta = story && OWN_CTA_STEPS.includes(step)
   const storyProps = {
@@ -411,6 +445,8 @@ export default function TrainingProfile({ onClose }) {
     setGoalMode,
     setWeeklyGoal,
     onNext: () => move(nextStep),
+    introSlide,
+    setIntroSlide,
     onBack: back,
     onSubscribe: finish,
   }
@@ -423,7 +459,7 @@ export default function TrainingProfile({ onClose }) {
         onBack={() => move(editingGroup === 'photos' ? 'review' : 'photo-choice')}
         onManual={() => move('manual', { ...p, baselineMode: 'manual', manualEntry })}
         onComplete={(checkin, focusPatch) =>
-          move('review', {
+          move(afterBaseline, {
             ...p,
             ...focusPatch,
             baselineMode: checkin.synthetic ? 'test' : 'photos',
@@ -468,7 +504,6 @@ export default function TrainingProfile({ onClose }) {
       bodyKey={`${step}:${responseFor || 'question'}`}
       footer={
         ownCta ? null : (
-        <>
         <div className="flex gap-3">
           {returning && index > 0 && step !== 'review' && (
             <button className="btn-secondary min-h-12 px-5" onClick={back}>
@@ -476,32 +511,35 @@ export default function TrainingProfile({ onClose }) {
             </button>
           )}
           <button
-            className="btn-primary min-h-12 flex-1"
+            className={`btn-primary min-h-12 flex-1 ${!responseFor && CTA_MOTION[step] ? CTA_MOTION[step] : ''} ${waiting ? 'cta-wait' : ''}`}
+            style={waiting ? { '--wait': `${waitMs}ms` } : undefined}
+            aria-disabled={waiting || undefined}
             disabled={
               (['equipment', 'home-loads'].includes(step) && !environmentValid) ||
               (step === 'sport-choice' && !p.sports.length) ||
-              (step === 'age' && !p.onboardingAgeConfirmed) ||
+              (step === 'age' && !p.onboardingAgeConfirmed && !returning) ||
               (step === 'barriers' && !p.onboardingBarriers?.length) ||
+              (step === 'problem' && !p.onboardingProblem) ||
+              (step === 'fallout' && !p.onboardingFallout) ||
               (step === 'manual' && !readManualBaseline(manualEntry).valid)
             }
-            onClick={advance}
+            onClick={waiting ? undefined : advance}
           >
             {responseFor
               ? 'Continue'
               : step === 'welcome'
-                ? 'Build my plan'
+                ? INTRO_CTA[introSlide]
                 : step === 'review'
                 ? !baselineReady
                   ? 'Add photos or details'
                   : returning
                     ? 'Save changes'
-                    : 'See membership options'
-                : step === 'photo-choice' ? (p.baselineMode === 'manual' ? 'Enter my details' : 'Add my photos')
-                  : 'Continue'}
+                    : 'See how it adapts'
+                : step === 'barriers' && p.onboardingBarriers?.filter((id) => id !== 'none').length
+                  ? `Fix ${p.onboardingBarriers.filter((id) => id !== 'none').length === 1 ? 'this' : `these ${p.onboardingBarriers.filter((id) => id !== 'none').length}`}`
+                  : NEXT_LABEL[step] || 'Continue'}
           </button>
         </div>
-        {step === 'welcome' && <p className="entry-terms">Membership · {TRIAL_DAYS}-day trial on yearly</p>}
-        </>
         )
       }
     >
@@ -529,7 +567,7 @@ export default function TrainingProfile({ onClose }) {
                 label="Starting point"
                 options={[
                   { id: 'photos', title: 'Take photos', icon: 'camera' },
-                  { id: 'manual', title: 'Enter details instead', icon: 'note' },
+                  { id: 'manual', title: 'Height and weight', icon: 'note' },
                 ]}
                 value={p.baselineMode === 'manual' ? 'manual' : 'photos'}
                 onSelect={(baselineMode) => set({ baselineMode })}
@@ -600,14 +638,8 @@ export default function TrainingProfile({ onClose }) {
                   { id: '13-17', title: '13 to 17' },
                   { id: '18+', title: '18 or over' },
                 ]}
-                value={p.onboardingAgeConfirmed ? p.ageGroup : null}
-                onSelect={(ageGroup) => {
-                  const patch = ageFix(ageGroup)
-                  if (patch.goal) {
-                    toast('Choose a strength or fitness goal for your plan.')
-                    move('goal', { ...p, ...patch, idealPhysique: null })
-                  } else set(patch)
-                }}
+                value={p.onboardingAgeConfirmed || returning ? p.ageGroup : null}
+                onSelect={pickAge}
               />
             )}
             {step === 'barriers' && (
@@ -779,19 +811,17 @@ export default function TrainingProfile({ onClose }) {
             {step === 'review' && (
               <>
                 {!returning && (
-                  <FirstSession {...storyProps} baseline={skipStart ? [] : startingMoves} plan={plan} />
+                  <FirstSession {...storyProps} startingPoint={startingMoves > 0 && !skipStart} />
                 )}
-                {startingMoves.length > 0 && !returning && (
+                {startingMoves > 0 && !returning && (
                   <label className="baseline-preview-option">
                     <input
                       type="checkbox"
                       checked={!skipStart}
-                      onChange={(e) =>
-                        set({ firstSessionMode: e.target.checked ? 'baseline' : 'training', baseline: null })
-                      }
+                      onChange={(e) => set({ firstSessionMode: e.target.checked ? 'baseline' : 'training', baseline: null })}
                     />
                     <span>
-                      Find my starting level first<small>{BASELINE_MINUTES} min</small>
+                      Find my starting weights first<small>{BASELINE_MINUTES} min</small>
                     </span>
                   </label>
                 )}

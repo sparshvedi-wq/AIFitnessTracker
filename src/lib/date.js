@@ -1,3 +1,22 @@
+// Spelled out so labels don't depend on the browser's locale.
+export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+export const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+export const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+export const DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
 // Date helpers. We key everything off a local "YYYY-MM-DD" string so that
 // entries land on the day the user actually logged them (no UTC drift).
 
@@ -53,3 +72,16 @@ export function shortLabel(key) {
     day: 'numeric',
   })
 }
+
+// labelForKey for use mid-sentence: "today", "yesterday", but "Tue, Oct 20"
+// keeps its capitals.
+export function inlineLabel(key) {
+  const label = labelForKey(key)
+  return ['Today', 'Yesterday', 'Tomorrow'].includes(label) ? label.toLowerCase() : label
+}
+
+// Monday-first weekday initials in the device language (M T W… in English).
+// 2024-01-01 was a Monday.
+export const WEEKDAY_INITIALS = Array.from({ length: 7 }, (_, i) =>
+  new Date(2024, 0, 1 + i).toLocaleDateString(undefined, { weekday: 'narrow' }),
+)

@@ -1,0 +1,75 @@
+// Start a routine (or an empty workout) from any tab and open the player.
+
+import { useApp } from '../../store/AppContext.jsx'
+import { buildSession, prepareSession } from '../../lib/workout.js'
+import { unlockAudio } from '../../lib/coach.js'
+import { resolvePlace } from '../../lib/places.js'
+import { profileOf } from '../../lib/planner.js'
+import { availableLoads } from '../../lib/preferences.js'
+import { todayKey } from '../../lib/date.js'
+
+export default function useStartWorkout(nav) {
+  const { state, dispatch } = useApp()
+
+  function begin(routine) {
+    unlockAudio()
+    const profile = profileOf(state)
+    const location = routine.location || profile.location
+    const session = buildSession(routine, {
+      workouts: state.workouts,
+      customExercises: state.customExercises,
+      unit: state.settings.weightUnit,
+      dumbbellWeights: availableLoads(profile, location),
+      // Saved routines use the same adaptive weights as daily plans.
+      strength: {
+        learning: state.learning,
+        metrics: state.metrics,
+        goal: profile.goal,
+        experience: profile.experience,
+        today: todayKey(),
+        place: location,
+      },
+    })
+    const ready = prepareSession(session)
+    dispatch({ type: 'SET_ACTIVE_WORKOUT', session: ready })
+    nav.openPlayer()
+  }
+
+  function launch(routine) {
+    if (routine.id === 'quick') {
+      const session = buildSession(
+        {
+          ...routine,
+          kind: 'manual',
+          location: state.settings.training.location,
+          placeName: resolvePlace(state.settings.training, state.settings.training.location).name,
+        },
+        { unit: state.settings.weightUnit },
+      )
+      dispatch({ type: 'SET_ACTIVE_WORKOUT', session: { ...session, phase: 'work', startedAt: null } })
+      nav.openPlayer()
+      return
+    }
+    if (nav.prepareWorkout) {
+      nav.prepareWorkout(routine)
+      return
+    }
+    begin(routine)
+  }
+
+  return function start(routine) {
+    if (state.activeWorkout && routine.id === 'quick') {
+      nav.confirmWorkoutChange(() => launch(routine))
+      return
+    }
+    launch(routine)
+  }
+}
+
+// Saved bodyweights, oldest first: [{ date, value }]
+export function bodyweights(metrics) {
+  return Object.entries(metrics)
+    .filter(([, m]) => m?.weight != null && !m.sampleWeight)
+    .map(([date, m]) => ({ date, value: m.weight }))
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+}

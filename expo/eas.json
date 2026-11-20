@@ -1,0 +1,8 @@
+{
+  "cli": { "version": ">= 16.0.0", "appVersionSource": "remote" },
+  "build": {
+    "preview": { "distribution": "internal", "environment": "preview", "env": { "EXPO_PUBLIC_INK_URL": "https://aifitnesstracker-production.up.railway.app" } },
+    "production": { "distribution": "store", "environment": "production", "autoIncrement": true, "env": { "EXPO_PUBLIC_INK_URL": "https://aifitnesstracker-production.up.railway.app" } }
+  },
+  "submit": { "production": {} }
+}

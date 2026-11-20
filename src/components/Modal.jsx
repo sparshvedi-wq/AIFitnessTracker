@@ -1,34 +1,97 @@
-import { useEffect } from 'react'
+// Bottom sheet on phones, centered dialog on wider screens.
 
-export default function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+import { useRef, useId } from 'react'
+import useDialogAccessibility from './useDialogAccessibility.js'
+import Icon from './Icon.jsx'
+
+export default function Modal({
+  open,
+  onClose,
+  title,
+  subtitle = null,
+  children,
+  maxWidth = 'max-w-lg',
+  footer = null,
+  bodyKey,
+  fullScreen = false,
+  dismissible = true,
+  headerAction = null,
+  header = null,
+  className = '',
+  bodyClassName = '',
+  hideHandle = false,
+  footerClassName = '',
+  animate = true,
+}) {
+  const dialog = useRef(null)
+  const titleId = useId()
+  const subtitleId = useId()
+  useDialogAccessibility(dialog, open, dismissible ? onClose : null)
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
-      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+    <div className="fixed inset-0 z-40 flex items-end justify-center sm:items-center sm:p-4">
       <div
-        className={`relative z-10 w-full ${maxWidth} max-h-[92vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-slate-800 shadow-xl sm:rounded-2xl animate-slide-up`}
+        className={`absolute inset-0 bg-black/60 ${animate ? 'animate-fade-in' : ''}`}
+        onClick={dismissible ? onClose : undefined}
+        aria-hidden="true"
+      />
+      <div
+        ref={dialog}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={subtitle && !header ? subtitleId : undefined}
+        className={`relative z-10 flex w-full ${maxWidth} ${fullScreen ? 'h-[100dvh] max-h-[100dvh] rounded-none sm:h-[90vh] sm:rounded-[30px]' : 'max-h-[92vh] rounded-t-[30px] sm:rounded-[30px]'} flex-col bg-surface shadow-float ${animate ? 'animate-slide-up' : ''} ${className}`}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-3.5">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-full p-1.5 text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300"
-            aria-label="Close"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+        {/* Grab handle (phones) */}
+        {!hideHandle && (
+          <div className="flex justify-center pt-2.5 sm:hidden">
+            <span className="h-1 w-10 rounded-full bg-outline" />
+          </div>
+        )}
+        {header ? (
+          <header className="shrink-0">
+            <h2 id={titleId} className="sr-only">
+              {title}
+            </h2>
+            {header}
+          </header>
+        ) : (
+          <div className="flex items-start justify-between gap-3 px-[22px] pb-2 pt-3 sm:pt-5">
+            <div className="min-w-0">
+              <h2 id={titleId} className="font-display text-[26px] leading-tight text-ink">
+                {title}
+              </h2>
+              {subtitle && (
+                <p id={subtitleId} className="mt-1 text-[13px] text-muted">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+            {headerAction}
+            {dismissible && (
+              <button onClick={onClose} className="icon-btn h-9 w-9 bg-surface2" aria-label="Close">
+                <Icon name="x" size={16} strokeWidth={2.4} />
+              </button>
+            )}
+          </div>
+        )}
+        <div
+          key={bodyKey}
+          className={`min-h-0 overflow-y-auto px-[22px] pb-5 pt-1 ${fullScreen ? 'flex-1' : ''} ${bodyClassName}`}
+        >
+          {children}
         </div>
-        <div className="p-5">{children}</div>
+        {footer && (
+          <div
+            className={`shrink-0 border-t border-line px-[22px] pb-[max(env(safe-area-inset-bottom),14px)] pt-3 ${footerClassName}`}
+          >
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )

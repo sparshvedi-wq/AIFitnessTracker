@@ -1,0 +1,461 @@
+.review-loading {
+  min-height: 58dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 20px 0;
+}
+.review-scan {
+  height: 300px;
+  width: 240px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.review-scan img {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+}
+.review-scan-floor {
+  left: 50%;
+  bottom: 0;
+  width: 80%;
+  height: 12%;
+  transform: translateX(-50%);
+}
+.review-scan-line {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 2px;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 22px rgb(var(--accent) / 0.6);
+  animation: review-scan 3s ease-in-out infinite alternate;
+}
+.review-story-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+.review-story-track {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+}
+.review-story-track span {
+  height: 5px;
+  background: rgb(var(--line));
+  flex: 1;
+  border-radius: 3px;
+}
+.review-story-track .is-filled {
+  background: rgb(var(--accent));
+}
+.review-demo {
+  display: inline-block;
+  margin: 4px 0 12px;
+  padding: 5px 9px;
+  border: 1px solid rgb(var(--line));
+  border-radius: 30px;
+  font-size: 11px;
+  color: rgb(var(--muted));
+}
+.review-slide {
+  animation: review-appear 280ms ease-out both;
+}
+.review-title {
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: 30px;
+  line-height: 1.15;
+  margin-top: 24px;
+  letter-spacing: -0.025em;
+}
+.review-copy {
+  margin-top: 14px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: rgb(var(--ink-2));
+}
+.review-views {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.review-views button {
+  min-width: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgb(var(--bg));
+  padding: 8px;
+}
+.review-views img {
+  width: 100%;
+  height: 210px;
+  object-fit: contain;
+}
+.review-views span {
+  display: block;
+  font-size: 12px;
+  text-transform: capitalize;
+  color: rgb(var(--muted));
+  padding: 8px 0;
+}
+/* A finding: M1 with the area lit, the user's real photos as evidence. */
+.review-finding {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 12px;
+  align-items: end;
+  margin-top: 8px;
+}
+.review-finding:has(> :only-child) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.focus-model {
+  position: relative;
+  display: flex;
+  height: clamp(210px, 31dvh, 300px);
+  align-items: flex-end;
+  justify-content: center;
+}
+.focus-model-floor {
+  bottom: 0;
+  left: 50%;
+  width: 70%;
+  height: 12%;
+  transform: translateX(-50%);
+}
+.focus-model-figure {
+  position: relative;
+  height: 100%;
+  aspect-ratio: 2 / 3;
+}
+.focus-model-figure img,
+.focus-model-tint {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.focus-model-tint {
+  mix-blend-mode: multiply;
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  animation: focus-light 520ms 120ms ease-out both;
+}
+.review-evidence {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.review-evidence button {
+  min-width: 0;
+  overflow: hidden;
+  border: 2px solid rgb(var(--accent) / 0.55);
+  border-radius: 14px;
+  background: rgb(var(--surface));
+  padding: 0;
+}
+.review-evidence img,
+.review-evidence i {
+  display: block;
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+}
+.review-evidence span {
+  display: block;
+  padding: 4px 0 5px;
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: capitalize;
+  color: rgb(var(--ink-2));
+}
+.review-area {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  font-size: 14px;
+  font-weight: 750;
+  color: rgb(var(--accent-ink));
+}
+.review-area span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgb(var(--accent));
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.2);
+}
+.review-observation {
+  margin-top: 8px;
+  font-family: 'Fraunces Variable', Georgia, serif;
+  font-size: clamp(23px, 6.6vw, 27px);
+  font-weight: 520;
+  line-height: 1.18;
+  letter-spacing: -0.015em;
+  text-wrap: pretty;
+}
+.review-uncertainty {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+  margin-top: 14px;
+}
+.review-uncertainty svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: rgb(var(--muted));
+}
+.review-plan-art {
+  height: 180px;
+  width: 100%;
+  object-fit: contain;
+}
+.review-focus-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.review-focus {
+  display: block;
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.5;
+  color: rgb(var(--ink-2));
+}
+.review-focus-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgb(var(--ink));
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.review-focus[aria-pressed='true'] .review-focus-heading {
+  color: rgb(var(--accent-ink));
+}
+.review-focus:disabled {
+  opacity: 1;
+}
+/* Suggestions that can't be applied read as a list, not as switches. */
+.review-focus.is-static {
+  list-style: none;
+  box-shadow: none;
+}
+.review-focus.is-static .review-focus-heading {
+  margin-bottom: 0;
+}
+@keyframes focus-light {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes review-scan {
+  from {
+    top: 10%;
+  }
+  to {
+    top: 90%;
+  }
+}
+@keyframes review-appear {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .focus-model-tint,
+  .review-scan-line,
+  .review-slide,
+  .review-scan-line {
+    top: 50%;
+  }
+}
+.tally-reduce-motion .review-scan-line,
+.tally-reduce-motion .review-slide,
+.tally-reduce-motion .review-training-response {
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgb(var(--lit));
+  border: 2px solid rgb(var(--accent) / 0.35);
+  box-shadow: 0 4px 0 rgb(var(--lit-edge));
+}
+.photo-angle-thumb {
+  height: 40px;
+  width: 28px;
+  object-fit: cover;
+  border-radius: 7px;
+  background: rgb(var(--bg));
+}
+.photo-frame {
+  position: relative;
+  background: radial-gradient(ellipse at 50% 70%, rgb(var(--accent) / 0.09), transparent 70%), rgb(var(--bg));
+  border: 1px solid rgb(var(--line));
+}
+.photo-frame:has(.photo-mannequin-guide)::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  pointer-events: none;
+  border: 1px solid rgb(var(--accent) / 0.18);
+  border-radius: 22px;
+  mask-image: linear-gradient(black, transparent 30%, transparent 70%, black);
+}
+.review-reading-note {
+  margin-top: 20px;
+  color: rgb(var(--muted));
+  font-size: 13px;
+  line-height: 1.5;
+}
+.review-reading-note summary {
+  min-height: 44px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.review-reading-note p + p {
+  margin-top: 8px;
+}
+.review-scan .review-loading-photo {
+  border-radius: 22px;
+  animation: review-photo-enter 350ms ease both;
+}
+.checkin-story-art {
+  position: relative;
+  min-height: 300px;
+  margin-top: 12px;
+}
+.checkin-story-art .focus-model {
+  height: 290px;
+}
+.checkin-story-photos {
+  position: absolute;
+  bottom: 20px;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  transform: rotate(4deg);
+}
+.checkin-story-photos img {
+  height: 140px;
+  width: 80px;
+  object-fit: contain;
+  border-radius: 16px;
+  background: rgb(var(--surface));
+  border: 1px solid rgb(var(--line));
+}
+@keyframes review-photo-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .review-scan .review-loading-photo {
+    animation: none;
+  }
+}
+.tally-reduce-motion .review-loading-photo {
+  animation: none;
+}
+
+.loading-contact-sheet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 180px;
+}
+.loading-contact-sheet figure {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  opacity: 0.65;
+  transition:
+    transform 0.55s,
+    opacity 0.55s;
+}
+.loading-contact-sheet .lit {
+  opacity: 1;
+  transform: translateY(-8px);
+}
+.loading-contact-sheet img {
+  width: 100%;
+  height: clamp(130px, 23dvh, 215px);
+  object-fit: cover;
+  border-radius: 14px;
+}
+.loading-contact-sheet figcaption {
+  text-transform: capitalize;
+  margin-top: 6px;
+}
+.loading-insight {
+  min-height: 3em;
+  margin-top: 10px;
+  color: rgb(var(--ink-2));
+}
+.checkin-reveal .checkin-story-photos {
+  animation: checkin-develop 0.8s ease-out both;
+}
+@keyframes checkin-develop {
+  from {
+    opacity: 0.3;
+    transform: translateY(12px) rotate(3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .checkin-reveal .checkin-story-photos,
+  .loading-contact-sheet * {
+    animation: none;
+    transition: none;
+    transform: none;
+  }
+}
+.tally-reduce-motion :is(.checkin-story-photos, .loading-contact-sheet *) {
+  animation: none;
+  transition: none;
+  transform: none;
+}
+
+.review-loading .photo-review-stage {position:relative;display:block;width:min(76%,280px);height:clamp(210px,36dvh,350px);margin:0 auto 18px;border-radius:22px;overflow:hidden;background:rgb(var(--surface2));}
+.review-portrait {position:absolute;inset:0;opacity:0;transition:opacity .7s cubic-bezier(.22,.65,.3,1);}
+.review-portrait.is-current {opacity:1;z-index:1;}
+.review-portrait img,.review-portrait .plan-reveal,.review-portrait .plan-reveal-content {width:100%;height:100%;object-fit:contain;border-radius:0;}
+.angle-stamp {position:absolute;z-index:2;bottom:10px;left:50%;transform:translateX(-50%);padding:4px 12px;border-radius:20px;color:white;background:#101522cc;font-size:.82rem;}
+@media(prefers-reduced-motion:reduce){.review-portrait {transition:none;}}
+.tally-reduce-motion .review-portrait {transition:none;}
+
+/* The overlay follows the displayed photo, including very narrow portraits. */
+.review-loading .review-portrait {display:grid;place-items:center;}
+.review-loading .review-portrait > img,
+.review-loading .review-portrait .plan-reveal-content > img {display:block;width:auto;height:auto;max-width:100%;max-height:clamp(210px,36dvh,350px);border-radius:12px;}
+.review-loading .review-portrait .plan-reveal,
+.review-loading .review-portrait .plan-reveal-content {width:fit-content;height:fit-content;max-width:100%;border-radius:12px;}
+.review-loading .photo-review-stage {background:transparent;}

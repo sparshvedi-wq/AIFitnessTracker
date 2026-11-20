@@ -1,0 +1,8 @@
+dist
+node_modules
+expo
+server
+artifacts
+docs
+*.md
+package-lock.json

@@ -1,0 +1,181 @@
+/* Paper: the look of first-run onboarding. Tiles are flat cards on a
+   hairline; a chosen tile turns solid ink. Buttons are ink pills. In light
+   mode the palette is warm off-white, near-black ink and one deep blue; in
+   dark mode it is the app's own dark palette, so ink becomes cream and the
+   same rules still hold. */
+
+:root:not(.dark) .setup-dialog--paper {
+  --bg: 245 243 238; /* #F5F3EE */
+  --surface: 255 255 255;
+  --surface-2: 238 235 228; /* #EEEBE4 */
+  --raised: 255 255 255;
+  --line: 226 222 213; /* #E2DED5 */
+  --outline: 201 196 184; /* #C9C4B8 */
+  --ink: 23 24 26; /* #17181A */
+  --ink-2: 63 62 58; /* #3F3E3A */
+  --muted: 94 93 88; /* #5E5D58 · 6.1:1 on bg */
+  --faint: 107 106 101; /* #6B6A65 · 5.1:1 on bg */
+  --paper-muted: 178 174 165;
+  --paper-chip: 52 53 58;
+  --accent: 43 80 216; /* #2B50D8 · 6.3:1 on bg */
+  --accent-2: 35 66 181;
+  --brand-soft: 228 233 250;
+  --danger: 178 48 38;
+  --shadow: 60 50 30;
+  --lit: 232 237 252; /* #E8EDFC */
+  --lit-edge: 186 199 240;
+  --accent-ink: 35 64 170; /* #2340AA · 7.4:1 on lit */
+  --depth: 226 222 213;
+  --ink-depth: 0 0 0;
+  color-scheme: light;
+}
+.setup-dialog--paper {
+  color: rgb(var(--ink));
+}
+
+/* Type: a lighter serif, set a little tighter. */
+.setup-dialog--paper :is(.story-title, .tally-title, .year-title, .setup-brand) {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.setup-dialog--paper .story-title--hero {
+  font-size: 44px;
+  line-height: 1.02;
+}
+.setup-dialog--paper .story-lede,
+.setup-dialog--paper .welcome-copy p {
+  color: rgb(var(--muted));
+  font-weight: 500;
+}
+.setup-dialog--paper .q-why {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink-2));
+  font-weight: 600;
+}
+
+/* Header: a bare chevron and a hairline progress bar. */
+.setup-dialog--paper .setup-back {
+  border-color: transparent;
+  color: rgb(var(--ink));
+}
+.setup-dialog--paper .setup-chapter {
+  height: 2px;
+  background: rgb(var(--line));
+}
+.setup-dialog--paper .setup-chapter > span {
+  background: rgb(var(--ink));
+  box-shadow: none;
+}
+
+/* Answer tiles: white cards on a hairline; chosen = solid ink. */
+.setup-dialog--paper .story-tile,
+.setup-dialog--paper .q-art-card {
+  border: 1px solid rgb(var(--line));
+  border-radius: 18px;
+  background: rgb(var(--surface));
+  box-shadow: none;
+}
+.setup-dialog--paper .story-tile.is-on {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+  box-shadow: none;
+  color: rgb(var(--bg));
+  transform: none;
+}
+.setup-dialog--paper .story-tile:active,
+.setup-dialog--paper .q-art-card:active {
+  box-shadow: none;
+}
+.setup-dialog--paper .story-tile-icon,
+.setup-dialog--paper .q-tile .story-tile-icon {
+  background: rgb(var(--surface-2));
+  color: rgb(var(--ink));
+}
+.setup-dialog--paper .story-tile.is-on .story-tile-icon,
+.setup-dialog--paper .q-tile.is-on .story-tile-icon {
+  background: rgb(var(--bg) / 0.14);
+  color: rgb(var(--bg));
+}
+.setup-dialog--paper .q-tile-detail {
+  color: rgb(var(--muted));
+}
+.setup-dialog--paper .q-tile.is-on .q-tile-detail,
+.setup-dialog--paper .q-tile.is-on .q-num small {
+  color: rgb(var(--bg) / 0.72);
+}
+.setup-dialog--paper .q-ring {
+  border: 1.5px solid rgb(var(--outline));
+}
+.setup-dialog--paper .q-ring.is-on {
+  border-color: rgb(var(--bg));
+  background: rgb(var(--bg));
+  color: rgb(var(--ink));
+}
+.setup-dialog--paper .q-art-card.is-on {
+  border-color: rgb(var(--ink));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+}
+.setup-dialog--paper .q-art-card .q-ring.is-on {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--ink));
+  color: rgb(var(--bg));
+}
+
+/* Buttons: ink pills that sink a touch when pressed. */
+.setup-dialog--paper .btn-primary {
+  border-radius: 28px;
+  box-shadow: none;
+  font-weight: 600;
+}
+.setup-dialog--paper .btn-primary:not(:disabled):active {
+  box-shadow: none;
+  transform: scale(0.98);
+}
+.setup-dialog--paper .story-cta--glow {
+  animation: none;
+}
+
+/* Story screens scroll; their cards keep their full height instead of being
+   squeezed when a screen has more than fits. */
+.setup-dialog--paper .story > * {
+  flex-shrink: 0;
+}
+
+/* Softer depth on light paper. */
+.setup-dialog--paper .ready-card {
+  box-shadow: 0 14px 32px rgb(var(--shadow) / 0.14);
+}
+.setup-dialog--paper .tally-glow {
+  background: radial-gradient(circle, rgb(var(--accent) / 0.16), rgb(var(--accent) / 0) 68%);
+}
+
+/* Hold-to-commit and the paywall follow the same ink pill. */
+.setup-dialog--paper .hold-btn {
+  border-radius: 32px;
+  box-shadow: none;
+}
+.setup-dialog--paper .hold-btn.is-sealed {
+  box-shadow: none;
+}
+.setup-dialog--paper .pay-cta {
+  border-radius: 30px;
+  background: rgb(var(--ink));
+  box-shadow: none;
+  color: rgb(var(--bg));
+  font-weight: 600;
+}
+.setup-dialog--paper .pay-cta:active {
+  box-shadow: none;
+  transform: scale(0.98);
+}
+.setup-dialog--paper .pay-plan {
+  border: 1px solid rgb(var(--line));
+  border-radius: 18px;
+  box-shadow: none;
+}
+.setup-dialog--paper .pay-plan.is-on {
+  border-color: rgb(var(--ink));
+  background: rgb(var(--surface));
+  box-shadow: 0 0 0 1px rgb(var(--ink));
+  transform: none;
+}

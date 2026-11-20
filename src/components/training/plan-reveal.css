@@ -1,0 +1,124 @@
+.plan-reveal {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 20px;
+}
+.plan-reveal-content {
+  animation: plan-focus 1.85s ease-out both;
+}
+.plan-optics {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  animation: optics-fade 1.85s both;
+}
+.plan-spectrum,
+.plan-glint {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(ellipse at 38% 65%, #2470ee99, transparent 42%),
+    radial-gradient(ellipse at 65% 35%, #86b6ff99, transparent 38%);
+  animation: spectrum-shift 1.65s ease-in-out both;
+}
+.plan-glint {
+  background: linear-gradient(115deg, transparent 44%, #b3e4ff99 50%, transparent 56%);
+  animation: glass-pass 1.6s ease-in-out both;
+}
+.plan-optics i {
+  position: absolute;
+  left: calc(50% + var(--x));
+  top: calc(50% + var(--y));
+  width: var(--dot);
+  height: var(--dot);
+  border-radius: 50%;
+  background: #d8ecff;
+  box-shadow: 0 0 6px #569aff;
+  animation: particle-collect 1.25s var(--lag) both;
+}
+.plan-reveal--working .plan-reveal-content {
+  animation: none;
+}
+.plan-reveal--working .plan-optics {
+  animation: none;
+  opacity: 0.8;
+}
+.plan-reveal--working .plan-optics * {
+  animation-iteration-count: infinite;
+  animation-duration: 3s;
+}
+@keyframes plan-focus {
+  0%,
+  35% {
+    filter: blur(5px);
+    opacity: 0.47;
+  }
+  80%,
+  100% {
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+@keyframes optics-fade {
+  0% {
+    opacity: 0;
+  }
+  18%,
+  58% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes spectrum-shift {
+  from {
+    transform: translate(-12%, 7%) scale(0.94);
+  }
+  to {
+    transform: translate(9%, -8%) scale(1.12);
+  }
+}
+@keyframes glass-pass {
+  from {
+    transform: translateX(-70%);
+  }
+  to {
+    transform: translateX(70%);
+  }
+}
+@keyframes particle-collect {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0.3);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-reveal-content {
+    animation: none;
+  }
+  .plan-optics {
+    display: none;
+  }
+}
+.tally-reduce-motion .plan-reveal-content {
+  animation: none;
+}
+.tally-reduce-motion .plan-optics {
+  display: none;
+}
+
+.plan-spectrum {background:radial-gradient(ellipse at 28% 70%,#3269ed99,transparent 45%),radial-gradient(ellipse at 68% 33%,#6de5ff66,transparent 35%),radial-gradient(ellipse at 75% 77%,#5652fe66,transparent 40%);}
+.plan-optics::after {content:'';position:absolute;left:12%;top:54%;width:76%;height:2px;border-radius:100%;background:linear-gradient(90deg,transparent,#8ac2ff,#effaff,#728aff,transparent);box-shadow:0 0 12px #6187ed;animation:tally-dash 1.8s cubic-bezier(.35,.05,.22,1) both;}
+.plan-reveal--working .plan-optics::after {animation:tally-dash 2.6s ease-in-out infinite;}
+@keyframes tally-dash {0%{opacity:0;transform:translateY(22px) rotate(-12deg) scaleX(.1)}38%{opacity:.82}100%{opacity:0;transform:translateY(-25px) rotate(-12deg) scaleX(1.05)}}

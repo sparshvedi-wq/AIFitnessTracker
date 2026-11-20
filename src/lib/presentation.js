@@ -1,0 +1,55 @@
+import { findExercise } from './exercises.js'
+import { sportById } from './sports.js'
+
+// Why today's session differs from a usual one, or '' when it doesn't. Shown as
+// a notice on the training card; the plain description below adds nothing there.
+export function planNote(plan) {
+  if (!plan.items.length) return 'No exercises match today’s check-in.'
+  if (plan.movement?.position === 'seated') return 'Light seated movement.'
+  if (/restart after time away/i.test(plan.focus)) return 'A lighter return to training.'
+  // A normal practice or activity nearby only eases the muscles it uses.
+  if (plan.schedule?.lighter && plan.schedule.systemic === false && plan.schedule.muscles?.length) {
+    const source = plan.schedule.reasonEvent
+    const name = source?.title || source?.name
+    const areas = plan.schedule.muscles.join(', ').toLowerCase()
+    return name
+      ? `Easier on your ${areas} ${plan.schedule.reasonPhase === 'before' ? 'before' : 'after'} ${name.toLowerCase()}.`
+      : `Training as usual, easier on your ${areas}.`
+  }
+  if (plan.schedule?.lighter) {
+    const source = plan.schedule.reasonEvent
+    const name = source?.title || source?.name
+    if (plan.schedule.reasonPhase === 'after' && source?.status === 'planned')
+      return 'Lighter work around your planned activity.'
+    return name
+      ? `Lighter work ${plan.schedule.reasonPhase || 'around'} ${name.toLowerCase()}.`
+      : 'Lighter work around your recent activity.'
+  }
+  if (plan.schedule?.preparation)
+    return `Balanced training with a little ${sportById(plan.schedule.preparation.sport).name.toLowerCase()} preparation.`
+  return plan.focus || ''
+}
+
+export function planSummary(plan) {
+  const note = planNote(plan)
+  if (note || plan.firstSession) return note
+  const muscles = plan.items.map((i) => findExercise(i.exId)?.muscle)
+  const lower = muscles.some((m) => ['Legs', 'Glutes'].includes(m))
+  const upper = muscles.some((m) => ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'].includes(m))
+  const easy =
+    plan.readiness?.energy === 'low' || plan.readiness?.intensity === 'easy' || plan.readiness?.sportSoon
+  const area = upper && lower ? 'Full-body' : upper ? 'Upper-body' : lower ? 'Lower-body' : 'Core'
+  return `${area} ${easy ? 'work at an easier pace' : 'training'}.`
+}
+
+// A calm greeting for the Home header. No streaks, no pressure.
+export function greeting(now = Date.now(), name = '') {
+  const hour = new Date(now).getHours()
+  const part =
+    hour < 5 ? 'Good evening' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const first = name.trim().split(/\s+/)[0]
+  return first ? `${part}, ${first}` : part
+}
+
+// "1 set", "3 sets". Every count shown to people goes through here.
+export const count = (n, word, plural = `${word}s`) => `${n} ${n === 1 ? word : plural}`

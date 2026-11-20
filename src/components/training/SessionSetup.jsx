@@ -1,0 +1,890 @@
+import { useCallback, useMemo, useState } from 'react'
+import Modal from '../Modal.jsx'
+import Icon from '../Icon.jsx'
+import Select from '../Select.jsx'
+import { Toggle } from '../Ink.jsx'
+import PlaceEditor from './PlaceEditor.jsx'
+import { placeSummary, placesOf, quietAt, resolvePlace, updatePlace } from '../../lib/places.js'
+import { useApp } from '../../store/AppContext.jsx'
+import {
+  buildDailyPlan,
+  planSeconds,
+  profileOf,
+  readinessOf,
+  buildEventPump,
+  todayChoice,
+} from '../../lib/planner.js'
+import { exerciseSignals } from '../../lib/engine/learning.js'
+import { buildSportWarmup, orderedSports } from '../../lib/sports.js'
+import { findExercise, MUSCLES } from '../../lib/exercises.js'
+import { buildSession, prepareSession, beginPrepared, fmtClock, fmtNum } from '../../lib/workout.js'
+import { metaOf } from '../../lib/catalog/index.js'
+import { Choice, Field } from './Fields.jsx'
+import { availableLoads } from '../../lib/preferences.js'
+import { adaptRoutineItems } from '../../lib/workout-adjustments.js'
+import MovementFields from './MovementFields.jsx'
+import { movementPreferences, movementSummary } from '../../lib/movement-preferences.js'
+import { sportScheduleContext } from '../../lib/sport-schedule.js'
+import usePlanningTime from './usePlanningTime.js'
+import { planSummary, count } from '../../lib/presentation.js'
+import EnvironmentFields from './EnvironmentFields.jsx'
+import BodyAreaPicker from './BodyAreaPicker.jsx'
+import {
+  customDurationAllowed,
+  customDurationOptions,
+  durationChoices,
+  fitDuration,
+} from '../../lib/flexible-training.js'
+import { PlanRibbon } from './SetupVisuals.jsx'
+import { exerciseThumb } from '../../lib/exercise-thumbs.js'
+import WorkoutSwitchDialog from '../workout/WorkoutSwitchDialog.jsx'
+import { endForSwitch } from '../../lib/workout-switch.js'
+import { firstSessionAchievement } from '../../lib/milestones.js'
+
+const PLACE_ICON = { gym: 'train', equipment: 'dumbbell', space: 'minimize' }
+const placeIcon = (place) => (place.id === 'home' ? 'home' : PLACE_ICON[place.type])
+const AREAS = MUSCLES.filter((m) => !['Cardio', 'Mobility'].includes(m))
+
+export default function SessionSetup({ routine, onClose, onStart }) {
+  const { state, dispatch, today } = useApp()
+  const [p, setSessionProfile] = useState(() => profileOf(state))
+  const planningState = useMemo(
+    () => ({ ...state, settings: { ...state.settings, training: p } }),
+    [state, p],
+  )
+  const [equipmentValid, setEquipmentValid] = useState(true)
+  const now = usePlanningTime()
+  // Today's space/position changes, layered over the chosen place's own; null means none.
+  const [onTheGo, setOnTheGo] = useState(null)
+  const [addingPlace, setAddingPlace] = useState(false)
+  const [focusAreas, setFocusAreas] = useState(routine.event?.focus || ['Shoulders', 'Biceps', 'Triceps'])
+  const [kind, setKind] = useState(
+    ['sport', 'adaptive', 'pump'].includes(routine.kind) ? routine.kind : 'routine',
+  )
+  const shortSession = Boolean(routine.shortSession && kind === 'adaptive')
+  const quickDurations = durationChoices(kind, shortSession)
+  // Opens on a visible choice: a requested custom time stays, otherwise the nearest quick choice.
+  const [minutes, setMinutes] = useState(() =>
+    fitDuration(
+      routine.shortSession
+        ? routine.minutes || 10
+        : routine.kind === 'pump'
+          ? 10
+          : routine.kind === 'sport'
+            ? p.lastSportMinutes || 10
+            : todayChoice(state, today).minutes || p.minutes,
+      kind,
+      shortSession,
+    ),
+  )
+  const [location, setLocationState] = useState(todayChoice(state, today).location || p.location)
+  const place = resolvePlace(p, location)
+  const places = placesOf(p)
+  const setLocation = (id) => {
+    setLocationState(id)
+    setOnTheGo(null)
+  }
+  const [sport, setSport] = useState(routine.sport || p.lastSport || p.sports[0] || '')
+  const [lowImpact, setLowImpact] = useState(() => quietAt(p, location))
+  const [rememberSetup, setRememberSetup] = useState(false)
+  const [readiness, setReadiness] = useState(() => ({
+    ...readinessOf(state, today),
+    ...(routine.shortSession ? { intensity: 'easy' } : {}),
+  }))
+  const [step, setStep] = useState(p.completed && !p.flexibleTime && routine.kind !== 'sport' ? 3 : 0)
+  const [panel, setPanel] = useState(null)
+  const [returnToPlan, setReturnToPlan] = useState(false)
+  const [replace, setReplace] = useState(false)
+  const [exerciseIndex, setExerciseIndex] = useState(0)
+  const [exerciseReturn, setExerciseReturn] = useState(null)
+  // Exercises taken out of this session before starting ("Not today").
+  const [skipToday, setSkipToday] = useState([])
+  const movement = useMemo(() => movementPreferences(p, location, onTheGo), [p, location, onTheGo])
+  const schedule = sportScheduleContext(p, { today, now, minutes })
+  const steps = ['Time', 'Place', 'Feel', 'Plan']
+  const lastStep = step === steps.length - 1
+  const changeKind = (value) => {
+    if (value === kind) return
+    setKind(value)
+    const short = Boolean(routine.shortSession && value === 'adaptive')
+    setMinutes(fitDuration(value === 'sport' || short ? 10 : p.minutes, value, short))
+    setStep(0)
+    setReturnToPlan(false)
+    setPanel(null)
+    setReplace(false)
+  }
+  // Saved routines use the same adaptive weights as daily plans: this place,
+  // today's bodyweight, and everything else the strength model reads.
+  const sessionOptions = useCallback(
+    (at, profile) => ({
+      workouts: state.workouts,
+      customExercises: state.customExercises,
+      unit: state.settings.weightUnit,
+      now,
+      dumbbellWeights: availableLoads(profile, at),
+      strength: {
+        learning: state.learning,
+        metrics: state.metrics,
+        goal: profile.goal,
+        experience: profile.experience,
+        today,
+        place: at,
+      },
+    }),
+    [state.workouts, state.customExercises, state.settings.weightUnit, state.learning, state.metrics, now, today],
+  )
+  const plan = useMemo(() => {
+    if (readiness.unwell || readiness.rest)
+      return buildDailyPlan(planningState, { today, now, minutes, location, readiness, movement: onTheGo || undefined, mode: 'movement' })
+    if (kind === 'pump')
+      return buildEventPump(
+        planningState,
+        { ...routine.event, focus: focusAreas },
+        { today, now, minutes, location, readiness, movement: onTheGo || undefined },
+      )
+    if (kind === 'sport')
+      return {
+        ...buildSportWarmup(sport, minutes, {
+          excluded: new Set([...(p.excludedExercises || []), ...(readiness.avoidToday || []), ...skipToday]),
+          signals: exerciseSignals(planningState, { now, today, place: location }),
+          lowImpact: lowImpact || readiness.energy === 'low',
+          movement,
+          avoidMuscles: [...(p.avoidMuscles || []), ...readiness.pain, ...readiness.sore],
+        }),
+        location,
+      }
+    if (kind === 'adaptive')
+      return buildDailyPlan(planningState, {
+        today,
+        now,
+        minutes,
+        location,
+        // The plan picks something else for anything taken out today.
+        readiness: skipToday.length ? { ...readiness, avoidToday: [...(readiness.avoidToday || []), ...skipToday] } : readiness,
+        movement: onTheGo || undefined,
+        shortSession,
+      })
+    const adapted = adaptRoutineItems(planningState, routine.items.filter((it) => !skipToday.includes(it.exId)), location, readiness, {
+      today,
+      now,
+      minutes,
+      movement: onTheGo || undefined,
+    })
+    const items = adapted.items
+    // Fitted with this person's own pace, like daily plans.
+    while (items.length && planSeconds(items) > (minutes * 60) / (adapted.context.pace || 1)) {
+      const item = [...items].reverse().find((it) => it.sets > 1)
+      if (item) item.sets--
+      else items.pop()
+    }
+    const planned = {
+      ...routine,
+      name: routine.name,
+      items,
+      strengthContext: adapted.context,
+      pace: adapted.context.pace,
+      lighterMuscles: adapted.context.lighterMuscles,
+      location,
+    }
+    // The weights and reps the workout will actually start with, for the preview.
+    const preview = buildSession(planned, sessionOptions(location, p))
+    const shown = items.map((it) => {
+      const ex = preview.exercises.find((e) => e.exId === it.exId)
+      const work = ex?.sets.find((x) => x.kind !== 'warmup')
+      return work ? { ...it, previewWeight: work.weight, previewReps: work.reps } : it
+    })
+    return {
+      ...planned,
+      items: shown,
+      estimatedSeconds: Math.round(planSeconds(items) * adapted.context.pace),
+      // A gentle movement session stays a movement session, not strength history.
+      kind: routine.kind === 'recovery' ? 'recovery' : 'routine',
+      location,
+      readiness,
+      movement: adapted.movement,
+      schedule: {
+        next: adapted.schedule.next,
+        lighter: adapted.schedule.lighter,
+        muscles: adapted.schedule.muscles,
+        overlap: Boolean(adapted.schedule.overlap),
+      },
+      // Lighter days are planned by the strength model on real equipment steps.
+      lockedTargets: false,
+      requestedMinutes: minutes,
+      focus: adapted.changes.length
+        ? 'Your routine, adjusted for this place.'
+        : routine.kind === 'recovery'
+          ? routine.focus
+          : routine.blurb || 'Your routine, adjusted to the time you have.',
+      reasons: [
+        ...adapted.changes,
+        'Your saved routine isn’t changed.',
+        'You can pause or finish whenever you need to.',
+      ],
+    }
+  }, [
+    kind,
+    sport,
+    minutes,
+    lowImpact,
+    planningState,
+    p,
+    movement,
+    today,
+    location,
+    readiness,
+    routine,
+    now,
+    onTheGo,
+    focusAreas,
+    shortSession,
+    skipToday,
+    sessionOptions,
+  ])
+  const start = (confirmed = false) => {
+    if (!plan.items.length && !(kind === 'routine' && !routine.items.length)) return
+    if (state.activeWorkout && !confirmed) {
+      setReplace(true)
+      return
+    }
+    if (state.activeWorkout) {
+      const record = endForSwitch(state.activeWorkout, state.workouts)
+      dispatch(
+        record ? { type: 'FINISH_WORKOUT', workout: record } : { type: 'SET_ACTIVE_WORKOUT', session: null },
+      )
+      // The first mark still counts when it was saved by switching.
+      const first = record && firstSessionAchievement(state, record, today)
+      if (first)
+        dispatch({
+          type: 'UPDATE_SETTINGS',
+          patch: { milestones: { ...state.settings.milestones, firstSession: first.workoutId } },
+        })
+    }
+    setReplace(false)
+    dispatch({
+      type: 'SET_READINESS',
+      readiness: {
+        ...readiness,
+        ...(shortSession ? { intensity: readinessOf(state, today).intensity } : {}),
+        date: today,
+      },
+    })
+    dispatch({
+      type: 'UPDATE_SETTINGS',
+      patch: {
+        // Only "Make today's setup my defaults" changes the saved profile.
+        training: rememberSetup
+          ? {
+              ...(onTheGo ? updatePlace(p, location, { movement: { ...place.movement, ...onTheGo } }) : p),
+              minutes: kind !== 'sport' && !shortSession ? minutes : p.minutes,
+              location,
+            }
+          : profileOf(state),
+      },
+    })
+    dispatch({
+      type: 'SET_ACTIVE_WORKOUT',
+      session: beginPrepared(
+        prepareSession(
+          buildSession({ ...plan, placeName: place.name, equipmentProfile: p }, sessionOptions(location, p)),
+        ),
+      ),
+    })
+    onStart()
+  }
+  const panelTitles = {
+    options: 'Session options',
+    soreness: 'Anything feeling sore?',
+    pain: 'Anything to avoid?',
+    exercises: 'Your exercises',
+    exercise: 'Exercise details',
+    reasons: 'Why this session?',
+    movement: 'Space and movement',
+    equipment: 'Equipment for today',
+  }
+  const title = panel
+    ? panelTitles[panel]
+    : step === 0
+      ? 'How much time do you have?'
+      : lastStep
+        ? kind === 'adaptive'
+          ? 'Your training'
+          : plan.name
+        : step === 1
+          ? 'Where are you training?'
+          : 'How are you feeling?'
+  const selectedExercise = plan.items[exerciseIndex]
+  const exerciseDef = selectedExercise && findExercise(selectedExercise.exId, state.customExercises)
+  // Sets × reps, plus the planned weight so the equipment can be set up first.
+  const loadText = (it) => {
+    const weight = it.previewWeight !== undefined ? it.previewWeight : it.weight
+    if (!Number.isFinite(weight)) return ''
+    const load = metaOf(it.exId)?.load
+    const unit = state.settings.weightUnit
+    if (load === 'assist') return ` · ${fmtNum(weight)} ${unit} assistance`
+    return weight > 0 ? ` · ${fmtNum(weight)} ${unit}${load === 'hand' ? ' each' : ''}` : ''
+  }
+  const dose = (it) =>
+    `${it.sets} × ${it.sec ? (it.sec >= 60 ? fmtClock(it.sec * 1000) : `${it.sec}s`) : `${it.previewReps ?? it.reps}${it.unilateral ? ' / side' : ' reps'}`}${loadText(it)}`
+  const back = () => {
+    if (panel) setPanel(panel === 'exercise' ? exerciseReturn : null)
+    else if (returnToPlan) {
+      setStep(3)
+      setReturnToPlan(false)
+    } else {
+      setStep(Math.max(0, step - 1))
+      setReplace(false)
+    }
+  }
+  return (
+    <Modal
+      open
+      fullScreen
+      onClose={onClose}
+      title={title}
+      headerAction={
+        !panel ? (
+          <button
+            className="icon-btn !h-9 !w-9"
+            aria-label="Session options"
+            onClick={() => setPanel('options')}
+          >
+            <Icon name="more" size={20} />
+          </button>
+        ) : null
+      }
+      bodyKey={panel || step}
+      footer={
+        panel ? (
+          <button onClick={back} className="btn-primary h-12 w-full">
+            Done
+          </button>
+        ) : (
+          <div>
+            <div className="flex gap-2">
+              {(returnToPlan || (step > 0 && !(lastStep && p.completed && !p.flexibleTime))) && (
+                <button onClick={back} className="btn-secondary h-12 px-5">
+                  Back
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (lastStep) start()
+                  else if (returnToPlan) {
+                    setStep(3)
+                    setReturnToPlan(false)
+                  } else setStep(step + 1)
+                }}
+                disabled={
+                  (step === 0 && !(minutes > 0)) ||
+                  (kind === 'sport' && !sport) ||
+                  (lastStep &&
+                    (!equipmentValid || !plan.items.length) &&
+                    !(kind === 'routine' && !routine.items.length))
+                }
+                className="btn-primary h-12 flex-1"
+              >
+                {lastStep ? 'Start workout' : returnToPlan ? 'Update workout' : 'Continue'}
+              </button>
+            </div>
+          </div>
+        )
+      }
+    >
+      {!panel && (
+        <>
+          {!lastStep && !returnToPlan && (
+            <div
+              className="session-progress"
+              role="progressbar"
+              aria-label="Workout preparation"
+              aria-valuemin={0}
+              aria-valuemax={4}
+              aria-valuenow={step + 1}
+            >
+              <span style={{ width: `${(step + 1) * 25}%` }} />
+            </div>
+          )}
+          {step === 0 && (
+            <>
+              {kind === 'sport' && (
+                <Field label="Sport">
+                  <Select
+                    label="Sport"
+                    placeholder="Choose your sport"
+                    value={sport}
+                    onChange={setSport}
+                    options={orderedSports(p, p.lastSport).map((s) => [
+                      s.id,
+                      s.name,
+                      s.id === p.lastSport ? 'Last used' : undefined,
+                    ])}
+                  />
+                </Field>
+              )}
+              <div className="mt-8 grid grid-cols-2 gap-3">
+                {quickDurations.map((v) => (
+                  <button
+                    key={v}
+                    aria-label={`${v} minutes`}
+                    aria-pressed={minutes === v}
+                    onClick={() => setMinutes(v)}
+                    className="tile duration-choice"
+                  >
+                    <span className="num text-[42px] leading-none">{v}</span>
+                    <span className="text-[15px] font-semibold opacity-80">minutes</span>
+                    {minutes === v && (
+                      <span className="tile-check" aria-hidden="true">
+                        <Icon name="check" size={14} strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              {customDurationAllowed(kind, shortSession) && (
+                <div className="custom-duration">
+                  <span>Custom time</span>
+                  <Select
+                    label="Workout duration"
+                    value={quickDurations.includes(minutes) ? '' : minutes}
+                    placeholder="Choose"
+                    onChange={setMinutes}
+                    options={customDurationOptions(minutes, kind, shortSession).map((v) => [v, `${v} min`])}
+                  />
+                </div>
+              )}
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <div className="mt-7 space-y-3" role="radiogroup" aria-label="Where are you training?">
+                {places.map((option) => (
+                  <button
+                    key={option.id}
+                    role="radio"
+                    aria-checked={location === option.id}
+                    onClick={() => setLocation(option.id)}
+                    className="tile location-choice"
+                  >
+                    <span className="icon-tile !h-12 !w-12">
+                      <Icon name={placeIcon(option)} size={24} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[20px] font-semibold">{option.name}</span>
+                      <span className="mt-1 block truncate text-[14px] text-muted">
+                        {placeSummary(option)}
+                      </span>
+                    </span>
+                    {location === option.id && <Icon name="check" size={19} strokeWidth={3} />}
+                  </button>
+                ))}
+                <button
+                  className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-outline text-[15px] font-semibold text-ink2"
+                  onClick={() => setAddingPlace(true)}
+                >
+                  <Icon name="plus" size={17} />
+                  Add a place
+                </button>
+              </div>
+              {place.type !== 'space' && (
+                <OptionRow
+                  label="Equipment for today"
+                  detail="Adjust without changing your usual setup"
+                  onClick={() => setPanel('equipment')}
+                />
+              )}
+              {movement && (
+                <div className="mt-4 border-t border-line">
+                  <OptionRow
+                    label="Space and movement"
+                    detail={movementSummary(movement)}
+                    onClick={() => setPanel('movement')}
+                  />
+                </div>
+              )}
+            </>
+          )}
+          {step === 2 && (
+            <>
+              <div className="mt-7 grid grid-cols-4 gap-2" role="group" aria-label="How you feel today">
+                {[
+                  ['unwell', 'Unwell', 0],
+                  ['low', 'Low', 1],
+                  ['normal', 'Usual', 2],
+                  ['high', 'High', 3],
+                ].map(([value, label, bars]) => {
+                  const on =
+                    value === 'unwell'
+                      ? Boolean(readiness.unwell)
+                      : !readiness.unwell && readiness.energy === value
+                  return (
+                    <button
+                      key={value}
+                      aria-pressed={on}
+                      onClick={() =>
+                        setReadiness((r) =>
+                          value === 'unwell'
+                            ? { ...r, unwell: true, energy: 'low' }
+                            : { ...r, unwell: false, energy: value },
+                        )
+                      }
+                      className={`tile energy-choice ${on ? '' : 'text-ink2'}`}
+                    >
+                      <span className="flex h-7 items-end gap-1" aria-hidden="true">
+                        {value === 'unwell' ? (
+                          <Icon name="heart" size={22} />
+                        ) : (
+                          [1, 2, 3].map((n) => (
+                            <span
+                              key={n}
+                              className={`w-2 rounded-sm bg-current ${n > bars ? 'opacity-15' : ''}`}
+                              style={{ height: 8 + n * 6 }}
+                            />
+                          ))
+                        )}
+                      </span>
+                      <span className="mt-3 text-[15px] font-semibold">{label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-7 divide-y divide-line rounded-tuck bg-bg/60 px-4">
+                <OptionRow
+                  label="Sore or tired muscles"
+                  detail={readiness.sore.join(', ') || 'Nothing selected'}
+                  onClick={() => setPanel('soreness')}
+                />
+                <OptionRow
+                  label="Pain or movements to avoid"
+                  detail={readiness.pain.join(', ') || 'Nothing selected'}
+                  onClick={() => setPanel('pain')}
+                />
+              </div>
+            </>
+          )}
+          {lastStep && (
+            <>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                {[
+                  [0, 'Time', `${minutes} min`],
+                  [1, 'Place', place.name],
+                  [
+                    2,
+                    'Feel',
+                    readiness.unwell
+                      ? 'Not feeling well'
+                      : readiness.energy === 'low'
+                        ? 'Low energy'
+                        : readiness.sore.length || readiness.pain.length
+                          ? 'Areas avoided'
+                          : readiness.energy === 'high'
+                            ? 'High energy'
+                            : 'Usual',
+                  ],
+                ].map(([value, label, detail]) => (
+                  <button
+                    key={value}
+                    className="tile min-h-[76px] px-2.5 py-3 text-left"
+                    onClick={() => {
+                      setReturnToPlan(true)
+                      setStep(value)
+                    }}
+                  >
+                    <span className="block text-[13px] font-semibold text-muted">{label}</span>
+                    <span className="mt-1 flex items-center justify-between gap-1 text-[15px] font-bold">
+                      <span>{detail}</span>
+                      <Icon name="edit" size={12} className="shrink-0 text-muted" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-6 text-[18px] leading-relaxed text-ink2" aria-live="polite">
+                {kind === 'adaptive' ? planSummary(plan) : plan.focus}
+              </p>
+              <PlanRibbon
+                items={plan.items}
+                customExercises={state.customExercises}
+                findExercise={findExercise}
+              />
+              <p className="mt-4 text-[14px] text-muted">
+                {plan.items.length} {kind === 'sport' ? 'drills' : 'exercises'} ·{' '}
+                {count(
+                  plan.items.reduce((n, it) => n + it.sets, 0),
+                  'set',
+                )}
+              </p>
+              <div className="mt-4 divide-y divide-line">
+                {plan.items.slice(0, 3).map((it, i) => (
+                  <OptionRow
+                    key={`${it.exId}-${i}`}
+                    label={findExercise(it.exId, state.customExercises)?.name}
+                    detail={dose(it)}
+                    thumb={exerciseThumb(it.exId)}
+                    thumbSlot
+                    onClick={() => {
+                      setExerciseIndex(i)
+                      setExerciseReturn(null)
+                      setPanel('exercise')
+                    }}
+                  />
+                ))}
+              </div>
+              {plan.items.length > 3 && (
+                <button className="btn-ghost mt-2 min-h-11 w-full" onClick={() => setPanel('exercises')}>
+                  View all {plan.items.length} {kind === 'sport' ? 'drills' : 'exercises'}
+                </button>
+              )}
+              {plan.schedule?.overlap && (
+                <p role="status" className="mt-4 rounded-2xl border border-accent/40 p-3 text-[14px]">
+                  Overlaps {schedule.next?.name || 'an event you added'}. Adjust the time if needed.
+                </p>
+              )}
+              {!plan.items.length && !(kind === 'routine' && !routine.items.length) && (
+                <p className="mt-4 text-[14px] leading-relaxed text-muted">
+                  Nothing fits those areas and this equipment. Change one, or rest today.
+                </p>
+              )}
+              {kind === 'routine' && !routine.items.length && (
+                <p className="mt-4 text-[15px] text-muted">Add exercises as you go.</p>
+              )}
+              {kind === 'pump' && !plan.items.length && (
+                <button className="btn-secondary mt-4 w-full" onClick={() => setPanel('options')}>
+                  Change focus areas
+                </button>
+              )}
+            </>
+          )}
+        </>
+      )}
+      {panel === 'options' && (
+        <>
+          <Field label="Session type">
+            <div className="space-y-2">
+              {[
+                ['adaptive', 'Recommended for today'],
+                ['sport', 'Warm up for sport'],
+                ...(routine.kind === 'pump' ? [['pump', 'Short focused session']] : []),
+                ...(!['adaptive', 'sport', 'pump'].includes(routine.kind)
+                  ? [['routine', 'Your saved routine']]
+                  : []),
+              ].map(([value, label]) => (
+                <div key={value}>
+                  <Choice value={value} selected={kind === value} onClick={changeKind}>
+                    {label}
+                  </Choice>
+                </div>
+              ))}
+            </div>
+          </Field>
+          {kind === 'pump' && (
+            <Field label="Areas for this short session">
+              <div className="grid grid-cols-2 gap-2">
+                {AREAS.map((m) => (
+                  <Choice
+                    key={m}
+                    value={m}
+                    selected={focusAreas.includes(m)}
+                    onClick={() =>
+                      setFocusAreas((v) => (v.includes(m) ? v.filter((a) => a !== m) : [...v, m]))
+                    }
+                  />
+                ))}
+              </div>
+              <p className="mt-3 text-[12px] text-muted">Just for this session.</p>
+            </Field>
+          )}
+          {kind === 'adaptive' && (
+            <>
+              <Field label="Where are you training?">
+                <div className="flex flex-wrap gap-2">
+                  {places.map((option) => (
+                    <Choice
+                      key={option.id}
+                      value={option.id}
+                      selected={location === option.id}
+                      onClick={setLocation}
+                    >
+                      {option.name}
+                    </Choice>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Preferred effort">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    ['easy', 'Easy'],
+                    ['moderate', 'Moderate'],
+                    ['challenging', 'Challenging'],
+                  ].map(([value, label]) => (
+                    <Choice
+                      key={value}
+                      value={value}
+                      selected={readiness.intensity === value}
+                      onClick={(intensity) => setReadiness({ ...readiness, intensity })}
+                    >
+                      {label}
+                    </Choice>
+                  ))}
+                </div>
+              </Field>
+              <SwitchRow
+                label="Sport today or tomorrow"
+                checked={readiness.sportSoon}
+                onChange={(sportSoon) => setReadiness({ ...readiness, sportSoon })}
+              />
+            </>
+          )}
+          {kind === 'sport' && (
+            <SwitchRow label="No jumps or quick turns" checked={lowImpact} onChange={setLowImpact} />
+          )}
+          <OptionRow label="Why this session?" onClick={() => setPanel('reasons')} />
+          {kind !== 'sport' && (
+            <SwitchRow label="Save as my usual setup" checked={rememberSetup} onChange={setRememberSetup} />
+          )}
+        </>
+      )}
+      {panel === 'equipment' && (
+        <>
+          <p className="mt-3 text-[14px] text-muted">Just for this workout.</p>
+          <EnvironmentFields
+            key={location}
+            place={place}
+            unit={state.settings.weightUnit}
+            onChange={(patch) => setSessionProfile((prev) => updatePlace(prev, location, patch))}
+            onValidityChange={setEquipmentValid}
+          />
+        </>
+      )}
+      {panel === 'movement' && (
+        <>
+          <p className="mt-3 text-[13px] text-muted">
+            {kind === 'sport' ? 'Just for this warm-up.' : 'Just for today.'}
+          </p>
+          <MovementFields value={onTheGo || place.movement} onChange={setOnTheGo} />
+        </>
+      )}
+      {['soreness', 'pain'].includes(panel) && (
+        <>
+          {panel === 'pain' && (
+            <p className="mt-3 text-[14px] leading-relaxed text-muted">
+              We’ll avoid these. If pain persists, see a professional.
+            </p>
+          )}
+          <BodyAreaPicker
+            key={panel}
+            value={readiness[panel === 'pain' ? 'pain' : 'sore']}
+            locked={panel === 'pain' ? p.avoidMuscles : []}
+            label={panel === 'pain' ? 'Areas to avoid' : 'Sore or tired areas'}
+            onChange={(areas) => setReadiness((r) => ({ ...r, [panel === 'pain' ? 'pain' : 'sore']: areas }))}
+          />
+        </>
+      )}
+      {panel === 'exercises' && (
+        <div className="mt-3 divide-y divide-line">
+          {plan.items.map((it, i) => (
+            <OptionRow
+              key={`${it.exId}-${i}`}
+              label={findExercise(it.exId, state.customExercises)?.name}
+              detail={`${it.phaseLabel ? it.phaseLabel + ' · ' : ''}${dose(it)}`}
+              onClick={() => {
+                setExerciseIndex(i)
+                setExerciseReturn('exercises')
+                setPanel('exercise')
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {panel === 'exercise' && exerciseDef && (
+        <>
+          <h3 className="mt-4 font-display text-[26px]">{exerciseDef.name}</h3>
+          <p className="mt-2 text-[14px] text-accent">{dose(selectedExercise)}</p>
+          <p className="mt-3 text-[14px] leading-relaxed text-muted">{selectedExercise.note}</p>
+          <ol className="mt-4 list-decimal space-y-3 pl-5 text-[15px]">
+            {exerciseDef.cues.map((cue) => (
+              <li key={cue}>{cue}</li>
+            ))}
+          </ol>
+          {['adaptive', 'routine'].includes(kind) && plan.items.length > 1 && (
+            <button
+              type="button"
+              className="btn-secondary mt-5 min-h-12 w-full"
+              onClick={() => {
+                // Today only: the plan swaps in something else (a routine just drops it).
+                setSkipToday((list) => [...new Set([...list, selectedExercise.exId])])
+                setExerciseIndex(0)
+                setPanel(exerciseReturn)
+              }}
+            >
+              {kind === 'adaptive' ? 'Not today: swap it' : 'Skip it today'}
+            </button>
+          )}
+        </>
+      )}
+      {panel === 'reasons' && (
+        <ul className="mt-4 list-disc space-y-3 pl-4 text-[14px] leading-relaxed text-ink2">
+          {plan.reasons?.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      )}
+      {addingPlace && (
+        <PlaceEditor
+          profile={profileOf(state)}
+          unit={state.settings.weightUnit}
+          onClose={() => setAddingPlace(false)}
+          onSave={(saved, id) => {
+            // A new place is kept for next time; today's other choices stay today-only.
+            dispatch({ type: 'UPDATE_SETTINGS', patch: { training: saved } })
+            setSessionProfile((prev) => ({ ...prev, places: saved.places, location: saved.location }))
+            if (id) setLocation(id)
+            setAddingPlace(false)
+          }}
+        />
+      )}
+      {replace && state.activeWorkout && (
+        <WorkoutSwitchDialog
+          session={state.activeWorkout}
+          onKeep={() => {
+            setReplace(false)
+            onStart()
+          }}
+          onEnd={() => start(true)}
+        />
+      )}
+    </Modal>
+  )
+}
+
+function SwitchRow({ label, checked, onChange }) {
+  return (
+    <div className="mt-3 flex min-h-12 items-center gap-3 text-[15px]">
+      <span className="min-w-0 flex-1">{label}</span>
+      <Toggle checked={checked} onChange={onChange} label={label} />
+    </div>
+  )
+}
+
+function OptionRow({ label, detail, onClick, thumb, thumbSlot = false }) {
+  return (
+    <button onClick={onClick} className="flex min-h-14 w-full items-center gap-3 py-3 text-left">
+      {thumb ? (
+        <span className="exercise-thumb !h-12 !flex-[0_0_64px]" aria-hidden="true">
+          <img src={thumb} alt="" loading="lazy" decoding="async" />
+        </span>
+      ) : (
+        // Rows in one list keep one text column, with or without artwork.
+        thumbSlot && (
+          <span className="exercise-thumb exercise-thumb--empty !h-12 !flex-[0_0_64px]" aria-hidden="true">
+            <Icon name="train" size={20} />
+          </span>
+        )
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block text-[16px] font-semibold">{label}</span>
+        {detail && <span className="mt-1 block text-[14px] text-muted">{detail}</span>}
+      </span>
+      <Icon name="chevronRight" size={16} className="shrink-0 text-faint" />
+    </button>
+  )
+}

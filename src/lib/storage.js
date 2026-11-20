@@ -1,63 +1,165 @@
+import { withSaveLock, mergeBrowserEdits } from './browser-save.js'
 import { todayKey } from './date.js'
+import { isNativeApp, persistNativeState, readNativeState } from './native.js'
+import { DEFAULT_PROFILE } from './planner.js'
+import { DEFAULT_DISPLAY } from './preferences.js'
+import { LEGACY_STORAGE_KEY, STORAGE_KEY, validateSnapshot } from '../../expo/src/protocol.js'
+import { EXERCISES, ORIGINAL_IDS } from './exercises.js'
+import { migrateExerciseIds, ID_MIGRATION_VERSION } from './catalog/migrations.js'
+import { normalizeLearning } from './engine/learning.js'
+import { validPersonalRecord } from './personal-records.js'
 
-export const STORAGE_KEY = 'calorie-tracker:v1'
-export const KCAL_PER_GRAM = { protein: 4, carbs: 4, fat: 9 }
+export { STORAGE_KEY }
+
+// Fields left over from the app's calorie-tracker origins. Old saves and
+// backups may still carry them; they are dropped when a save is opened.
+const RETIRED_KEYS = ['entries', 'foods']
+const RETIRED_SETTINGS = ['goals', 'useMacroPercent', 'macroPercent', 'waterGoal']
 
 export function defaultState() {
   return {
-    version: 1,
-    entries: [],
-    // foods: { id, name, calories, protein, carbs, fat, servingSize, favorite, usageCount }
-    foods: [],
-    // metrics: { [dateKey]: { water, weight, note } }
+    version: 2,
+    // metrics: { [dateKey]: { weight, sampleWeight } }
     metrics: {},
+    // routines: your saved workout plans (see lib/workout.js)
+    routines: [],
+    // customExercises: exercises you added yourself, same shape as lib/exercises.js
+    customExercises: [],
+    // workouts: finished guided sessions, oldest first
+    workouts: [],
+    personalRecords: [],
+    checkins: [],
+    // learning: explicit exercise feedback, question history and resets (engine/learning.js)
+    learning: normalizeLearning(null),
+    readiness: null,
+    // activeWorkout: the session in progress, so a reload picks up where you left off
+    activeWorkout: null,
     settings: {
-      goals: { calories: 2000, protein: 150, carbs: 200, fat: 67 },
-      useMacroPercent: false,
-      macroPercent: { protein: 30, carbs: 40, fat: 30 },
-      waterGoal: 8,
-      weightUnit: 'lb',
-      // 'system' | 'light' | 'dark'
       theme: 'system',
+      milestones: {},
+      training: { ...DEFAULT_PROFILE },
+      display: { ...DEFAULT_DISPLAY },
+      weightUnit: 'lb',
+      // Shown in the Home greeting and on the You tab
+      name: '',
+      // Strength goal on the You tab
+      liftGoal: null,
+      workout: {
+        weeklyGoal: 3,
+        goalMode: 'flexible',
+        countdown: 5, // get-ready seconds before the first set
+        sound: true,
+        // Spoken cues are an accessibility choice, never the default.
+        voice: false,
+        vibrate: true,
+        cuesVersion: 2,
+        keepAwake: true, // hold a screen wake lock while the player is open
+        // 'simple': the app sets weights and reps (tap a number to change it);
+        // 'advanced': +/− buttons on every set as well.
+        weightControls: 'simple',
+      },
     },
     createdAt: todayKey(),
+    catalogVersion: ID_MIGRATION_VERSION,
   }
 }
 
+const CATALOG = {
+  builtIn: new Map(EXERCISES.map((e) => [e.id, e.name])),
+  original: new Set(ORIGINAL_IDS),
+}
+
+function readBrowserSave() {
+  // Older versions saved under the legacy key. It is read, never deleted.
+  return localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY)
+}
+
+let browserBase = null
+let browserRaw = null
 export function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return defaultState()
-    const parsed = JSON.parse(raw)
-    const base = defaultState()
-    return {
-      ...base,
-      ...parsed,
-      settings: {
-        ...base.settings,
-        ...(parsed.settings || {}),
-        goals: { ...base.settings.goals, ...(parsed.settings?.goals || {}) },
-        macroPercent: { ...base.settings.macroPercent, ...(parsed.settings?.macroPercent || {}) },
-      },
+    const raw = isNativeApp() ? readNativeState() : readBrowserSave()
+    const state = raw ? normalizeState(validateSnapshot(raw)) : defaultState()
+    if (!isNativeApp()) {
+      browserBase = state
+      browserRaw = raw
     }
+    return state
   } catch (err) {
-    console.error('Failed to load state, starting fresh:', err)
-    return defaultState()
+    console.error('Failed to load saved training:', err)
+    throw new Error('Your saved training could not be opened. The saved copy has not been replaced.')
   }
 }
 
+export const byDate = (a, b) =>
+  String(a.date).localeCompare(String(b.date)) || (a.startedAt ?? 0) - (b.startedAt ?? 0)
+
+// Fill in anything an older save or backup is missing.
+// Saves from before cuesVersion 2 had spoken cues on by default. Turn them off
+// once; after that the person's own choice is kept.
+function migrateCues(saved) {
+  const workout = { ...defaultState().settings.workout, ...(saved || {}) }
+  return saved?.cuesVersion === 2 ? workout : { ...workout, voice: false, cuesVersion: 2 }
+}
+
+export function normalizeState(parsed) {
+  const base = defaultState()
+  const state = { ...base, ...parsed }
+  for (const key of RETIRED_KEYS) delete state[key]
+  const settings = { ...base.settings, ...(parsed.settings || {}) }
+  for (const key of RETIRED_SETTINGS) delete settings[key]
+  const normalized = {
+    ...state,
+    version: base.version,
+    settings: {
+      ...settings,
+      workout: migrateCues(parsed.settings?.workout),
+      training: { ...DEFAULT_PROFILE, ...(parsed.settings?.training || {}) },
+      display: { ...DEFAULT_DISPLAY, ...(parsed.settings?.display || {}) },
+    },
+    metrics: parsed.metrics || {},
+    routines: parsed.routines || [],
+    customExercises: parsed.customExercises || [],
+    // Restored backups are not guaranteed to be in order; every screen assumes oldest first.
+    workouts: [...(parsed.workouts || [])].sort(byDate),
+    personalRecords: Array.isArray(parsed.personalRecords)
+      ? parsed.personalRecords.filter(validPersonalRecord)
+      : [],
+    checkins: parsed.checkins || [],
+    activeWorkout: parsed.activeWorkout || null,
+    learning: normalizeLearning(parsed.learning),
+  }
+  // Idempotent: a save that was already migrated comes back unchanged.
+  return migrateExerciseIds(normalized, CATALOG).state
+}
+
+let lastWritten = null
 export function saveState(state) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+    const raw = JSON.stringify(state)
+    if (isNativeApp()) return persistNativeState(raw)
+    return withSaveLock(() => {
+      const disk = readBrowserSave()
+      let merged = state
+      if (disk && browserBase && (disk !== browserRaw || browserBase !== lastWritten)) {
+        const remote = normalizeState(validateSnapshot(disk))
+        try {
+          merged = mergeBrowserEdits(browserBase, state, remote)
+        } catch (error) {
+          // Keep this tab's copy available through refresh and explicit export.
+          sessionStorage.setItem('tally:conflicting-edit', raw)
+          throw error
+        }
+      }
+      const next = merged === state ? raw : JSON.stringify(merged)
+      if (disk !== next) localStorage.setItem(STORAGE_KEY, next)
+      browserRaw = next
+      browserBase = state
+      lastWritten = next === raw ? state : merged
+      return next === raw ? null : normalizeState(merged)
+    })
   } catch (err) {
     console.error('Failed to save state:', err)
-  }
-}
-
-export function gramGoalsFromPercent(calories, macroPercent) {
-  return {
-    protein: Math.round((calories * (macroPercent.protein / 100)) / KCAL_PER_GRAM.protein),
-    carbs: Math.round((calories * (macroPercent.carbs / 100)) / KCAL_PER_GRAM.carbs),
-    fat: Math.round((calories * (macroPercent.fat / 100)) / KCAL_PER_GRAM.fat),
+    return Promise.reject(err)
   }
 }
